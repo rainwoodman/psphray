@@ -28,8 +28,9 @@ void cfg_init(char * filename) {
 	config_ensure_float  (CFG, "cosmology.omegaM", 0.26);
 	config_ensure_float  (CFG, "cosmology.omegaB", 0.044);
 	config_ensure_float  (CFG, "cosmology.h", 0.72);
+	config_ensure_float  (CFG, "cosmology.hmf", 0.76);
 	config_ensure        (CFG, "box", CONFIG_TYPE_GROUP);
-	config_ensure_float  (CFG, "box.boxsize", 0.0);
+	config_ensure_float  (CFG, "box.boxsize", -1.0);
 	config_ensure_string (CFG, "box.boundary", "vaccum");
 	config_ensure        (CFG, "units", CONFIG_TYPE_GROUP);
 	config_ensure_float  (CFG, "units.massGramh", 1.9847005219450705e+43);
@@ -69,7 +70,12 @@ config_setting_t * config_ensure(config_t * config, char * path, int type) {
 	return st;
 }
 double config_setting_parse_units(config_setting_t * e) {
-	double value = config_setting_get_float_elem(e, 0);
-	const char * units = config_setting_get_string_elem(e, 1);
-	return value * units_parse(units);
+	if(config_setting_is_list(e)) {
+		double value = config_setting_get_float_elem(e, 0);
+		const char * units = config_setting_get_string_elem(e, 1);
+		return value * units_parse(units);
+	} else {
+		double value = config_setting_get_float(e);
+		return value;
+	}
 }

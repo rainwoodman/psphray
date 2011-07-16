@@ -13,14 +13,37 @@ double U_YR = 0.0;
 double U_MYR = 0.0;
 double U_KG = 0.0;
 double U_MSUN = 0.0;
+double U_MPROTON = 0.0;
+double U_KELVIN = 0.0;
 
 double C_OMEGA_L = 0.0;
 double C_OMEGA_M = 0.0;
 double C_H = 0.0;
+double C_HMF = 0.0;
+double C_BOLTZMANN = 0.0;
 
+	static struct {
+		const char * name;
+		double * value;
+	} u_list[] = {
+		{"h", &C_H},
+		{"cm", &U_CM},
+		{"m", &U_M},
+		{"km", &U_KM},
+		{"kpc", &U_KPC},
+		{"g", &U_GRAM},
+		{"kg", &U_KG},
+		{"yr", &U_YR},
+		{"myr", &U_MYR},
+		{"msun", &U_MSUN},
+		{"mproton", &U_MPROTON},
+		{"kelvin", &U_KELVIN},
+		{NULL, NULL},
+	};
 double units_simple(char * simple);
 double units_init() {
 	config_lookup_float(CFG, "cosmology.h", &C_H);
+	config_lookup_float(CFG, "cosmology.hmf", &C_HMF);
 	config_lookup_float(CFG, "cosmology.omegaL", &C_OMEGA_L);
 	config_lookup_float(CFG, "cosmology.omegaM", &C_OMEGA_M);
 	
@@ -33,37 +56,22 @@ double units_init() {
 	config_lookup_float(CFG, "units.timeSh", &U_SEC);
 	U_SEC = C_H / U_SEC;
 
-	U_M = units_simple("m");
-	U_KM = units_simple("km");
-	U_KPC = units_simple("kpc");
-	U_YR = units_simple("yr");
-	U_MYR = units_simple("myr");
-	U_KG = units_simple("kg");
-	U_MSUN = units_simple("msun");
+	U_M = U_CM * 100;
+	U_KM = U_M * 1000;
+	U_KPC = U_M * 3.08568025e19;
+	U_YR = U_SEC * 31556926.0;
+	U_KG = U_GRAM * 1000;
+	U_MYR = U_YR * 1e6;
+	U_MSUN = U_KG * 1.98892e30;
+	U_MPROTON = U_KG * 1.67262158e-27;
+	U_KELVIN = 1.0;
+	C_BOLTZMANN = 1.3806503e-23 * U_M * U_M * U_KG / U_SEC / U_SEC;
 }
+
 double units_simple(char * simple) {
-	if(!strcasecmp(simple, "h")) {
-		return C_H;
-	} else if(!strcasecmp(simple, "cm")) {
-		return U_CM;
-	} else if(!strcasecmp(simple, "gram")) {
-		return U_GRAM;
-	} else if(!strcasecmp(simple, "sec")) {
-		return U_SEC;
-	} else if(!strcasecmp(simple, "m")) {
-		return units_simple("cm") * 100 ;
-	} else if(!strcasecmp(simple, "km")) {
-		return units_simple("m") * 1000 ;
-	} else if(!strcasecmp(simple, "kpc")) {
-		return units_simple("m") * 3.08568025e19;
-	} else if(!strcasecmp(simple, "yr")) {
-		return units_simple("sec") * 31556926.0;
-	} else if(!strcasecmp(simple, "kg")) {
-		return units_simple("gram") * 1000 ;
-	} else if(!strcasecmp(simple, "myr")) {
-		return units_simple("yr") * 1e6 ;
-	} else if(!strcasecmp(simple, "msun")) {
-		return units_simple("kg") * 1.98892e30;
+	int i;
+	for (i = 0; i < sizeof(u_list) / sizeof(u_list[0]); i++) {
+		if(!strcasecmp(simple, u_list[i].name)) return * u_list[i].value;
 	}
 	ERROR("unit %s unknown", simple);
 }
@@ -132,4 +140,9 @@ double z2t(double z) {
 	double pre = 2.0 / (3.0 * sqrt(C_OMEGA_L));
 	double arg = pow(a / aeq, 3.0 / 2.0)  + sqrt(1.0 + pow(a/ aeq, 3.0));
 	return pre * log(arg) / H0;
+}
+
+float ieye2T(const float ie, const float ye) {
+	return U_MPROTON / C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
+			C_HMF + C_HMF * ye) * 2.0 / 3.0 ;
 }

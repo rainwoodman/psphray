@@ -16,10 +16,6 @@ int main(int argc, char* argv[]) {
 
 	Reader * r = reader_new("massiveblack");
 	reader_open(r, "../test/snapdir_680/snapshot_680.0");
-	float (*pos)[3] = reader_alloc(r, "pos", -1);
-	size_t l = reader_length(r, "pos");
-
-	reader_read(r, "pos", -1, pos);
 	ReaderConstants * c = reader_constants(r);
 	MESSAGE("-------reader sanity check--------");
 	MESSAGE("boxsize = %f", c->boxsize);
@@ -29,21 +25,26 @@ int main(int argc, char* argv[]) {
 	MESSAGE("Nfiles = %lu", c->Nfiles);
 	MESSAGE("h = %f", c->h);
 	MESSAGE("-------reader sanity check--------");
-	reader_destroy(r);
 
+	float *ie = reader_alloc(r, "ie", 0);
+	float *ye = reader_alloc(r, "ye", 0);
+	reader_read(r, "ie", 0, ie);
+	reader_read(r, "ye", 0, ye);
+
+	float Tmin = 1000000000;
+	float Tmax = -1;
 	intptr_t i;
-	double x = 0, y = 0, z = 0;
-	for(i = 0; i < l; i++) {
-		x += pos[i][0];
-		y += pos[i][1];
-		z += pos[i][2];
+	for(i = 0; i < reader_npar(r, 0); i++) {
+		float T = ieye2T(ie[i], ye[i]);
+		if(T > Tmax) Tmax = T;
+		if(T < Tmin) Tmin = T;
 	}
-
-	free(pos);
-	printf("%f %f %f\n", x/l, y/l, z/l);
+	free(ie);
+	free(ye);
+	reader_destroy(r);
+	printf("%f %f\n", Tmax, Tmin);
 
 	psystem_switch_epoch(0);
 	psystem_switch_epoch(1);
-	
 	return 0;
 }

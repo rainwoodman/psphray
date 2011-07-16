@@ -9,12 +9,6 @@
 #include "reader.h"
 #define IDHASHBITS 24
 #define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
-const float Hmf = 0.76;
-
-typedef struct {
-	intptr_t *head;
-	intptr_t *next;
-} IDHash;
 
 typedef struct {
 	float (*pos)[3];
@@ -22,22 +16,27 @@ typedef struct {
 	float *mass;
 	float *T;
 	unsigned long long * id;
-	IDHash idhash;
+	struct {
+		intptr_t *head;
+		intptr_t *next;
+	} idhash;
+	double boxsize;
+	int periodic;
 } PSystem;
 
 PSystem psys = {0};
 static float dist(const float p1[3], const float p2[3]);
 
-void idhash_build(IDHash * h, unsigned long long * id, size_t n) {
-	h->head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
-	h->next = malloc(sizeof(intptr_t) * n);
+void idhash_build(unsigned long long * id, size_t n) {
+	psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
+	psys.idhash.next = malloc(sizeof(intptr_t) * n);
 	intptr_t i;
-	memset(h->head, -1, sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
-	memset(h->next, -1, sizeof(intptr_t) * n);
+	memset(psys.idhash.head, -1, sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
+	memset(psys.idhash.next, -1, sizeof(intptr_t) * n);
 	for(i = 0; i < n; i++) {
 		intptr_t hash = id[i] & IDHASHMASK;
-		h->next[i] = h->head[hash];
-		h->head[hash] = i;
+		psys.idhash.next[i] = psys.idhash.head[hash];
+		psys.idhash.head[hash] = i;
 	}
 }
 
@@ -49,6 +48,18 @@ void psystem_switch_epoch(int i) {
 	ReaderConstants * c = reader_constants(r0);
 
 	/* read stuff */
+
+	config_lookup_float(CFG, "box.boxsize", &psys.boxsize);
+	if(psys.boxsize == -1) {
+		psys.boxsize = c->boxsize;
+	}
+	const char * boundary = NULL;
+	config_lookup_string(CFG, "box.boundary", &boundary);
+	if(!strcmp(boundary, "vaccum"))
+		psys.periodic = 0;
+	else if(!strcmp(boundary, "periodic"))
+		psys.periodic = 1;
+	else ERROR("boundary type %s unknown, be vaccum or periodic", boundary);
 
 	if( i == 0) {
 		size_t ngas = EPOCHS[i].ngas;
@@ -72,7 +83,7 @@ void psystem_switch_epoch(int i) {
 			float * ye = reader_alloc(r, "ye", 0);
 			intptr_t ipar;
 			for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
-				psys.T[ipar+nread] = ie[ipar] / ( (1.0 - Hmf) * 0.25 + Hmf + Hmf * ye[ipar]) * 2.0 / 3.0;
+				psys.T[ipar+nread] = ieye2T(ie[ipar], ye[ipar]);
 			}
 			if(reader_itemsize(r, "id") == 4) {
 				unsigned int * id = reader_alloc(r, "id", 0);
@@ -90,7 +101,7 @@ void psystem_switch_epoch(int i) {
 			free(ye);
 			reader_destroy(r);
 		}
-		idhash_build(&psys.idhash, psys.id, nread);
+		idhash_build(psys.id, nread);
 	} else {
 		int fid;
 		for(fid = 0; fid < c->Nfiles; fid ++) {
@@ -141,7 +152,7 @@ void psystem_switch_epoch(int i) {
 					memcpy(&psys.pos[best_jpar][0], &pos[ipar][0], sizeof(float) * 3);
 					distsum += mindist;
 					psys.mass[best_jpar] = mass[ipar];
-					psys.T[best_jpar] = ie[ipar] / ( (1.0 - Hmf) * 0.25 + Hmf + Hmf * ye[ipar]) * 2.0 / 3.0;
+					psys.T[best_jpar] = ieye2T(ie[ipar], ye[ipar]);
 				} else {
 					lost++;
 				}
@@ -164,7 +175,10 @@ static float dist(const float p1[3], const float p2[3]) {
 	int d;
 	double result = 0.0;
 	for (d = 0; d < 3; d++) {
-		float dd = p1[d] - p2[d];
+		float dd = fabs(p1[d] - p2[d]);
+		if(psys.periodic) {
+			if (dd > 0.5 * psys.boxsize) dd = psys.boxsize - dd;
+		}
 		result += dd *dd;
 	}
 	return sqrt(result);
