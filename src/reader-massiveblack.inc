@@ -126,9 +126,49 @@ static size_t _offset(struct header_t * h, char * blk, char ** error) {
 }
   
 
+static void _def_header(struct header_t * h) {
+h->flag_entropy = 0;
+h->flag_sft = 1;
+h->flag_sfr = 1;
+h->flag_double = 0;
+h->flag_cool = 1;
+h->flag_feedback = 1;
+h->flag_ic_info = 0;
+h->flag_met = 1;
+}
 
-static size_t _npar(struct header_t * h, int ptype, char ** error) {
-	return h->N[ptype];
+
+static void _get_constants(struct header_t * h, struct constants_t * c) {
+	int i;
+	for(i = 0; i< 6; i++) {
+		c->N[i] = h->N[i];
+		c->Ntot[i] = h->Nparticle_total_low[i]
+			+ (((size_t) h->Nparticle_total_high[i]) << 32);
+		c->mass[i] = h->mass[i];
+	}
+	c->boxsize = h->boxsize;
+	c->OmegaM = h->OmegaM;
+	c->OmegaL = h->OmegaL;
+	c->redshift = h->redshift;
+	c->time = h->time;
+	c->Nfiles = h->Nfiles;
+	c->h = h->h;
+}
+static void _set_constants(struct header_t * h, struct constants_t * c) {
+	int i;
+	for(i = 0; i< 6; i++) {
+		h->N[i] = c->N[i];
+		h->Nparticle_total_low[i] = c->Ntot[i];
+		h->Nparticle_total_high[i] = c->Ntot[i] >> 32;
+		h->mass[i] = c->mass[i];
+	}
+	h->boxsize = c->boxsize;
+	h->OmegaM = c->OmegaM;
+	h->OmegaL = c->OmegaL;
+	h->redshift = c->redshift;
+	h->time = c->time;
+	h->Nfiles = c->Nfiles;
+	h->h = c->h;
 }
 
 

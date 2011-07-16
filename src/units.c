@@ -1,5 +1,6 @@
-#include <uthash/uthash.h>
 #include <messages.h>
+#include <stdlib.h>
+#include <string.h>
 #include "config.h"
 
 double U_CM = 0.0;

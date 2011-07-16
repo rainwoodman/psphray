@@ -13,13 +13,19 @@ struct _Reader {
 	FILE * fp;
 	int read_only;
 	ReaderFuncs funcs;
+	ReaderConstants constants;
 };
+
 #define _blockid (reader->funcs.blockid)
 #define _blockname (reader->funcs.blockname)
 #define _itemsize (reader->funcs.itemsize)
 #define _pstart (reader->funcs.pstart)
 #define _length (reader->funcs.length)
-#define _npar (reader->funcs.npar)
+#define _get_constants (reader->funcs.get_constants)
+#define _set_constants (reader->funcs.set_constants)
+#define _time (reader->funcs.time)
+#define _boxsize (reader->funcs.boxsize)
+#define _def_header (reader->funcs.def_header)
 #define _offset (reader->funcs.offset)
 #define _read (reader->funcs.read)
 #define _write (reader->funcs.write)
@@ -48,12 +54,21 @@ void reader_open(Reader * reader, char * filename) {
 		ERROR("%s", error);
 		free(error);
 	}
+	_get_constants(reader->header, &reader->constants);
 }
 void reader_create(Reader * reader, char * filename) {
 	reader->filename = strdup(filename);
 	reader->fp = fopen(filename, "w+");
 	reader->header = reader_alloc(reader, "header", -1);
+	_def_header(reader->header);
 	reader->read_only = 0;
+}
+
+void reader_update_header(Reader * reader) {
+	_set_constants(reader->header, &reader->constants);
+}
+void reader_update_constants(Reader * reader) {
+	_get_constants(reader->header, &reader->constants);
 }
 
 void reader_close(Reader * reader) {
@@ -76,8 +91,11 @@ size_t reader_length(Reader * reader, char * blk) {
 }
 
 size_t reader_npar(Reader * reader, int ptype) {
-	char * error = NULL;
-	return _npar(reader->header, ptype, &error);
+	return reader->constants.N[ptype];
+}
+
+ReaderConstants * reader_constants(Reader * reader) {
+	return &reader->constants;
 }
 
 void * reader_alloc(Reader * reader, char * blk, int ptype) {

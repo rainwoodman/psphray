@@ -6,11 +6,10 @@ LIBS = -lconfig
 SOURCES = \
 config.c \
 units.c \
-main.c \
 reader.c \
 reader-massiveblack.c
 
-ALL = psphray
+ALL = sane
 
 .SUFFIXES: .inc
 
@@ -19,7 +18,10 @@ all: $(ALL)
 .c.o:
 	$(CC) $(CFLAGS) -c -o $@ $^
 
-psphray: $(SOURCES:.c=.o)
+psphray: $(SOURCES:.c=.o) main.c
+	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
+
+sane: $(SOURCES:.c=.o) sane.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 clean:

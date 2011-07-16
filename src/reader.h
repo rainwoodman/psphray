@@ -1,4 +1,16 @@
 typedef struct _Reader Reader;
+typedef struct _ReaderConstants {
+	size_t N[6];
+	size_t Ntot[6];
+	size_t Nfiles;
+	double mass[6];
+	double boxsize;
+	double redshift;
+	double time;
+	double OmegaL;
+	double OmegaM;
+	double h;
+} ReaderConstants;
 Reader * reader_new(char * format);
 void * reader_alloc(Reader * reader, char * blk, int ptype);
 void reader_read(Reader * reader, char * blk, int ptype, void * buf);
@@ -7,4 +19,5 @@ void reader_write(Reader * reader, char * blk, int ptype, void *buf);
 size_t reader_length(Reader * reader, char * blk);
 void reader_open(Reader * reader, char * filename);
 size_t reader_npar(Reader * reader, int ptype);
+ReaderConstants * reader_constants(Reader * reader);
 void reader_close(Reader * reader);

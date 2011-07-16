@@ -14,3 +14,10 @@ extern double U_YR;
 extern double U_MYR;
 extern double U_KG;
 extern double U_MSUN;
+
+typedef struct {
+	char * snapshot;
+	char * source;
+	char * format;
+	char * redshift;
+} Epoch;
