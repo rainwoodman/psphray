@@ -3,7 +3,9 @@
 #include <messages.h>
 #include <libconfig/libconfig.h>
 
-static config_t cfg[] = {{0}};
+extern void units_init();
+
+config_t CFG[] = {{0}};
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 #define config_ensure_int(c, p, v)  if(!config_lookup(c, p)) config_setting_set_int(config_ensure(c, p, CONFIG_TYPE_INT), v)
@@ -13,34 +15,35 @@ config_setting_t * config_ensure(config_t * config, char * path, int type);
 #define config_ensure_string(c, p, v)  if(!config_lookup(c,p)) config_setting_set_string(config_ensure(c, p, CONFIG_TYPE_STRING), v)
 
 void cfg_init(char * filename) {
-	config_init(cfg);
-	if(!config_read_file(cfg, filename)) {
-		ERROR("%s: %d: %s", config_error_file(cfg), config_error_line(cfg), config_error_text(cfg));
+	config_init(CFG);
+	if(!config_read_file(CFG, filename)) {
+		ERROR("%s: %d: %s", config_error_file(CFG), config_error_line(CFG), config_error_text(CFG));
 	}
-	config_ensure        (cfg, "psphray", CONFIG_TYPE_GROUP);
-	config_ensure_string (cfg, "psphray.atomicRates", "<filename>");
-	config_ensure        (cfg, "cosmology", CONFIG_TYPE_GROUP);
-	config_ensure_bool   (cfg, "cosmology.comoving", CONFIG_TRUE);
-	config_ensure_float  (cfg, "cosmology.omegaL", 0.74);
-	config_ensure_float  (cfg, "cosmology.omegaM", 0.26);
-	config_ensure_float  (cfg, "cosmology.omegaB", 0.044);
-	config_ensure_float  (cfg, "cosmology.h", 0.72);
-	config_ensure        (cfg, "box", CONFIG_TYPE_GROUP);
-	config_ensure_float  (cfg, "box.boxsize", 0.0);
-	config_ensure_string (cfg, "box.boundary", "vaccum");
-	config_ensure        (cfg, "units", CONFIG_TYPE_GROUP);
-	config_ensure_float  (cfg, "units.massGramh", 1.9847005219450705e+43);
-	config_ensure_float  (cfg, "units.lengthCMh", 3.0835455558318480e+21);
-	config_ensure_float  (cfg, "units.timeSh", 3.08568025e+16);
-	config_ensure        (cfg, "outputs", CONFIG_TYPE_GROUP);
-	config_ensure_string (cfg, "outputs.mode", "fixed");
-	config_ensure_string (cfg, "outputs.prefix", "../test/");
-	config_ensure        (cfg, "outputs.fixed", CONFIG_TYPE_GROUP);
-	config_ensure_int    (cfg, "outputs.fixed.nsteps", 5);
-	config_ensure        (cfg, "epochs", CONFIG_TYPE_LIST);
+	config_ensure        (CFG, "psphray", CONFIG_TYPE_GROUP);
+	config_ensure_string (CFG, "psphray.atomicRates", "<filename>");
+	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
+	config_ensure_bool   (CFG, "cosmology.comoving", CONFIG_TRUE);
+	config_ensure_float  (CFG, "cosmology.omegaL", 0.74);
+	config_ensure_float  (CFG, "cosmology.omegaM", 0.26);
+	config_ensure_float  (CFG, "cosmology.omegaB", 0.044);
+	config_ensure_float  (CFG, "cosmology.h", 0.72);
+	config_ensure        (CFG, "box", CONFIG_TYPE_GROUP);
+	config_ensure_float  (CFG, "box.boxsize", 0.0);
+	config_ensure_string (CFG, "box.boundary", "vaccum");
+	config_ensure        (CFG, "units", CONFIG_TYPE_GROUP);
+	config_ensure_float  (CFG, "units.massGramh", 1.9847005219450705e+43);
+	config_ensure_float  (CFG, "units.lengthCMh", 3.0835455558318480e+21);
+	config_ensure_float  (CFG, "units.timeSh", 3.08568025e+16);
+	config_ensure        (CFG, "outputs", CONFIG_TYPE_GROUP);
+	config_ensure_string (CFG, "outputs.mode", "fixed");
+	config_ensure_string (CFG, "outputs.prefix", "../test/");
+	config_ensure        (CFG, "outputs.fixed", CONFIG_TYPE_GROUP);
+	config_ensure_int    (CFG, "outputs.fixed.nsteps", 5);
+	config_ensure        (CFG, "epochs", CONFIG_TYPE_LIST);
+	units_init();
 }
 void cfg_dump(char * filename) {
-	config_write_file(cfg, filename);
+	config_write_file(CFG, filename);
 }
 
 config_setting_t * config_ensure(config_t * config, char * path, int type) {
@@ -52,7 +55,7 @@ config_setting_t * config_ensure(config_t * config, char * path, int type) {
 		if(dot != NULL) {
 			*dot = 0;
 			char * name = dot + 1;
-			pnt = config_lookup(cfg, pntpath);
+			pnt = config_lookup(CFG, pntpath);
 			if(pnt == NULL) {
 				ERROR("RUNTIME: %s not found", pntpath);
 			}

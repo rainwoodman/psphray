@@ -2,14 +2,17 @@
 #include <stdint.h>
 #include <messages.h>
 #include "reader.h"
-
-extern void cfg_init(char * filename);
-extern void cfg_dump(char * filename);
+#include "config.h"
 
 int main(int argc, char* argv[]) {
 	MESSAGE("hello, world, %s\n", argv[1]);
 	cfg_init(argv[1]);
 	cfg_dump("used-config");
+
+	printf("kpc /h = %f\n", units_parse("kpc / h"));
+	printf("10^10 msun /h = %f\n", 1e10 * units_parse("msun / h"));
+	printf("980 myr /h = %f\n", 980 * units_parse("myr / h"));
+
 	Reader * r = reader_new("massiveblack");
 	reader_open(r, "../test/snapshot_036.0");
 	float (*pos)[3] = reader_alloc(r, "pos", -1);

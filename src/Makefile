@@ -5,6 +5,7 @@ LIBS = -lconfig
 
 SOURCES = \
 config.c \
+units.c \
 main.c \
 reader.c \
 reader-massiveblack.c
