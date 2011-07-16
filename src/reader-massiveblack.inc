@@ -191,10 +191,11 @@ static void _read(struct header_t * h, const char * blk, void * buffer, int star
 	fseek(fp, start * b, SEEK_CUR);
 	if(!strcmp(blk, "header")) buffer = h;
 	fread(buffer, b, length, fp);
+	fseek(fp, (l - length - start) * b, SEEK_CUR);
 	blksize = 0;
 	fread(&blksize, sizeof(int), 1, fp);
 	if(blksize != (int)bsize) {
-		asprintf(stderr, "block end size of %s mismatch; file says %u, reader says %lu\n",
+		asprintf(error, "block end size of %s mismatch; file says %u, reader says %lu\n",
 				blk, blksize, bsize);
 		return;
 	}
@@ -215,6 +216,7 @@ static void _write(const struct header_t * h, const char * blk, const void * buf
 	fwrite(&blksize, sizeof(int), 1, fp);
 	fseek(fp, start * b, SEEK_CUR);
 	fwrite(buffer, b, length, fp);
+	fseek(fp, (l - length - start) * b, SEEK_CUR);
 	blksize = bsize;
 	fwrite(&blksize, sizeof(int), 1, fp);
 }

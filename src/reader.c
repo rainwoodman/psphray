@@ -48,6 +48,14 @@ void reader_destroy(Reader * reader) {
 	free(reader->filename);
 	free(reader);
 }
+char * reader_make_filename(const char * snapshot, int id) {
+	if(strchr(snapshot, '%')) {
+		char * t;
+		asprintf(&t, snapshot, id);
+		return t;
+	}
+	return strdup(snapshot);
+}
 void reader_open(Reader * reader, const char * filename) {
 	reader->filename = strdup(filename);
 	reader->fp = fopen(filename, "r");
@@ -119,6 +127,14 @@ void * reader_alloc(Reader * reader, const char * blk, int ptype) {
 	return calloc(b, npar);
 }
 
+size_t reader_itemsize(Reader * reader, const char * blk) {
+	char * error = NULL;
+	size_t b = _itemsize(blk, &error);
+	if(error) {
+		ERROR("%s", error);
+	}
+	return b;
+}
 void reader_read(Reader * reader, const char * blk, int ptype, void *buf) {
 	char * error = NULL;
 	size_t pstart = 0;

@@ -8,6 +8,7 @@ config.c \
 units.c \
 epochs.c \
 reader.c \
+psystem.c \
 reader-massiveblack.c
 
 ALL = sane

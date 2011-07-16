@@ -13,7 +13,9 @@ typedef struct _ReaderConstants {
 } ReaderConstants;
 Reader * reader_new(const char * format);
 void reader_destroy(Reader * reader);
+char * reader_make_filename(const char * snapshot, int id);
 void * reader_alloc(Reader * reader, const char * blk, int ptype);
+size_t reader_itemsize(Reader * reader, const char * blk);
 void reader_read(Reader * reader, const char * blk, int ptype, void * buf);
 int reader_has(Reader * reader, const char * blk);
 void reader_write(Reader * reader, const char * blk, int ptype, void *buf);

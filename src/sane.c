@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	MESSAGE("--------unit sanity check------");
 
 	Reader * r = reader_new("massiveblack");
-	reader_open(r, "../test/snapshot_036.0");
+	reader_open(r, "../test/snapdir_680/snapshot_680.0");
 	float (*pos)[3] = reader_alloc(r, "pos", -1);
 	size_t l = reader_length(r, "pos");
 
@@ -29,14 +29,21 @@ int main(int argc, char* argv[]) {
 	MESSAGE("Nfiles = %lu", c->Nfiles);
 	MESSAGE("h = %f", c->h);
 	MESSAGE("-------reader sanity check--------");
+	reader_destroy(r);
 
 	intptr_t i;
-	float x, y, z;
+	double x = 0, y = 0, z = 0;
 	for(i = 0; i < l; i++) {
 		x += pos[i][0];
 		y += pos[i][1];
 		z += pos[i][2];
 	}
+
+	free(pos);
 	printf("%f %f %f\n", x/l, y/l, z/l);
+
+	psystem_switch_epoch(0);
+	psystem_switch_epoch(1);
+	
 	return 0;
 }

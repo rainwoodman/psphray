@@ -6,6 +6,7 @@
 
 Epoch * EPOCHS = NULL;
 int N_EPOCHS = 0;
+
 void epochs_init() {
 	config_setting_t * list = config_lookup(CFG, "epochs");
 	N_EPOCHS = config_setting_length(list);
@@ -26,7 +27,9 @@ void epochs_init() {
 		config_setting_lookup_int(e, "nrays", &nrays);
 
 		Reader * r = reader_new(format);
-		reader_open(r, snapshot);
+		char * fname = reader_make_filename(snapshot, 0);
+		reader_open(r, fname);
+		free(fname);
 		ReaderConstants * c = reader_constants(r);
 
 		redshift = c->redshift;
@@ -64,3 +67,4 @@ void epochs_init() {
 		units_format(EPOCHS[i].duration, "myr"));
 	}
 }
+
