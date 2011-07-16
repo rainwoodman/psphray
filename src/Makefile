@@ -1,11 +1,12 @@
 CFLAGS = -g -I ../support
 
 LDFLAGS = -L ../support/libconfig/ 
-LIBS = -lconfig
+LIBS = -lconfig -lm
 
 SOURCES = \
 config.c \
 units.c \
+epochs.c \
 reader.c \
 reader-massiveblack.c
 

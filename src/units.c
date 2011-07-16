@@ -1,8 +1,8 @@
 #include <messages.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "config.h"
-
 double U_CM = 0.0;
 double U_GRAM = 0.0;
 double U_SEC = 0.0;
@@ -14,11 +14,25 @@ double U_MYR = 0.0;
 double U_KG = 0.0;
 double U_MSUN = 0.0;
 
+double C_OMEGA_L = 0.0;
+double C_OMEGA_M = 0.0;
+double C_H = 0.0;
+
 double units_simple(char * simple);
 double units_init() {
-	U_CM = units_simple("cm");
-	U_GRAM = units_simple("gram");
-	U_SEC = units_simple("sec");
+	config_lookup_float(CFG, "cosmology.h", &C_H);
+	config_lookup_float(CFG, "cosmology.omegaL", &C_OMEGA_L);
+	config_lookup_float(CFG, "cosmology.omegaM", &C_OMEGA_M);
+	
+	config_lookup_float(CFG, "units.lengthCMh", &U_CM);
+	U_CM = C_H / U_CM;
+
+	config_lookup_float(CFG, "units.massGramh", &U_GRAM);
+	U_GRAM = C_H / U_GRAM;
+
+	config_lookup_float(CFG, "units.timeSh", &U_SEC);
+	U_SEC = C_H / U_SEC;
+
 	U_M = units_simple("m");
 	U_KM = units_simple("km");
 	U_KPC = units_simple("kpc");
@@ -26,25 +40,16 @@ double units_init() {
 	U_MYR = units_simple("myr");
 	U_KG = units_simple("kg");
 	U_MSUN = units_simple("msun");
-
 }
 double units_simple(char * simple) {
-	double h;
-	config_lookup_float(CFG, "cosmology.h", &h);
 	if(!strcasecmp(simple, "h")) {
-		return h;
+		return C_H;
 	} else if(!strcasecmp(simple, "cm")) {
-		double t;
-		config_lookup_float(CFG, "units.lengthCMh", &t);
-		return h / t;
+		return U_CM;
 	} else if(!strcasecmp(simple, "gram")) {
-		double t;
-		config_lookup_float(CFG, "units.massGramh", &t);
-		return h / t;
+		return U_GRAM;
 	} else if(!strcasecmp(simple, "sec")) {
-		double t;
-		config_lookup_float(CFG, "units.timeSh", &t);
-		return h / t;
+		return U_SEC;
 	} else if(!strcasecmp(simple, "m")) {
 		return units_simple("cm") * 100 ;
 	} else if(!strcasecmp(simple, "km")) {
@@ -61,6 +66,11 @@ double units_simple(char * simple) {
 		return units_simple("kg") * 1.98892e30;
 	}
 	ERROR("unit %s unknown", simple);
+}
+
+double units_format(double value, char * units) {
+	double u = units_parse(units);
+	return value / u;
 }
 
 double units_parse(char * units) {
@@ -114,3 +124,12 @@ double units_parse(char * units) {
 	return unit;
 }
 
+double z2t(double z) {
+	double time;
+	double a = 1 / (z + 1);
+	const double H0 = 0.1;
+	double aeq = pow(C_OMEGA_M / C_OMEGA_L, 1.0/3.0);
+	double pre = 2.0 / (3.0 * sqrt(C_OMEGA_L));
+	double arg = pow(a / aeq, 3.0 / 2.0)  + sqrt(1.0 + pow(a/ aeq, 3.0));
+	return pre * log(arg) / H0;
+}

@@ -4,7 +4,7 @@
 #include <libconfig/libconfig.h>
 
 extern void units_init();
-
+extern double units_parse(const char * units);
 config_t CFG[] = {{0}};
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
@@ -16,6 +16,7 @@ config_setting_t * config_ensure(config_t * config, char * path, int type);
 
 void cfg_init(char * filename) {
 	config_init(CFG);
+	config_set_auto_convert(CFG, 1);
 	if(!config_read_file(CFG, filename)) {
 		ERROR("%s: %d: %s", config_error_file(CFG), config_error_line(CFG), config_error_text(CFG));
 	}
@@ -41,7 +42,9 @@ void cfg_init(char * filename) {
 	config_ensure_int    (CFG, "outputs.fixed.nsteps", 5);
 	config_ensure        (CFG, "epochs", CONFIG_TYPE_LIST);
 	units_init();
+	epochs_init();
 }
+
 void cfg_dump(char * filename) {
 	config_write_file(CFG, filename);
 }
@@ -64,4 +67,9 @@ config_setting_t * config_ensure(config_t * config, char * path, int type) {
 		free(pntpath);
 	}
 	return st;
+}
+double config_setting_parse_units(config_setting_t * e) {
+	double value = config_setting_get_float_elem(e, 0);
+	const char * units = config_setting_get_string_elem(e, 1);
+	return value * units_parse(units);
 }

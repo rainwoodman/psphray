@@ -22,7 +22,7 @@ int flag_lpt_scalingfactor;
 int unused[12];
 };
 
-static int _blockid(char * blk, char ** error) {
+static int _blockid(const char * blk, char ** error) {
 	if(!strcmp(blk, "pos")) return 1 ;
 	if(!strcmp(blk, "vel")) return 2 ;
 	if(!strcmp(blk, "id")) return 3 ;
@@ -41,7 +41,7 @@ static int _blockid(char * blk, char ** error) {
 	asprintf(error, "block %s is unknown", blk);
 	return -1;}
 
-static char * _blockname(int blockid, char ** error) {
+static const char * _blockname(const int blockid, char ** error) {
 	static char * names[] = {"header", 
 "pos","vel","id","mass","ie","rho","ye","xHI","sml","sfr","sft","met","bhmass","bhmdot"
 };
@@ -54,7 +54,7 @@ static char * _blockname(int blockid, char ** error) {
      
 }
 
-static size_t _itemsize(char * blk, char ** error) {
+static size_t _itemsize(const char * blk, char ** error) {
 	if(!strcmp(blk, "pos")) return 12 ;
 	if(!strcmp(blk, "vel")) return 12 ;
 	if(!strcmp(blk, "id")) return 8 ;
@@ -73,7 +73,7 @@ static size_t _itemsize(char * blk, char ** error) {
 	asprintf(error, "block %s is unknown", blk);
 	return (size_t)-1;}
 
-static size_t _pstart(struct header_t * h, char * blk, int ptype, char ** error) {
+static size_t _pstart(const struct header_t * h, const char * blk, int ptype, char ** error) {
 	if(!strcmp(blk, "pos")) return (0 < ptype)?(size_t)(h->N[0]): 0+(1 < ptype)?(size_t)(h->N[1]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
 	if(!strcmp(blk, "vel")) return (0 < ptype)?(size_t)(h->N[0]): 0+(1 < ptype)?(size_t)(h->N[1]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
 	if(!strcmp(blk, "id")) return (0 < ptype)?(size_t)(h->N[0]): 0+(1 < ptype)?(size_t)(h->N[1]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
@@ -91,7 +91,7 @@ static size_t _pstart(struct header_t * h, char * blk, int ptype, char ** error)
 	asprintf(error, "block %s is unknown/unstable for _pstart", blk);
 	return (size_t)-1;}
 
-static size_t _length(struct header_t * h, char * blk, char ** error) {
+static size_t _length(const struct header_t * h, const char * blk, char ** error) {
 	if(!strcmp(blk, "pos")) return (size_t)(h->N[0])+(size_t)(h->N[1])+(size_t)(h->N[4])+(size_t)(h->N[5]) ;
 	if(!strcmp(blk, "vel")) return (size_t)(h->N[0])+(size_t)(h->N[1])+(size_t)(h->N[4])+(size_t)(h->N[5]) ;
 	if(!strcmp(blk, "id")) return (size_t)(h->N[0])+(size_t)(h->N[1])+(size_t)(h->N[4])+(size_t)(h->N[5]) ;
@@ -111,14 +111,14 @@ static size_t _length(struct header_t * h, char * blk, char ** error) {
 	return (size_t)-1;}
 
 
-static size_t _offset(struct header_t * h, char * blk, char ** error) {
+static size_t _offset(const struct header_t * h, const char * blk, char ** error) {
 	int id = _blockid(blk, error);
 	int i;
 	if(*error) return (size_t) -1;
 	size_t offset = 0;
 	for(i = 0; i < id; i++) {
 /* we are sure there won't be errors here*/
-		char * blknm = _blockname(i, error);
+		const char * blknm = _blockname(i, error);
 		size_t bsize = _length(h, blknm, error) * _itemsize(blknm, error);
 		if(bsize > 0) offset += (bsize + 8);
 	}
@@ -138,7 +138,7 @@ h->flag_met = 1;
 }
 
 
-static void _get_constants(struct header_t * h, struct constants_t * c) {
+static void _get_constants(const struct header_t * h, struct constants_t * c) {
 	int i;
 	for(i = 0; i< 6; i++) {
 		c->N[i] = h->N[i];
@@ -154,7 +154,7 @@ static void _get_constants(struct header_t * h, struct constants_t * c) {
 	c->Nfiles = h->Nfiles;
 	c->h = h->h;
 }
-static void _set_constants(struct header_t * h, struct constants_t * c) {
+static void _set_constants(struct header_t * h, const struct constants_t * c) {
 	int i;
 	for(i = 0; i< 6; i++) {
 		h->N[i] = c->N[i];
@@ -173,7 +173,7 @@ static void _set_constants(struct header_t * h, struct constants_t * c) {
 
 
 
-static void _read(struct header_t * h, char * blk, void * buffer, int start, int length, FILE * fp, char ** error) {
+static void _read(struct header_t * h, const char * blk, void * buffer, int start, int length, FILE * fp, char ** error) {
 	size_t off = _offset(h, blk, error);
 	if(*error) return;
 	size_t l = _length(h, blk, error);
@@ -202,7 +202,7 @@ static void _read(struct header_t * h, char * blk, void * buffer, int start, int
   
 
 
-static void _write(struct header_t * h, char * blk, void * buffer, int start, int length, FILE * fp, char ** error) {
+static void _write(const struct header_t * h, const char * blk, const void * buffer, int start, int length, FILE * fp, char ** error) {
 	size_t off = _offset(h, blk, error);
 	if(*error) return;
 	size_t l = _length(h, blk, error);

@@ -16,6 +16,7 @@ f.write(
 #include <stdlib.h>
 #include <string.h>
 
+#include "reader.h"
 #include "reader-internal.h"
 #define constants_t _ReaderConstants
 #include "reader-%s.inc"

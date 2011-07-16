@@ -31,7 +31,8 @@ struct _Reader {
 #define _write (reader->funcs.write)
 
 void massiveblack_get_reader_funcs(ReaderFuncs * funcs);
-Reader * reader_new(char * format) {
+
+Reader * reader_new(const char * format) {
 	Reader * reader = calloc(sizeof(Reader), 1);
 	if(!strcmp(format, "massiveblack")) {
 		massiveblack_get_reader_funcs(&reader->funcs);
@@ -42,8 +43,12 @@ Reader * reader_new(char * format) {
 	}
 	return reader;
 }
-
-void reader_open(Reader * reader, char * filename) {
+void reader_destroy(Reader * reader) {
+	reader_close(reader);
+	free(reader->filename);
+	free(reader);
+}
+void reader_open(Reader * reader, const char * filename) {
 	reader->filename = strdup(filename);
 	reader->fp = fopen(filename, "r");
 	reader->read_only = 1;
@@ -56,7 +61,7 @@ void reader_open(Reader * reader, char * filename) {
 	}
 	_get_constants(reader->header, &reader->constants);
 }
-void reader_create(Reader * reader, char * filename) {
+void reader_create(Reader * reader, const char * filename) {
 	reader->filename = strdup(filename);
 	reader->fp = fopen(filename, "w+");
 	reader->header = reader_alloc(reader, "header", -1);
@@ -81,7 +86,7 @@ void reader_close(Reader * reader) {
 	reader->fp = NULL;
 }
 
-size_t reader_length(Reader * reader, char * blk) {
+size_t reader_length(Reader * reader, const char * blk) {
 	char * error = NULL;
 	size_t l = _length(reader->header, blk, &error);
 	if(error) {
@@ -98,7 +103,7 @@ ReaderConstants * reader_constants(Reader * reader) {
 	return &reader->constants;
 }
 
-void * reader_alloc(Reader * reader, char * blk, int ptype) {
+void * reader_alloc(Reader * reader, const char * blk, int ptype) {
 	char * error = NULL;
 	size_t npar = 0;
 	if(ptype != -1) {
@@ -114,7 +119,7 @@ void * reader_alloc(Reader * reader, char * blk, int ptype) {
 	return calloc(b, npar);
 }
 
-void reader_read(Reader * reader, char * blk, int ptype, void *buf) {
+void reader_read(Reader * reader, const char * blk, int ptype, void *buf) {
 	char * error = NULL;
 	size_t pstart = 0;
 	size_t npar = 0;
@@ -135,7 +140,7 @@ void reader_read(Reader * reader, char * blk, int ptype, void *buf) {
 	}
 }
 
-void reader_write(Reader * reader, char * blk, int ptype, void *buf) {
+void reader_write(Reader * reader, const char * blk, int ptype, void *buf) {
 	char * error = NULL;
 	size_t pstart = 0;
 	size_t npar = 0;
@@ -156,7 +161,7 @@ void reader_write(Reader * reader, char * blk, int ptype, void *buf) {
 	}
 }
 
-int reader_has(Reader * reader, char * blk) {
+int reader_has(Reader * reader, const char * blk) {
 	char * error = NULL;
 	int id = _blockid(blk, &error);
 	if(error) {

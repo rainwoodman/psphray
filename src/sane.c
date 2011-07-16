@@ -5,7 +5,7 @@
 #include "config.h"
 
 int main(int argc, char* argv[]) {
-	cfg_init("../tests/configfile");
+	cfg_init("../test/configfile");
 	cfg_dump("used-config");
 
 	MESSAGE("--------unit sanity check------");
