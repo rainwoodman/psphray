@@ -72,6 +72,7 @@ void psystem_switch_epoch(int i) {
 		psys.T = calloc(sizeof(float), ngas);
 		psys.sml = calloc(sizeof(float), ngas);
 		psys.xHI = calloc(sizeof(float), ngas);
+		psys.ye = calloc(sizeof(float), ngas);
 		psys.mask = bitmask_alloc(ngas);
 
 		for(fid = 0; fid < c->Nfiles; fid ++) {
@@ -82,8 +83,9 @@ void psystem_switch_epoch(int i) {
 			reader_read(r, "pos", 0, psys.pos[nread]);
 			reader_read(r, "mass", 0, &psys.mass[nread]);
 			reader_read(r, "sml", 0, &psys.sml[nread]);
+			reader_read(r, "ye", 0, &psys.ye[nread]);
 			float * ie = reader_alloc(r, "ie", 0);
-			float * ye = reader_alloc(r, "ye", 0);
+			float * ye = &psys.ye[nread];
 			intptr_t ipar;
 			for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
 				psys.T[ipar+nread] = ieye2T(ie[ipar], ye[ipar]);
@@ -120,11 +122,13 @@ void psystem_switch_epoch(int i) {
 			float * sml = reader_alloc(r, "sml", 0);
 			float * ie = reader_alloc(r, "ie", 0);
 			float * ye = reader_alloc(r, "ye", 0);
+			float * xHI = reader_alloc(r, "xHI", 0);
 			reader_read(r, "pos", 0, pos);
 			reader_read(r, "mass", 0, mass);
 			reader_read(r, "sml", 0, sml);
 			reader_read(r, "ie", 0, ie);
 			reader_read(r, "ye", 0, ye);
+			reader_read(r, "xHI", 0, xHI);
 
 			unsigned long long * id = calloc(8, reader_npar(r, 0));
 			if(reader_itemsize(r, "id") == 4) {
