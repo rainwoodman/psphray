@@ -4,7 +4,7 @@ typedef struct {
 	double age;
 	double duration;
 	size_t ngas;
-	size_t nrays;
+	size_t nticks;
 	const char * source;
 	const char * snapshot;
 	const char * format;

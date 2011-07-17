@@ -7,31 +7,10 @@
 #include <messages.h>
 #include "config.h"
 #include "reader.h"
+#include "psystem.h"
+
 #define IDHASHBITS 24
 #define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
-
-typedef struct {
-	float pos[3];
-	double Ngamma_sec;
-} Source;
-
-typedef struct {
-	float (*pos)[3];
-	float *xHI;
-	float *mass;
-	float *T;
-	char * mask;
-	size_t npar;
-	unsigned long long * id;
-	struct {
-		intptr_t *head;
-		intptr_t *next;
-	} idhash;
-	double boxsize;
-	int periodic;
-	Source * srcs;
-	size_t nsrcs;
-} PSystem;
 
 PSystem psys = {0};
 static float dist(const float p1[3], const float p2[3]);
@@ -84,6 +63,7 @@ void psystem_switch_epoch(int i) {
 		psys.mass = calloc(sizeof(float), ngas);
 		psys.id = calloc(sizeof(unsigned long long), ngas);
 		psys.T = calloc(sizeof(float), ngas);
+		psys.sml = calloc(sizeof(float), ngas);
 		psys.xHI = calloc(sizeof(float), ngas);
 		psys.mask = calloc(1, (ngas + 7) >> 3);
 
@@ -94,6 +74,7 @@ void psystem_switch_epoch(int i) {
 			free(fname);
 			reader_read(r, "pos", 0, psys.pos[nread]);
 			reader_read(r, "mass", 0, &psys.mass[nread]);
+			reader_read(r, "sml", 0, &psys.mass[nread]);
 			float * ie = reader_alloc(r, "ie", 0);
 			float * ye = reader_alloc(r, "ye", 0);
 			intptr_t ipar;
@@ -129,10 +110,12 @@ void psystem_switch_epoch(int i) {
 			reader_open(r, fname);
 			float (*pos)[3] = reader_alloc(r, "pos", 0);
 			float * mass = reader_alloc(r, "mass", 0);
+			float * sml = reader_alloc(r, "sml", 0);
 			float * ie = reader_alloc(r, "ie", 0);
 			float * ye = reader_alloc(r, "ye", 0);
 			reader_read(r, "pos", 0, pos);
 			reader_read(r, "mass", 0, mass);
+			reader_read(r, "sml", 0, sml);
 			reader_read(r, "ie", 0, ie);
 			reader_read(r, "ye", 0, ye);
 
@@ -167,6 +150,7 @@ void psystem_switch_epoch(int i) {
 					memcpy(&psys.pos[best_jpar][0], &pos[ipar][0], sizeof(float) * 3);
 					distsum += mindist;
 					psys.mass[best_jpar] = mass[ipar];
+					psys.sml[best_jpar] = sml[ipar];
 					use_ipar(best_jpar);
 					psys.T[best_jpar] = ieye2T(ie[ipar], ye[ipar]);
 				} else {
@@ -175,6 +159,7 @@ void psystem_switch_epoch(int i) {
 			}
 			free(fname);
 			free(mass);
+			free(sml);
 			free(pos);
 			free(ye);
 			free(ie);
@@ -185,6 +170,9 @@ void psystem_switch_epoch(int i) {
 	}
 	printf("ngas = %ld, active = %ld\n", c->Ntot[0], active_count());
 	reader_destroy(r0);
+
+	psys.tick = 0;
+	psys.tick_time = EPOCHS[i].duration / EPOCHS[i].nticks;
 
 	if(EPOCHS[i].source) {
 		free(psys.srcs);
@@ -217,7 +205,7 @@ void psystem_switch_epoch(int i) {
 				}
 				break;
 			case 1:
-				if(9 != sscanf(line, "%f %f %f %f %f %f %lf %80s %80s",
+				if(9 != sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %80s %80s",
 					&x, &y, &z, &dummy, &dummy, &dummy, 
 					&L, type, garbage)) {
 					ERROR("%s format error at %d", EPOCHS[i].source, NR);

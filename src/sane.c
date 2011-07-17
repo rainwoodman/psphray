@@ -45,6 +45,10 @@ int main(int argc, char* argv[]) {
 	printf("%f %f\n", Tmax, Tmin);
 
 	psystem_switch_epoch(0);
+
+	rt_switch_epoch(0);
+
 	psystem_switch_epoch(1);
+	rt_switch_epoch(1);
 	return 0;
 }

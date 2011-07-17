@@ -1,7 +1,7 @@
 CFLAGS = -g -I ../support
-
+FC = gfortran
 LDFLAGS = -L ../support/libconfig/ 
-LIBS = -lconfig -lm
+LIBS = -lconfig -lm -lgfortran
 
 SOURCES = \
 config.c \
@@ -9,8 +9,10 @@ units.c \
 epochs.c \
 reader.c \
 psystem.c \
-reader-massiveblack.c
+raytrace.c \
+reader-massiveblack.c \
 
+OBJS = $(SOURCES:.c=.o) pluecker.o
 ALL = sane
 
 .SUFFIXES: .inc
@@ -20,10 +22,13 @@ all: $(ALL)
 .c.o:
 	$(CC) $(CFLAGS) -c -o $@ $^
 
-psphray: $(SOURCES:.c=.o) main.c
+pluecker.o: pluecker.F90
+	$(FC) -c -o $@ $<
+
+psphray: $(OBJS) main.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
-sane: $(SOURCES:.c=.o) sane.o
+sane: $(OBJS) sane.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 clean:
