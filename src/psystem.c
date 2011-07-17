@@ -5,6 +5,8 @@
 #include <math.h>
 
 #include <messages.h>
+#include <bitmask.h>
+
 #include "config.h"
 #include "reader.h"
 #include "psystem.h"
@@ -14,11 +16,6 @@
 
 PSystem psys = {0};
 static float dist(const float p1[3], const float p2[3]);
-static void use_all();
-static void use_none();
-static void use_ipar(intptr_t ipar);
-static int ipar_active(intptr_t ipar);
-static size_t active_count();
 
 void idhash_build(unsigned long long * id, size_t n) {
 	psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
@@ -65,7 +62,7 @@ void psystem_switch_epoch(int i) {
 		psys.T = calloc(sizeof(float), ngas);
 		psys.sml = calloc(sizeof(float), ngas);
 		psys.xHI = calloc(sizeof(float), ngas);
-		psys.mask = calloc(1, (ngas + 7) >> 3);
+		psys.mask = bitmask_alloc(ngas);
 
 		for(fid = 0; fid < c->Nfiles; fid ++) {
 			Reader * r = reader_new(EPOCHS[i].format);
@@ -98,10 +95,10 @@ void psystem_switch_epoch(int i) {
 			reader_destroy(r);
 		}
 		idhash_build(psys.id, nread);
-		use_all();
+		bitmask_set_all(psys.mask);
 	} else {
 		int fid;
-		use_none();
+		bitmask_clear_all(psys.mask);
 		double distsum = 0.0;
 		size_t lost = 0;
 		for(fid = 0; fid < c->Nfiles; fid ++) {
@@ -151,7 +148,7 @@ void psystem_switch_epoch(int i) {
 					distsum += mindist;
 					psys.mass[best_jpar] = mass[ipar];
 					psys.sml[best_jpar] = sml[ipar];
-					use_ipar(best_jpar);
+					bitmask_set(psys.mask, best_jpar);
 					psys.T[best_jpar] = ieye2T(ie[ipar], ye[ipar]);
 				} else {
 					lost++;
@@ -166,9 +163,10 @@ void psystem_switch_epoch(int i) {
 			free(id);
 			reader_destroy(r);
 		}
-		printf("matching: lost = %ld distmean=%lg\n", lost, distsum/ c->Ntot[0]);
+		MESSAGE("EPOCH matching: %ld skipped;  mean pos shifting = %lg\n", lost, 
+			distsum/ c->Ntot[0]);
 	}
-	printf("ngas = %ld, active = %ld\n", c->Ntot[0], active_count());
+	MESSAGE("EPOCH active gas particles %ld/%ld\n", bitmask_sum(psys.mask), c->Ntot[0]);
 	reader_destroy(r0);
 
 	psys.tick = 0;
@@ -231,6 +229,30 @@ void psystem_switch_epoch(int i) {
 		free(line);
 		fclose(f);
 	}
+
+	intptr_t isrc;
+	double Lmin;
+	double Lmax;
+	intptr_t imin = -1, imax = -1;
+	for(isrc = 0; isrc < psys.nsrcs; isrc++) {
+		if(isrc == 0 || psys.srcs[isrc].Ngamma_sec > Lmax) {
+			Lmax = psys.srcs[isrc].Ngamma_sec;
+			imax = isrc;
+		}
+		if(isrc == 0 || psys.srcs[isrc].Ngamma_sec < Lmin) {
+			Lmin = psys.srcs[isrc].Ngamma_sec;
+			imin = isrc;
+		}
+	}
+	MESSAGE("SOURCES: %lu, max=%g at (%g %g %g), min=%g at (%g %g %g)",
+		psys.nsrcs, Lmax, 
+		psys.srcs[imax].pos[0],
+		psys.srcs[imax].pos[1],
+		psys.srcs[imax].pos[2],
+		Lmin,
+		psys.srcs[imin].pos[0],
+		psys.srcs[imin].pos[1],
+		psys.srcs[imin].pos[2]);
 }
 
 static float dist(const float p1[3], const float p2[3]) {
@@ -246,30 +268,3 @@ static float dist(const float p1[3], const float p2[3]) {
 	return sqrt(result);
 }
 
-static void use_all() {
-	intptr_t total = (psys.npar + 7) >> 3;
-	unsigned int mask = ((1 << ((psys.npar & 7))) -1);
-	memset(psys.mask, -1, total);
-	psys.mask[total - 1] &= mask;
-}
-static void use_none() {
-	memset(psys.mask, 0, (psys.npar + 7) >> 3);
-}
-static void use_ipar(intptr_t ipar) {
-	int offset = ipar & 7;
-	int bit = 1 << offset;
-	psys.mask[ipar >> 3] |= bit;
-}
-static size_t active_count() {
-	int __builtin_popcount(unsigned int x);
-	intptr_t i;
-	size_t sum = 0;
-	for(i = 0; i < (psys.npar + 7)>> 3; i++) {
-		sum += __builtin_popcount((unsigned char) psys.mask[i]);
-	}
-	return sum;
-}
-static int ipar_active(intptr_t ipar) {
-	int bit = 1 << (ipar & 7);
-	return (psys.mask[ipar >> 3] & bit) != 0;
-}

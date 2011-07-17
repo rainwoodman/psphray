@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <messages.h>
+#include <bitmask.h>
 #include "psystem.h"
 
 typedef struct _Cell Cell;
@@ -13,7 +14,6 @@ struct _Cell {
 	float bot[3];
 	float top[3];
 	unsigned int npar;
-	int queued;
 };
 
 typedef struct {
@@ -32,9 +32,6 @@ static intptr_t find(float pos[3], intptr_t icell);
 static intptr_t parent(intptr_t icell);
 static void add(intptr_t ipar, intptr_t icell);
 static int split(intptr_t icell);
-static void queue(intptr_t icell);
-static void clear(intptr_t icell);
-static int queued(intptr_t icell);
 
 Raytrace rt = {0};
 const size_t PPC = 16;
@@ -78,32 +75,42 @@ tryagain:
 
 		while(full(icell)) {
 			if(!split(icell)) {
-				MESSAGE("pool full at %lu, mean occupy = %f", rt.pool_size, (double)ipar / rt.pool_size);
+				MESSAGE("OCTTREE full %lu mean occupy = %f", rt.pool_size, (double)ipar / rt.pool_size);
 				size_t trysize = psys.npar / ((double) ipar / rt.pool_size);
 				free(rt.pool);
 				if(rt.pool_size < trysize) rt.pool_size = trysize;
 				else rt.pool_size *= 2;
 				rt.pool = malloc(sizeof(Cell) * rt.pool_size);
+				MESSAGE("retry with %lu", rt.pool_size);
 				goto tryagain;
 			}
 			icell = find(pos, icell);
 		}
 		add(ipar, icell);
 	}
+	if(skipped > 0)
+		WARNING("%ld particles out of cell", skipped);
+	MESSAGE("Cells %lu/%lu, mean occupicy = %f", rt.pool_used, rt.pool_size, 
+			(double)psys.npar / rt.pool_used);
+
 	/* now recalculate the AABB boxes */
+	size_t done = 0;
+	char * child_done = malloc(rt.pool_used);
+	memset(child_done, 0, rt.pool_used);
+
 	for(icell = 0; icell < rt.pool_used; icell++) {
-		if(rt.pool[icell].npar > 0) queue(icell);
+		if(rt.pool[icell].first_child == -1) {
+			child_done[icell] = 8;
+		}
 	}
-	int iter = 0;
-	while(1) {	
-		int done = 0;
-		printf("AABB iteration %d\n", iter);
-		iter++;
+	
+	while(done < rt.pool_used) {	
 		for(icell = 0; icell < rt.pool_used; icell++) {
-			if(!queued(icell)) continue;
+			if(child_done[icell] > 8) ERROR("more than 8 children?");
+			if(child_done[icell] != 8) continue;
 			float * top = rt.pool[icell].top;
 			float * bot = rt.pool[icell].bot;
-			if(rt.pool[icell].npar > 0) {
+			if(rt.pool[icell].first_child != -1) {
 				int first = 1;
 				for(ipar = rt.pool[icell].head_par; ipar!= -1; ipar = rt.next[ipar]) {
 					float * pos = psys.pos[ipar];
@@ -125,16 +132,18 @@ tryagain:
 						if(first || cbot[d] < bot[d]) bot[d] = cbot[d];
 						if(first || ctop[d] > top[d]) top[d] = ctop[d];
 					}
+					first = 0;
 				}
-				first = 0;
 			}
-			clear(icell);
-			if(icell == 0) done = 1;
-			else queue(rt.pool[icell].parent);
+			done ++;
+			child_done[icell] = 0;
+			if(icell != 0) {
+				child_done[rt.pool[icell].parent]++;
+			}
 		}
-		if(done) break;
+		MESSAGE("updating AABB %lu/%lu done ", done, rt.pool_used);
 	}
-	printf("%lu particles not in root, used %lu/%lu, mean occupy = %f\n", skipped, rt.pool_used, rt.pool_size, (double)psys.npar / rt.pool_used);
+	free(child_done);
 }
 
 static int hit(float s[3], float dir[3], float dist, intptr_t icell) {
@@ -149,17 +158,11 @@ static int hit(float s[3], float dir[3], float dist, intptr_t icell) {
 	return pluecker_(dir, dist, s2b, s2t);
 }
 
-static void queue(intptr_t icell) {
-	rt.pool[icell].queued = 1;
-}
-static void clear(intptr_t icell) {
-	rt.pool[icell].queued = 0;
-}
-static int queued(intptr_t icell) {
-	return rt.pool[icell].queued;
-}
 static void add(intptr_t ipar, intptr_t icell) {
 	Cell * cell = &rt.pool[icell];
+	if(cell->first_child != -1) {
+		ERROR("never shall reach here, adding to a none leaf")
+	}
 	rt.next[ipar] = cell->head_par;
 	cell->head_par = ipar;
 	cell->npar++;
