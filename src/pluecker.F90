@@ -1,3 +1,4 @@
+! Author: Gabriel Altay, in SPHRAY
 
 function pluecker(dir, dist, s2b, s2t) result( hit )
 
