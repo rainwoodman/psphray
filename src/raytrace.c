@@ -7,6 +7,7 @@
 #include "psystem.h"
 
 typedef struct _Cell Cell;
+typedef struct _Ray Ray;
 struct _Cell {
 	intptr_t head_par;
 	intptr_t first_child;
@@ -14,6 +15,13 @@ struct _Cell {
 	float bot[3];
 	float top[3];
 	unsigned int npar;
+};
+
+struct _Ray {
+	float s[3];
+	float dir[3];
+	double nph;
+	double freq;
 };
 
 typedef struct {
@@ -25,13 +33,15 @@ typedef struct {
 
 extern PSystem psys;
 
-extern int pluecker_(float dir[3], float dist, float s2b[3], float s2t[3]);
+extern int pluecker_(const float const dir[3], const float * dist, const float const s2b[3], const float const s2t[3]);
 static int inside(float pos[3], intptr_t icell);
 static int full(intptr_t icell);
 static intptr_t find(float pos[3], intptr_t icell);
 static intptr_t parent(intptr_t icell);
+static intptr_t sibling(intptr_t icell);
 static void add(intptr_t ipar, intptr_t icell);
 static int split(intptr_t icell);
+static int hit(const float s[3], const float dir[3], const float dist, const intptr_t icell);
 
 Raytrace rt = {0};
 const size_t PPC = 16;
@@ -110,7 +120,7 @@ tryagain:
 			if(child_done[icell] != 8) continue;
 			float * top = rt.pool[icell].top;
 			float * bot = rt.pool[icell].bot;
-			if(rt.pool[icell].first_child != -1) {
+			if(rt.pool[icell].first_child == -1) {
 				int first = 1;
 				for(ipar = rt.pool[icell].head_par; ipar!= -1; ipar = rt.next[ipar]) {
 					float * pos = psys.pos[ipar];
@@ -146,7 +156,82 @@ tryagain:
 	free(child_done);
 }
 
-static int hit(float s[3], float dir[3], float dist, intptr_t icell) {
+size_t rt_trace(const float s[3], const float dir[3], const float dist, intptr_t ** pars, size_t * size) {
+	size_t length = 0;
+	if(*pars == NULL) {
+		*size = 1000;
+		*pars = malloc(sizeof(intptr_t) ** size);
+	}
+
+	intptr_t icell = 0;
+	while(icell != -1) {
+		if(hit(s, dir, dist, icell)) {
+/*
+			printf("trying icell %ld, %ld, %ld, %g %g %g - %g %g %g\n", 
+				icell, 
+				rt.pool[icell].first_child,
+				rt.pool[icell].npar,
+				rt.pool[icell].bot[0],
+				rt.pool[icell].bot[1],
+				rt.pool[icell].bot[2],
+				rt.pool[icell].top[0],
+				rt.pool[icell].top[1],
+				rt.pool[icell].top[2]
+			);
+*/
+			if(rt.pool[icell].first_child != -1) {
+				icell = rt.pool[icell].first_child;
+				continue;
+			} else {
+				intptr_t ipar;
+				for(ipar = rt.pool[icell].head_par;
+					ipar != -1;
+					ipar = rt.next[ipar]) {
+					float * pos = psys.pos[ipar];
+					float sml = psys.sml[ipar];
+					int d ;
+					float dist = 0.0;
+					float proj = 0.0;
+					for(d = 0; d < 3; d++) {
+						float dd = pos[d] - s[d];
+						proj += dd * dir[d];
+						dist += dd * dd;
+					}
+					if( sml * sml < (dist - proj * proj)) {
+						continue;
+					}
+					if(length == *size) {
+						*size *= 2;
+						*pars = realloc(*pars, *size * sizeof(intptr_t));
+					}
+					(*pars)[length] = ipar;
+					length ++;
+				}
+			}
+		}
+		intptr_t next = -1;
+		/* root cell has no parents, the search is end */
+		while(icell != 0) {
+			/* find the next sibling of parent */
+			next = sibling(icell);
+			if(next != -1) break;
+			/* found a sibling, move there*/
+			icell = parent(icell);
+		}
+		icell = next;
+	}
+	return length;
+}
+
+static intptr_t sibling(intptr_t icell) {
+	intptr_t parent = rt.pool[icell].parent;
+	if(parent == -1) return -1;
+	int ichild = icell - rt.pool[parent].first_child;
+	if(ichild == 7) return -1;
+	else return icell + 1;
+}
+
+static int hit(const float s[3], const float dir[3], const float dist, const intptr_t icell) {
 	float * bot = rt.pool[icell].bot;
 	float * top = rt.pool[icell].top;
 	float s2b[3], s2t[3];
@@ -155,7 +240,7 @@ static int hit(float s[3], float dir[3], float dist, intptr_t icell) {
 		s2b[d] = bot[d] - s[d];
 		s2t[d] = top[d] - s[d];
 	}
-	return pluecker_(dir, dist, s2b, s2t);
+	return pluecker_(dir, &dist, s2b, s2t);
 }
 
 static void add(intptr_t ipar, intptr_t icell) {

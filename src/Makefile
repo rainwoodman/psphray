@@ -23,7 +23,7 @@ all: $(ALL)
 	$(CC) $(CFLAGS) -c -o $@ $^
 
 pluecker.o: pluecker.F90
-	$(FC) -c -o $@ $<
+	$(FC) -g -c -o $@ $<
 
 psphray: $(OBJS) main.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
