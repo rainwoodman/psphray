@@ -11,10 +11,17 @@
 #define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
 
 typedef struct {
+	float pos[3];
+	double Ngamma_sec;
+} Source;
+
+typedef struct {
 	float (*pos)[3];
 	float *xHI;
 	float *mass;
 	float *T;
+	char * mask;
+	size_t npar;
 	unsigned long long * id;
 	struct {
 		intptr_t *head;
@@ -22,10 +29,17 @@ typedef struct {
 	} idhash;
 	double boxsize;
 	int periodic;
+	Source * srcs;
+	size_t nsrcs;
 } PSystem;
 
 PSystem psys = {0};
 static float dist(const float p1[3], const float p2[3]);
+static void use_all();
+static void use_none();
+static void use_ipar(intptr_t ipar);
+static int ipar_active(intptr_t ipar);
+static size_t active_count();
 
 void idhash_build(unsigned long long * id, size_t n) {
 	psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
@@ -61,8 +75,9 @@ void psystem_switch_epoch(int i) {
 		psys.periodic = 1;
 	else ERROR("boundary type %s unknown, be vaccum or periodic", boundary);
 
-	if( i == 0) {
+	if(i == 0) {
 		size_t ngas = EPOCHS[i].ngas;
+		psys.npar = ngas;
 		int fid;
 		size_t nread = 0;
 		psys.pos = calloc(sizeof(float) * 3, ngas);
@@ -70,12 +85,12 @@ void psystem_switch_epoch(int i) {
 		psys.id = calloc(sizeof(unsigned long long), ngas);
 		psys.T = calloc(sizeof(float), ngas);
 		psys.xHI = calloc(sizeof(float), ngas);
+		psys.mask = calloc(1, (ngas + 7) >> 3);
 
 		for(fid = 0; fid < c->Nfiles; fid ++) {
 			Reader * r = reader_new(EPOCHS[i].format);
 			char * fname = reader_make_filename(EPOCHS[i].snapshot, fid);
 			reader_open(r, fname);
-			printf("%s nread = %lu/%lu ptr=%p(%p)\n", fname,  nread, ngas, psys.pos[nread], psys.pos);
 			free(fname);
 			reader_read(r, "pos", 0, psys.pos[nread]);
 			reader_read(r, "mass", 0, &psys.mass[nread]);
@@ -102,15 +117,16 @@ void psystem_switch_epoch(int i) {
 			reader_destroy(r);
 		}
 		idhash_build(psys.id, nread);
+		use_all();
 	} else {
 		int fid;
+		use_none();
+		double distsum = 0.0;
+		size_t lost = 0;
 		for(fid = 0; fid < c->Nfiles; fid ++) {
 			Reader * r = reader_new(EPOCHS[i].format);
 			char * fname = reader_make_filename(EPOCHS[i].snapshot, fid);
 			reader_open(r, fname);
-			double distsum = 0.0;
-			size_t lookups = 0;
-			size_t lost = 0;
 			float (*pos)[3] = reader_alloc(r, "pos", 0);
 			float * mass = reader_alloc(r, "mass", 0);
 			float * ie = reader_alloc(r, "ie", 0);
@@ -146,20 +162,17 @@ void psystem_switch_epoch(int i) {
 						mindist = dst;
 						best_jpar = jpar;
 					}
-					lookups++;
 				}
 				if(best_jpar != -1) {
 					memcpy(&psys.pos[best_jpar][0], &pos[ipar][0], sizeof(float) * 3);
 					distsum += mindist;
 					psys.mass[best_jpar] = mass[ipar];
+					use_ipar(best_jpar);
 					psys.T[best_jpar] = ieye2T(ie[ipar], ye[ipar]);
 				} else {
 					lost++;
 				}
 			}
-			
-			printf("%s meandist = %g meanlookup = %ld, lost = %ld\n", fname, distsum/reader_npar(r, 0),
-					lookups / reader_npar(r, 0), lost);
 			free(fname);
 			free(mass);
 			free(pos);
@@ -168,9 +181,70 @@ void psystem_switch_epoch(int i) {
 			free(id);
 			reader_destroy(r);
 		}
+		printf("matching: lost = %ld distmean=%lg\n", lost, distsum/ c->Ntot[0]);
 	}
+	printf("ngas = %ld, active = %ld\n", c->Ntot[0], active_count());
 	reader_destroy(r0);
+
+	if(EPOCHS[i].source) {
+		free(psys.srcs);
+		FILE * f = fopen(EPOCHS[i].source, "r");
+		if(f == NULL) {
+			ERROR("failed to open %s", EPOCHS[i].source);
+		}
+		int NR = 0;
+		char * line = NULL;
+		size_t len = 0;
+		intptr_t isrc = 0;
+		int stage = 0;
+		double x, y, z, dummy, L;
+		char type[128];
+		char garbage[128];
+
+		while(0 <= getline(&line, &len, f)) {
+			if(line[0] == '#') {
+				NR++;
+				continue;
+			}
+			switch(stage) {
+			case 0:
+				if(1 != sscanf(line, "%ld", &psys.nsrcs)) {
+					ERROR("%s format error at %d", EPOCHS[i].source, NR);
+				} else {
+					psys.srcs = calloc(sizeof(Source), psys.nsrcs);
+					isrc = 0;
+					stage ++;
+				}
+				break;
+			case 1:
+				if(9 != sscanf(line, "%f %f %f %f %f %f %lf %80s %80s",
+					&x, &y, &z, &dummy, &dummy, &dummy, 
+					&L, type, garbage)) {
+					ERROR("%s format error at %d", EPOCHS[i].source, NR);
+				}
+				psys.srcs[isrc].pos[0] = x;
+				psys.srcs[isrc].pos[1] = y;
+				psys.srcs[isrc].pos[2] = z;
+				psys.srcs[isrc].Ngamma_sec = L * 1e50;
+				isrc ++;
+				if(isrc == psys.nsrcs) {
+					stage ++;
+				}
+				break;
+			case 2:
+				break;
+			}
+			NR++;
+			if(stage == 2) break;
+		}
+		if(isrc != psys.nsrcs) {
+			ERROR("%s expecting %lu, but has %lu sources, %lu", EPOCHS[i].source, psys.nsrcs, isrc, NR);
+		}
+		free(line);
+		fclose(f);
+	}
 }
+
 static float dist(const float p1[3], const float p2[3]) {
 	int d;
 	double result = 0.0;
@@ -182,4 +256,32 @@ static float dist(const float p1[3], const float p2[3]) {
 		result += dd *dd;
 	}
 	return sqrt(result);
+}
+
+static void use_all() {
+	intptr_t total = (psys.npar + 7) >> 3;
+	unsigned int mask = ((1 << ((psys.npar & 7))) -1);
+	memset(psys.mask, -1, total);
+	psys.mask[total - 1] &= mask;
+}
+static void use_none() {
+	memset(psys.mask, 0, (psys.npar + 7) >> 3);
+}
+static void use_ipar(intptr_t ipar) {
+	int offset = ipar & 7;
+	int bit = 1 << offset;
+	psys.mask[ipar >> 3] |= bit;
+}
+static size_t active_count() {
+	int __builtin_popcount(unsigned int x);
+	intptr_t i;
+	size_t sum = 0;
+	for(i = 0; i < (psys.npar + 7)>> 3; i++) {
+		sum += __builtin_popcount((unsigned char) psys.mask[i]);
+	}
+	return sum;
+}
+static int ipar_active(intptr_t ipar) {
+	int bit = 1 << (ipar & 7);
+	return (psys.mask[ipar >> 3] & bit) != 0;
 }
