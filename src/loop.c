@@ -85,6 +85,9 @@ void run() {
 
 		psys.tick++;
 	}
+
+	free(ipars);
+	free(r);
 	free(reservoir);
 	free(active);
 }
@@ -270,7 +273,7 @@ static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipar
 	if(ipars_length_est > *ipars_size) {
 		*ipars_size = ipars_length_est;
 		free(*ipars);
-		* ipars = malloc(sizeof(intptr_t) * *ipars_size);
+		*ipars = malloc(sizeof(intptr_t) * *ipars_size);
 	}
 
 	size_t ipars_length = 0;

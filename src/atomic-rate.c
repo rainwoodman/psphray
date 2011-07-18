@@ -59,6 +59,9 @@ static int ar_col_id(char * col) {
 }
 void ar_init(char * filename) {
 	FILE * fp = fopen(filename, "r");
+	if(fp == NULL) {
+		ERROR("atomic rates %s no access", filename);
+	}
 	int NR = 0;
 	char * line = NULL;
 	size_t size = 0;
@@ -111,8 +114,7 @@ void ar_init(char * filename) {
 					ERROR("file %s line %d is too short", filename, NR);
 				}
 				p[14 - 1] = 0;
-				char * num = strdup(p);
-				ar.data[i][irow] = atof(num);
+				ar.data[i][irow] = atof(p);
 			}
 			irow ++;
 			if(irow == ar.nrows) stage++;
