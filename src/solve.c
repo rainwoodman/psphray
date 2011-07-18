@@ -4,7 +4,6 @@
 #include <math.h>
 #include "config.h"
 #include "psystem.h"
-#include "atomic-rate.h"
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_matrix.h>

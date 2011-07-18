@@ -5,6 +5,8 @@
 
 extern void units_init();
 extern double units_parse(const char * units);
+extern void ar_init(const char * filename);
+
 config_t CFG[] = {{0}};
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
@@ -42,7 +44,12 @@ void cfg_init(char * filename) {
 	config_ensure        (CFG, "outputs.fixed", CONFIG_TYPE_GROUP);
 	config_ensure_int    (CFG, "outputs.fixed.nsteps", 5);
 	config_ensure        (CFG, "epochs", CONFIG_TYPE_LIST);
+
 	units_init();
+	const char * arfilename = NULL;
+	config_lookup_string(CFG, "psphray.atomicRates", &arfilename);
+	ar_init(arfilename);
+
 	epochs_init();
 }
 

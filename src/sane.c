@@ -4,7 +4,6 @@
 #include "reader.h"
 #include "config.h"
 #include "psystem.h"
-#include "atomic-rate.h"
 
 extern size_t rt_trace(const float s[3], const float dir[3], const float dist, intptr_t ** pars, size_t * size);
 extern int pluecker_(float dir[3], float * dist, float s2b[3], float s2t[3]);
@@ -21,16 +20,16 @@ int main(int argc, char* argv[]) {
 		ERROR("shall be true");
 	}
 
-	ar_init("../test/atomic_rates_Hui.txt");
+
+	cfg_init("../test/configfile");
+	cfg_dump("used-config");
+
 	MESSAGE("1 ryd verner cross section is %e", ar_verner(1.0));
 	MESSAGE("1e5K HI_CI %e HII_RC_A %e HII_RCC_A %e", 
 			ar_get(AR_HI_CI, 5),
 			ar_get(AR_HII_RC_A, 5),
 			ar_get(AR_HII_RCC_A, 5)
 		);
-
-	cfg_init("../test/configfile");
-	cfg_dump("used-config");
 
 	MESSAGE("--------unit sanity check------");
 	MESSAGE("kpc /h = %f", units_parse("kpc / h"));

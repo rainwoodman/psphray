@@ -14,6 +14,7 @@ extern config_t CFG[];
 extern Epoch * EPOCHS;
 extern int N_EPOCHS;
 
+
 void cfg_init(char * filename);
 void cfg_dump(char * filename);
 double config_setting_parse_units(config_setting_t * e);
@@ -41,4 +42,12 @@ extern double C_OMEGA_M;
 extern double C_H;
 extern double C_BOLTZMANN;
 
+
+extern int AR_LOG_T;
+extern int AR_HI_CI;
+extern int AR_HII_RC_A;
+extern int AR_HII_RCC_A;
+
+double ar_get(int id, double logT);
+double ar_verner(double Ry);
 
