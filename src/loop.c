@@ -87,7 +87,13 @@ void run() {
 	}
 
 	free(ipars);
+	intptr_t i;
+	for(i = 0 ;i < Nrecrays + Nsrcrays; i++) {
+		free(r[i].ipars);
+		free(r[i].x);
+	}
 	free(r);
+
 	free(reservoir);
 	free(active);
 }
