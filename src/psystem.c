@@ -15,7 +15,6 @@
 #define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
 
 PSystem psys = {0};
-static float dist(const float p1[3], const float p2[3]);
 
 void idhash_build(unsigned long long * id, size_t n) {
 	psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
@@ -30,7 +29,10 @@ void idhash_build(unsigned long long * id, size_t n) {
 	}
 }
 
+static float dist(const float p1[3], const float p2[3]);
 void psystem_switch_epoch(int i) {
+
+
 	Reader * r0 = reader_new(EPOCHS[i].format);
 	char * fname0 = reader_make_filename(EPOCHS[i].snapshot, 0);
 	reader_open(r0, fname0);
@@ -69,10 +71,15 @@ void psystem_switch_epoch(int i) {
 		psys.pos = calloc(sizeof(float) * 3, ngas);
 		psys.mass = calloc(sizeof(float), ngas);
 		psys.id = calloc(sizeof(unsigned long long), ngas);
-		psys.T = calloc(sizeof(float), ngas);
+		psys.ie = calloc(sizeof(float), ngas);
 		psys.sml = calloc(sizeof(float), ngas);
+		psys.rho = calloc(sizeof(float), ngas);
 		psys.xHI = calloc(sizeof(float), ngas);
 		psys.ye = calloc(sizeof(float), ngas);
+		psys.recomb = calloc(sizeof(float), ngas);
+		psys.deposit = calloc(sizeof(float), ngas);
+		psys.lasthit = calloc(sizeof(intptr_t), ngas);
+
 		psys.mask = bitmask_alloc(ngas);
 
 		for(fid = 0; fid < c->Nfiles; fid ++) {
@@ -83,13 +90,10 @@ void psystem_switch_epoch(int i) {
 			reader_read(r, "pos", 0, psys.pos[nread]);
 			reader_read(r, "mass", 0, &psys.mass[nread]);
 			reader_read(r, "sml", 0, &psys.sml[nread]);
+			reader_read(r, "rho", 0, &psys.rho[nread]);
 			reader_read(r, "ye", 0, &psys.ye[nread]);
-			float * ie = reader_alloc(r, "ie", 0);
-			float * ye = &psys.ye[nread];
-			intptr_t ipar;
-			for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
-				psys.T[ipar+nread] = ieye2T(ie[ipar], ye[ipar]);
-			}
+			reader_read(r, "ie", 0, &psys.ie[nread]);
+
 			if(reader_itemsize(r, "id") == 4) {
 				unsigned int * id = reader_alloc(r, "id", 0);
 				reader_read(r, "id", 0, id);
@@ -102,8 +106,6 @@ void psystem_switch_epoch(int i) {
 				reader_read(r, "id", 0, &psys.id[nread]);
 			}
 			nread += reader_npar(r, 0);
-			free(ie);
-			free(ye);
 			reader_destroy(r);
 		}
 		idhash_build(psys.id, nread);
@@ -120,12 +122,17 @@ void psystem_switch_epoch(int i) {
 			float (*pos)[3] = reader_alloc(r, "pos", 0);
 			float * mass = reader_alloc(r, "mass", 0);
 			float * sml = reader_alloc(r, "sml", 0);
+			float * rho = reader_alloc(r, "rho", 0);
 			float * ie = reader_alloc(r, "ie", 0);
 			float * ye = reader_alloc(r, "ye", 0);
-			float * xHI = reader_alloc(r, "xHI", 0);
+			float * xHI = reader_alloc(r, "xHI", 0); 
+			/* FIXME: xHI not used yet, maybe a good idea to calculate
+             * the ye due to heavy elements and merge the contribution.
+             * */
 			reader_read(r, "pos", 0, pos);
 			reader_read(r, "mass", 0, mass);
 			reader_read(r, "sml", 0, sml);
+			reader_read(r, "rho", 0, rho);
 			reader_read(r, "ie", 0, ie);
 			reader_read(r, "ye", 0, ye);
 			reader_read(r, "xHI", 0, xHI);
@@ -162,15 +169,19 @@ void psystem_switch_epoch(int i) {
 					distsum += mindist;
 					psys.mass[best_jpar] = mass[ipar];
 					psys.sml[best_jpar] = sml[ipar];
+					psys.rho[best_jpar] = rho[ipar];
+					psys.ie[best_jpar] = ie[ipar];
+					/*FIXME: somehow make use of the ye of the new snapshot*/
 					bitmask_set(psys.mask, best_jpar);
-					psys.T[best_jpar] = ieye2T(ie[ipar], ye[ipar]);
 				} else {
 					lost++;
 				}
 			}
 			free(fname);
 			free(mass);
+			free(xHI);
 			free(sml);
+			free(rho);
 			free(pos);
 			free(ye);
 			free(ie);
@@ -184,6 +195,7 @@ void psystem_switch_epoch(int i) {
 	reader_destroy(r0);
 
 	psys.tick = 0;
+	psys.nticks = EPOCHS[i].nticks;
 	psys.tick_time = EPOCHS[i].duration / EPOCHS[i].nticks;
 
 	if(EPOCHS[i].source) {

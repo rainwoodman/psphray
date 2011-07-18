@@ -7,7 +7,6 @@
 #include "psystem.h"
 
 typedef struct _Cell Cell;
-typedef struct _Ray Ray;
 struct _Cell {
 	intptr_t head_par;
 	intptr_t first_child;
@@ -15,13 +14,6 @@ struct _Cell {
 	float bot[3];
 	float top[3];
 	unsigned int npar;
-};
-
-struct _Ray {
-	float s[3];
-	float dir[3];
-	double nph;
-	double freq;
 };
 
 typedef struct {
@@ -187,6 +179,7 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, intptr_t
 				for(ipar = rt.pool[icell].head_par;
 					ipar != -1;
 					ipar = rt.next[ipar]) {
+					if(!bitmask_test(psys.mask, ipar)) continue;
 					float * pos = psys.pos[ipar];
 					float sml = psys.sml[ipar];
 					int d ;

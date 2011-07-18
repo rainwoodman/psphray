@@ -4,9 +4,11 @@
 #include "reader.h"
 #include "config.h"
 #include "psystem.h"
+#include "atomic-rate.h"
 
 extern size_t rt_trace(const float s[3], const float dir[3], const float dist, intptr_t ** pars, size_t * size);
 extern int pluecker_(float dir[3], float * dist, float s2b[3], float s2t[3]);
+
 extern PSystem psys;
 
 int main(int argc, char* argv[]) {
@@ -18,6 +20,14 @@ int main(int argc, char* argv[]) {
 	if(!pluecker_(dir, &dist, s2b, s2t)) {
 		ERROR("shall be true");
 	}
+
+	ar_init("../test/atomic_rates_Hui.txt");
+	MESSAGE("1 ryd verner cross section is %e", ar_verner(1.0));
+	MESSAGE("1e5K HI_CI %e HII_RC_A %e HII_RCC_A %e", 
+			ar_get(AR_HI_CI, 5),
+			ar_get(AR_HII_RC_A, 5),
+			ar_get(AR_HII_RCC_A, 5)
+		);
 
 	cfg_init("../test/configfile");
 	cfg_dump("used-config");
@@ -58,10 +68,14 @@ int main(int argc, char* argv[]) {
 	reader_destroy(r);
 	printf("%f %f\n", Tmax, Tmin);
 
+	init();
 	psystem_switch_epoch(0);
 
 	rt_switch_epoch(0);
 
+	run();
+
+#if 0
 	intptr_t * ipars = NULL;
 	size_t size =0;
 	size_t length = rt_trace(pos, dir, dist, &ipars, &size);
@@ -73,6 +87,7 @@ int main(int argc, char* argv[]) {
 	return 0;
 	psystem_switch_epoch(1);
 	rt_switch_epoch(1);
+#endif
 
 	return 0;
 }

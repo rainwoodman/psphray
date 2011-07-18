@@ -9,11 +9,16 @@ typedef struct {
 	float *ye;
 	float *mass;
 	float *sml;
-	float *T;
+	float *rho;
+	float *ie;
+
 	char * mask;
 	size_t npar;
-	int lasthit;
-	float * deposit;
+
+	float * recomb; /* number of photons from recombination */
+	float * deposit; /* number of photons deposited since last update*/
+	intptr_t * lasthit; /* time tick of last update */
+
 	unsigned long long * id;
 	struct {
 		intptr_t *head;
@@ -24,5 +29,8 @@ typedef struct {
 	Source * srcs;
 	size_t nsrcs;
 	intptr_t tick;
+	size_t nticks;
 	double tick_time;
 } PSystem;
+
+void psys_switch_epoch(int epoch);

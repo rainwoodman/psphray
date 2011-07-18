@@ -33,6 +33,7 @@ extern double U_YR;
 extern double U_MYR;
 extern double U_KG;
 extern double U_MSUN;
+extern double U_MPROTON;
 
 extern double C_HMF;
 extern double C_OMEGA_L;

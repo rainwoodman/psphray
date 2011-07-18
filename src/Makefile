@@ -1,7 +1,8 @@
 CFLAGS = -g -I ../support
+F90FLAGS = -g
 FC = gfortran
-LDFLAGS = -L ../support/libconfig/ 
-LIBS = -lconfig -lm -lgfortran
+LDFLAGS = -L ../support/libconfig/
+LIBS = -lconfig -lm -lgfortran -lgsl -lgslcblas
 
 SOURCES = \
 config.c \
@@ -10,20 +11,24 @@ epochs.c \
 reader.c \
 psystem.c \
 raytrace.c \
+solve.c \
+atomic-rate.c \
+loop.c \
+sph-depth.c \
 reader-massiveblack.c \
 
-OBJS = $(SOURCES:.c=.o) pluecker.o
+OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
 ALL = sane
 
-.SUFFIXES: .inc
+.SUFFIXES: .inc .F90
 
 all: $(ALL)
 
 .c.o:
 	$(CC) $(CFLAGS) -c -o $@ $^
 
-pluecker.o: pluecker.F90
-	$(FC) -g -c -o $@ $<
+.F90.o:
+	$(FC) $(F90FLAGS) -c -o $@ $<
 
 psphray: $(OBJS) main.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
