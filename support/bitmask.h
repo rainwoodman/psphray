@@ -16,39 +16,39 @@ static inline void bitmask_set_all(char * mask) {
 static inline void bitmask_clear_all(char * mask) {
 	size_t size = *(size_t *) mask;
 	size_t total = (size + 7 ) >> 3;
-	char * buf = mask + sizeof(size_t);
+	unsigned char * buf = mask + sizeof(size_t);
 	memset(buf, 0, total);
 }
 
 static inline void bitmask_set(char * mask, intptr_t idx) {
-	char * buf = mask + sizeof(size_t);
+	unsigned char * buf = mask + sizeof(size_t);
 	int offset = idx & 7;
-	int bit = 1 << offset;
+	unsigned char bit = 1 << offset;
 	//buf[idx >> 3] |= bit;
 	__sync_or_and_fetch(&buf[idx >> 3], bit);
 }
 
 static inline void bitmask_clear(char * mask, intptr_t idx) {
-	char * buf = mask + sizeof(size_t);
+	unsigned char * buf = mask + sizeof(size_t);
 	int offset = idx & 7;
-	int bit = 1 << offset;
+	unsigned char bit = 1 << offset;
 	//buf[idx >> 3] &= ~bit;
-	__sync_nand_and_fetch(&buf[idx >> 3], bit);
-}
-
-static inline int bitmask_test(char * mask, intptr_t idx) {
-	char * buf = mask + sizeof(size_t);
-	int offset = idx & 7;
-	int bit = 1 << offset;
-	return (buf[idx >> 3] & bit) != 0;
+	__sync_and_and_fetch(&buf[idx >> 3], ~bit);
 }
 
 static inline int bitmask_test_and_clear(char * mask, intptr_t idx) {
-	char * buf = mask + sizeof(size_t);
+	unsigned char * buf = mask + sizeof(size_t);
 	int offset = idx & 7;
-	int bit = 1 << offset;
+	unsigned char bit = 1 << offset;
 //	return (buf[idx >> 3] & bit) != 0;
-	return __sync_fetch_and_nand(&buf[idx >> 3], bit) & bit;
+	return __sync_fetch_and_and(&buf[idx >> 3], ~bit) & bit;
+}
+
+static inline int bitmask_test(char * mask, intptr_t idx) {
+	unsigned char * buf = mask + sizeof(size_t);
+	int offset = idx & 7;
+	unsigned char bit = 1 << offset;
+	return (buf[idx >> 3] & bit) != 0;
 }
 
 static inline size_t bitmask_sum(char * mask) {
