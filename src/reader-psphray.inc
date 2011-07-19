@@ -16,34 +16,44 @@ int flag_sft;
 int flag_met;
 unsigned int Nparticle_total_high[6];
 int flag_entropy;
-int flag_double;
-int flag_ic_info;
-int flag_lpt_scalingfactor;
-int unused[12];
+double OmegaB;
+unsigned long long nrays;
+int flag_Hmf;
+int flag_Hemf;
+int flag_Helium;
+int flag_gammaHI;
+int flag_cloudy;
+int flag_eos;
+int unused[5];
 };
 
 static int _blockid(const char * blk, char ** error) {
 	if(!strcmp(blk, "pos")) return 1 ;
-	if(!strcmp(blk, "vel")) return 2 ;
-	if(!strcmp(blk, "id")) return 3 ;
-	if(!strcmp(blk, "mass")) return 4 ;
-	if(!strcmp(blk, "ie")) return 5 ;
-	if(!strcmp(blk, "rho")) return 6 ;
-	if(!strcmp(blk, "ye")) return 7 ;
-	if(!strcmp(blk, "xHI")) return 8 ;
-	if(!strcmp(blk, "sml")) return 9 ;
-	if(!strcmp(blk, "sfr")) return 10 ;
-	if(!strcmp(blk, "sft")) return 11 ;
-	if(!strcmp(blk, "met")) return 12 ;
-	if(!strcmp(blk, "bhmass")) return 13 ;
-	if(!strcmp(blk, "bhmdot")) return 14 ;
+	if(!strcmp(blk, "id")) return 2 ;
+	if(!strcmp(blk, "mass")) return 3 ;
+	if(!strcmp(blk, "ie")) return 4 ;
+	if(!strcmp(blk, "rho")) return 5 ;
+	if(!strcmp(blk, "ye")) return 6 ;
+	if(!strcmp(blk, "xHI")) return 7 ;
+	if(!strcmp(blk, "sml")) return 8 ;
+	if(!strcmp(blk, "Hmf")) return 9 ;
+	if(!strcmp(blk, "Hemf")) return 10 ;
+	if(!strcmp(blk, "HeIa")) return 11 ;
+	if(!strcmp(blk, "HeIIa")) return 12 ;
+	if(!strcmp(blk, "gammaHI")) return 13 ;
+	if(!strcmp(blk, "HIa_cloudy")) return 14 ;
+	if(!strcmp(blk, "eos")) return 15 ;
+	if(!strcmp(blk, "lasthit")) return 16 ;
+	if(!strcmp(blk, "sft")) return 17 ;
+	if(!strcmp(blk, "ngammas")) return 18 ;
+	if(!strcmp(blk, "spec")) return 19 ;
 	if(!strcmp(blk, "header")) return 0;
 	asprintf(error, "block %s is unknown", blk);
 	return -1;}
 
 static const char * _blockname(const int blockid, char ** error) {
 	static char * names[] = {"header", 
-"pos","vel","id","mass","ie","rho","ye","xHI","sml","sfr","sft","met","bhmass","bhmdot"
+"pos","id","mass","ie","rho","ye","xHI","sml","Hmf","Hemf","HeIa","HeIIa","gammaHI","HIa_cloudy","eos","lasthit","sft","ngammas","spec"
 };
 
 	if(blockid < 0 || blockid >= sizeof(names) / sizeof(char*)) {
@@ -56,7 +66,6 @@ static const char * _blockname(const int blockid, char ** error) {
 
 static size_t _itemsize(const char * blk, char ** error) {
 	if(!strcmp(blk, "pos")) return 12 ;
-	if(!strcmp(blk, "vel")) return 12 ;
 	if(!strcmp(blk, "id")) return 8 ;
 	if(!strcmp(blk, "mass")) return 4 ;
 	if(!strcmp(blk, "ie")) return 4 ;
@@ -64,30 +73,41 @@ static size_t _itemsize(const char * blk, char ** error) {
 	if(!strcmp(blk, "ye")) return 4 ;
 	if(!strcmp(blk, "xHI")) return 4 ;
 	if(!strcmp(blk, "sml")) return 4 ;
-	if(!strcmp(blk, "sfr")) return 4 ;
+	if(!strcmp(blk, "Hmf")) return 4 ;
+	if(!strcmp(blk, "Hemf")) return 4 ;
+	if(!strcmp(blk, "HeIa")) return 4 ;
+	if(!strcmp(blk, "HeIIa")) return 4 ;
+	if(!strcmp(blk, "gammaHI")) return 4 ;
+	if(!strcmp(blk, "HIa_cloudy")) return 4 ;
+	if(!strcmp(blk, "eos")) return 4 ;
+	if(!strcmp(blk, "lasthit")) return 4 ;
 	if(!strcmp(blk, "sft")) return 4 ;
-	if(!strcmp(blk, "met")) return 4 ;
-	if(!strcmp(blk, "bhmass")) return 4 ;
-	if(!strcmp(blk, "bhmdot")) return 4 ;
+	if(!strcmp(blk, "ngammas")) return 8 ;
+	if(!strcmp(blk, "spec")) return 8 ;
 	if(!strcmp(blk, "header")) return 256;
 	asprintf(error, "block %s is unknown", blk);
 	return (size_t)-1;}
 
 static size_t _pstart(const struct header_t * h, const char * blk, int ptype, char ** error) {
-	if(!strcmp(blk, "pos")) return (0 < ptype)?(size_t)(h->N[0]): 0+(1 < ptype)?(size_t)(h->N[1]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
-	if(!strcmp(blk, "vel")) return (0 < ptype)?(size_t)(h->N[0]): 0+(1 < ptype)?(size_t)(h->N[1]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
-	if(!strcmp(blk, "id")) return (0 < ptype)?(size_t)(h->N[0]): 0+(1 < ptype)?(size_t)(h->N[1]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
+	if(!strcmp(blk, "pos")) return (0 < ptype)?(size_t)(h->N[0]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
+	if(!strcmp(blk, "id")) return (0 < ptype)?(size_t)(h->N[0]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
 	if(!strcmp(blk, "mass")) return (0 < ptype)?(size_t)(h->N[0]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
 	if(!strcmp(blk, "ie")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "rho")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "ye")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "xHI")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "sml")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
-	if(!strcmp(blk, "sfr")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "Hmf")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "Hemf")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "HeIa")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "HeIIa")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "gammaHI")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "HIa_cloudy")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "eos")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "lasthit")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "sft")) return (4 < ptype)?(size_t)(h->N[4]): 0 ;
-	if(!strcmp(blk, "met")) return (0 < ptype)?(size_t)(h->N[0]): 0+(4 < ptype)?(size_t)(h->N[4]): 0 ;
-	if(!strcmp(blk, "bhmass")) return (5 < ptype)?(size_t)(h->N[5]): 0 ;
-	if(!strcmp(blk, "bhmdot")) return (5 < ptype)?(size_t)(h->N[5]): 0 ;
+	if(!strcmp(blk, "ngammas")) return (5 < ptype)?(size_t)(h->N[5]): 0 ;
+	if(!strcmp(blk, "spec")) return (5 < ptype)?(size_t)(h->N[5]): 0 ;
 	asprintf(error, "block %s is unknown/unstable for _pstart", blk);
 	return (size_t)-1;}
 
@@ -101,22 +121,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 		if(1) {
 
 
-			return (size_t)(h->N[0])+(size_t)(h->N[1])+(size_t)(h->N[4])+(size_t)(h->N[5]);
-
-
-		} else {
-			return 0;
-		}
-	}
-
-
-	if(!strcmp(blk, "vel")) {
-
-
-		if(1) {
-
-
-			return (size_t)(h->N[0])+(size_t)(h->N[1])+(size_t)(h->N[4])+(size_t)(h->N[5]);
+			return (size_t)(h->N[0])+(size_t)(h->N[4])+(size_t)(h->N[5]);
 
 
 		} else {
@@ -131,7 +136,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 		if(1) {
 
 
-			return (size_t)(h->N[0])+(size_t)(h->N[1])+(size_t)(h->N[4])+(size_t)(h->N[5]);
+			return (size_t)(h->N[0])+(size_t)(h->N[4])+(size_t)(h->N[5]);
 
 
 		} else {
@@ -230,10 +235,115 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	}
 
 
-	if(!strcmp(blk, "sfr")) {
+	if(!strcmp(blk, "Hmf")) {
 
 
-		if(1&&h->flag_sfr) {
+		if(1&&h->flag_Hmf) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "Hemf")) {
+
+
+		if(1&&h->flag_Hemf) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "HeIa")) {
+
+
+		if(1&&h->flag_Helium) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "HeIIa")) {
+
+
+		if(1&&h->flag_Helium) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "gammaHI")) {
+
+
+		if(1&&h->flag_gammaHI) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "HIa_cloudy")) {
+
+
+		if(1&&h->flag_cloudy) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "eos")) {
+
+
+		if(1&&h->flag_eos) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "lasthit")) {
+
+
+		if(1) {
 
 
 			return (size_t)(h->N[0]);
@@ -248,7 +358,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	if(!strcmp(blk, "sft")) {
 
 
-		if(1&&h->flag_sft) {
+		if(1) {
 
 
 			return (size_t)(h->N[4]);
@@ -260,22 +370,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	}
 
 
-	if(!strcmp(blk, "met")) {
-
-
-		if(1&&h->flag_met) {
-
-
-			return (size_t)(h->N[0])+(size_t)(h->N[4]);
-
-
-		} else {
-			return 0;
-		}
-	}
-
-
-	if(!strcmp(blk, "bhmass")) {
+	if(!strcmp(blk, "ngammas")) {
 
 
 		if(1) {
@@ -290,7 +385,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	}
 
 
-	if(!strcmp(blk, "bhmdot")) {
+	if(!strcmp(blk, "spec")) {
 
 
 		if(1) {
@@ -329,13 +424,17 @@ static size_t _offset(const struct header_t * h, const char * blk, char ** error
 
 static void _def_header(struct header_t * h) {
 h->flag_entropy = 0;
+h->flag_cloudy = 0;
+h->flag_cool = 1;
+h->flag_eos = 0;
+h->flag_met = 1;
+h->flag_Hemf = 0;
 h->flag_sft = 1;
 h->flag_sfr = 1;
-h->flag_double = 0;
-h->flag_cool = 1;
+h->flag_Helium = 0;
+h->flag_gammaHI = 0;
 h->flag_feedback = 1;
-h->flag_ic_info = 0;
-h->flag_met = 1;
+h->flag_Hmf = 0;
 }
 
 
@@ -348,7 +447,7 @@ static void _get_constants(const struct header_t * h, struct constants_t * c) {
 		c->mass[i] = h->mass[i];
 	}
 
-c->PhysDensThresh = 0.000831188;
+c->OmegaM = h->OmegaM;
 c->OmegaL = h->OmegaL;
 c->time = h->time;
 c->redshift = h->redshift;
@@ -356,8 +455,7 @@ c->Nfiles = h->Nfiles;
 c->h = h->h;
 c->boxsize = h->boxsize;
 
-c->OmegaM = h->OmegaM;
-c->OmegaB = 0.044;
+c->OmegaB = h->OmegaB;
 
 }
 
@@ -372,7 +470,7 @@ static void _set_constants(struct header_t * h, const struct constants_t * c) {
 		h->mass[i] = c->mass[i];
 	}
 
-
+h->OmegaM = c->OmegaM;
 h->OmegaL = c->OmegaL;
 h->time = c->time;
 h->redshift = c->redshift;
@@ -380,8 +478,7 @@ h->Nfiles = c->Nfiles;
 h->h = c->h;
 h->boxsize = c->boxsize;
 
-h->OmegaM = c->OmegaM;
-
+h->OmegaB = c->OmegaB;
 
 }
 

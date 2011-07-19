@@ -18,6 +18,7 @@ double U_KELVIN = 0.0;
 
 double C_OMEGA_L = 0.0;
 double C_OMEGA_M = 0.0;
+double C_OMEGA_B = 0.0;
 double C_H = 0.0;
 double C_HMF = 0.0;
 double C_BOLTZMANN = 0.0;
@@ -46,6 +47,7 @@ double units_init() {
 	config_lookup_float(CFG, "cosmology.hmf", &C_HMF);
 	config_lookup_float(CFG, "cosmology.omegaL", &C_OMEGA_L);
 	config_lookup_float(CFG, "cosmology.omegaM", &C_OMEGA_M);
+	config_lookup_float(CFG, "cosmology.omegaB", &C_OMEGA_B);
 	
 	config_lookup_float(CFG, "units.lengthCMh", &U_CM);
 	U_CM = C_H / U_CM;
@@ -140,6 +142,14 @@ double z2t(double z) {
 	double pre = 2.0 / (3.0 * sqrt(C_OMEGA_L));
 	double arg = pow(a / aeq, 3.0 / 2.0)  + sqrt(1.0 + pow(a/ aeq, 3.0));
 	return pre * log(arg) / H0;
+}
+double t2z(double t) {
+	double a;
+	const double H0 = 0.1;
+	double aeq = pow(C_OMEGA_M / C_OMEGA_L, 1.0/3.0);
+	double pre = 2.0 / (3.0 * sqrt(C_OMEGA_L));
+	a = pow(sinh(H0 * t / pre), 2.0/3.0) * aeq;
+	return 1.0 / a - 1.0;
 }
 
 float ieye2T(const float ie, const float ye) {

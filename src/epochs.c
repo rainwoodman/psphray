@@ -7,6 +7,12 @@
 Epoch * EPOCHS = NULL;
 int N_EPOCHS = 0;
 
+#define config_setting_ensure_int(e, m, v)  if(!config_setting_get_member(e, m)) config_setting_set_int(config_setting_ensure_member(c, m, CONFIG_TYPE_INT), v)
+#define config_setting_ensure_int64(e, m, v)  if(!config_setting_get_member(e, m)) config_setting_set_int64(config_setting_ensure_member(c, m, CONFIG_TYPE_INT64), v)
+#define config_setting_ensure_float(e, m, v)  if(!config_setting_get_member(e, m)) config_setting_set_float(config_setting_ensure_member(c, m, CONFIG_TYPE_FLOAT), v)
+#define config_setting_ensure_string(e, m, v)  if(!config_setting_get_member(e, m)) config_setting_set_string(config_setting_ensure_member(c, m, CONFIG_TYPE_STRING), v)
+#define config_setting_ensure_bool(e, m, v)  if(!config_setting_get_member(e, m)) config_setting_set_bool(config_setting_ensure_member(c, m, CONFIG_TYPE_BOOL), v)
+
 void epochs_init() {
 	config_setting_t * list = config_lookup(CFG, "epochs");
 	N_EPOCHS = config_setting_length(list);
@@ -18,13 +24,25 @@ void epochs_init() {
 		const char * snapshot = config_setting_get_string_elem(s, 0);
 		const char * format = config_setting_get_string_elem(s, 1);
 		const char * source = NULL;
+		const char * output = NULL;
+		int output_nfiles = 0;
+		int output_nsteps = 0;
 		double duration = -1;
 		double redshift;
 		size_t ngas = 0;
-
 		int nticks= 0;
+
 		config_setting_lookup_string(e, "source", &source);
 		config_setting_lookup_int(e, "nticks", &nticks);
+
+		config_setting_t * o = config_setting_get_member(e, "output");
+		if(o != NULL) {
+			config_setting_lookup_string(o, "filename", &output);
+			config_setting_lookup_int(o, "nsteps", &output_nsteps);
+			config_setting_lookup_int(o, "nfiles", &output_nfiles);
+		} else {
+			MESSAGE("EPOCH %d(%s) has no output", i, snapshot);
+		}
 
 		Reader * r = reader_new(format);
 		char * fname = reader_make_filename(snapshot, 0);
@@ -49,7 +67,9 @@ void epochs_init() {
 		EPOCHS[i].duration = duration;
 		EPOCHS[i].ngas = ngas;
 		EPOCHS[i].nticks = nticks;
-
+		EPOCHS[i].output = output;
+		EPOCHS[i].output_nfiles = output_nfiles;
+		EPOCHS[i].output_nsteps = output_nsteps;
 	}
 	for(i = 0; i < N_EPOCHS; i++) {
 		if(EPOCHS[i].duration == -1 && i != N_EPOCHS - 1) {

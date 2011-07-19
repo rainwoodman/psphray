@@ -19,6 +19,8 @@ int AR_LOG_T = -1;
 int AR_HI_CI = -1;
 int AR_HII_RC_A = -1;
 int AR_HII_RCC_A = -1;
+int AR_HII_RC_B = -1;
+int AR_HII_RCC_B = -1;
 
 AtomicRate ar = {0};
 
@@ -131,6 +133,8 @@ void ar_init(char * filename) {
 	AR_HI_CI = ar_col_id("HIci");
 	AR_HII_RC_A = ar_col_id("HIIrcA");
 	AR_HII_RCC_A = ar_col_id("HIIrccA");
+	AR_HII_RC_B = ar_col_id("HIIrcB");
+	AR_HII_RCC_B = ar_col_id("HIIrccB");
 	AR_LOG_T = 0;
 }
 

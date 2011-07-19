@@ -31,6 +31,7 @@ struct _Reader {
 #define _write (reader->funcs.write)
 
 void massiveblack_get_reader_funcs(ReaderFuncs * funcs);
+void psphray_get_reader_funcs(ReaderFuncs * funcs);
 
 Reader * reader_new(const char * format) {
 	Reader * reader = calloc(sizeof(Reader), 1);
@@ -38,13 +39,15 @@ Reader * reader_new(const char * format) {
 		massiveblack_get_reader_funcs(&reader->funcs);
 	} else if(!strcmp(format, "e5")) {
 		massiveblack_get_reader_funcs(&reader->funcs);
+	} else if(!strcmp(format, "psphray")) {
+		psphray_get_reader_funcs(&reader->funcs);
 	} else {
 		ERROR("format %s unknown", format);
 	}
 	return reader;
 }
 void reader_destroy(Reader * reader) {
-	reader_close(reader);
+	if(reader->fp) reader_close(reader);
 	free(reader->filename);
 	free(reader);
 }
@@ -59,6 +62,9 @@ char * reader_make_filename(const char * snapshot, int id) {
 void reader_open(Reader * reader, const char * filename) {
 	reader->filename = strdup(filename);
 	reader->fp = fopen(filename, "r");
+	if(reader->fp == NULL) {
+		ERROR("can't open %s", filename);
+	}
 	reader->read_only = 1;
 	char * error = NULL;
 	reader->header = reader_alloc(reader, "header", -1);
@@ -72,6 +78,9 @@ void reader_open(Reader * reader, const char * filename) {
 void reader_create(Reader * reader, const char * filename) {
 	reader->filename = strdup(filename);
 	reader->fp = fopen(filename, "w+");
+	if(reader->fp == NULL) {
+		ERROR("can't open %s", filename);
+	}
 	reader->header = reader_alloc(reader, "header", -1);
 	_def_header(reader->header);
 	reader->read_only = 0;

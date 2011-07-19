@@ -8,6 +8,7 @@
 
 #include "config.h"
 #include "psystem.h"
+#include "reader.h"
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -38,6 +39,8 @@ extern int solver_evolve(Solver * s, intptr_t ipar);
 extern void solver_delete(Solver * s);
 extern float sph_depth(const float r_h);
 
+size_t rt_trace(const float s[3], const float dir[3], const float dist, intptr_t ** pars, size_t * size);
+
 static int x_t_compare(const void * p1, const void * p2);
 static float dist(const float p1[3], const float p2[3]);
 
@@ -47,6 +50,7 @@ static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipar
 static void solve(intptr_t * ipars, size_t ipars_length);
 static size_t recombine_rays(intptr_t * ipars, size_t ipars_length, struct r_t ** r, size_t * r_size, size_t extra);
 
+static void write_output();
 
 gsl_rng * rng = NULL;;
 double * reservoir = NULL;
@@ -70,25 +74,32 @@ void run() {
 	bitmask_clear_all(active);
 	reservoir = calloc(sizeof(double), psys.nsrcs);
 
-	while(psys.tick < psys.nticks) {
+	intptr_t istep = 0;
+	while(1) {
+		if(istep < psys.output.nsteps && psys.tick == psys.output.steps[istep]) {
+			MESSAGE("rays: %lu(rec) %lu(src)", Nrecrays, Nsrcrays);
+			MESSAGE("pars: %lu", ipars_length);
+			MESSAGE("tick: %lu", psys.tick);
+			psystem_write_output(istep + 1);
+			istep++;
+		}
+		if(psys.tick == psys.epoch.nticks) break;
+
+		psys.tick++;
 		Nrecrays = recombine_rays(ipars, ipars_length, &r, &r_size, Nsrcrays);
 		evolve_srcs(r, Nsrcrays);
-		MESSAGE("rays: %lu(rec) %lu(src)", Nrecrays, Nsrcrays);
 
 		/* trace rays */
 		trace(r, Nrecrays + Nsrcrays);
 		/* deposit photons */
 		ipars_length = deposit(r, Nrecrays + Nsrcrays, &ipars, &ipars_length);
-		MESSAGE("pars: %lu", ipars_length);
 
 		solve(ipars, ipars_length);
-
-		psys.tick++;
 	}
 
 	free(ipars);
 	intptr_t i;
-	for(i = 0 ;i < Nrecrays + Nsrcrays; i++) {
+	for(i = 0 ;i < r_size; i++) {
 		free(r[i].ipars);
 		free(r[i].x);
 	}
@@ -128,7 +139,7 @@ static void evolve_srcs(struct r_t * r, size_t Nr) {
 		r[i].dir[2] = dz;
 		r[i].Nph = reservoir[isrc] / raycount[isrc];
 		r[i].freq = 1.0;
-		r[i].length = psys.boxsize;
+		r[i].length = 2.0 * psys.boxsize;
 	}
 	for(i = 0; i < Nr; i++) {
 		intptr_t isrc = r[i].isrc;
@@ -144,8 +155,9 @@ static size_t recombine_rays(intptr_t * ipars, size_t ipars_length,
 	intptr_t j;
 	for(j = 0; j < ipars_length; j++) {
 		intptr_t ipar = ipars[j];
-		if(psys.recomb[ipar] > 0 /*FIXME: use a bigger threshold*/) {
+		if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
 			index[j] = r_length + preserve;
+			MESSAGE("%ld %ld recombine = %g", index[j], ipar, psys.recomb[ipar])
 			r_length++;
 		}
 	}
@@ -175,7 +187,8 @@ static size_t recombine_rays(intptr_t * ipars, size_t ipars_length,
 	for(j = 0; j < ipars_length; j++) {
 		intptr_t ipar = ipars[j];
 		intptr_t i = index[j];
-		if(psys.recomb[ipar] > 0 /*FIXME: use a bigger threshold*/) {
+		MESSAGE("%ld %ld recombine = %g", i, ipar, psys.recomb[ipar])
+		if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
 			(*r)[i].s[0] = psys.pos[ipar][0];
 			(*r)[i].s[1] = psys.pos[ipar][1];
 			(*r)[i].s[2] = psys.pos[ipar][2];
@@ -187,7 +200,7 @@ static size_t recombine_rays(intptr_t * ipars, size_t ipars_length,
 			(*r)[i].dir[2] = dz;
 			(*r)[i].Nph = psys.recomb[ipar];
 			(*r)[i].freq = 1.0;
-			(*r)[i].length = psys.boxsize;
+			(*r)[i].length = 2.0 * psys.boxsize;
 			psys.recomb[ipar] = 0;
 		}
 	}
@@ -248,23 +261,27 @@ static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipar
 		for(j = 0; j < r[i].ipars_length; j++) {
 			intptr_t ipar = r[i].x[j].ipar;
 			float b = r[i].x[j].b;
-			double sigma = ar_verner(r[i].freq);
+			double sigma = ar_verner(r[i].freq) * U_CM * U_CM;
 			float sml = psys.sml[ipar];
-			double NHI = psys.xHI[ipar] * psys.mass[ipar] * C_HMF / U_MPROTON;
+			double NH = psys.mass[ipar] * C_HMF / U_MPROTON;
+			double NHI = psys.xHI[ipar] * NH;
 			double Ncd = sph_depth(b / sml) / (sml * sml) * NHI;
-			float tau = sigma * Ncd;
+			double tau = sigma * Ncd;
 
 			double absorb = 0.0;
 			if(tau < 0.001) absorb = TM * tau;
+			else if(tau > 100) absorb = TM;
 			else absorb = TM * (1. - exp(-tau));
 
+		//	MESSAGE("b = %g transimt = %g absorb = %g Tau=%g", b, TM,absorb, Tau);
 			/* make this atomic */
-			psys.deposit[ipar] += absorb;
+			
 			bitmask_set(active, ipar);
 
 			TM -= absorb;
-
-			if(Tau > 30) {
+			
+			Tau += tau;
+			if(Tau > 30.0) {
 				r[i].ipars_length = j;
 				break;
 			}
@@ -283,6 +300,7 @@ static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipar
 	}
 
 	size_t ipars_length = 0;
+	
 	for(i = 0; i < Nr; i++) {
 		intptr_t j;
 		for(j = 0; j < r[i].ipars_length; j++) {

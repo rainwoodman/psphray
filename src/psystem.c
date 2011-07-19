@@ -76,8 +76,8 @@ void psystem_switch_epoch(int i) {
 		psys.rho = calloc(sizeof(float), ngas);
 		psys.xHI = calloc(sizeof(float), ngas);
 		psys.ye = calloc(sizeof(float), ngas);
-		psys.recomb = calloc(sizeof(float), ngas);
-		psys.deposit = calloc(sizeof(float), ngas);
+		psys.recomb = calloc(sizeof(double), ngas);
+		psys.deposit = calloc(sizeof(double), ngas);
 		psys.lasthit = calloc(sizeof(intptr_t), ngas);
 
 		psys.mask = bitmask_alloc(ngas);
@@ -93,6 +93,7 @@ void psystem_switch_epoch(int i) {
 			reader_read(r, "rho", 0, &psys.rho[nread]);
 			reader_read(r, "ye", 0, &psys.ye[nread]);
 			reader_read(r, "ie", 0, &psys.ie[nread]);
+			reader_read(r, "xHI", 0, &psys.xHI[nread]);
 
 			if(reader_itemsize(r, "id") == 4) {
 				unsigned int * id = reader_alloc(r, "id", 0);
@@ -195,8 +196,20 @@ void psystem_switch_epoch(int i) {
 	reader_destroy(r0);
 
 	psys.tick = 0;
-	psys.nticks = EPOCHS[i].nticks;
 	psys.tick_time = EPOCHS[i].duration / EPOCHS[i].nticks;
+	psys.epoch.nticks = EPOCHS[i].nticks;
+	psys.epoch.age = EPOCHS[i].age;
+	psys.epoch.redshift = EPOCHS[i].redshift;
+	psys.output.filename = EPOCHS[i].output;
+	psys.output.nfiles = EPOCHS[i].output_nfiles;
+	/* if write_init is true, for the first epoch we write an extra init output */
+	intptr_t j;
+	psys.output.nsteps = EPOCHS[i].output_nsteps;
+	psys.output.steps = realloc(psys.output.steps, sizeof(intptr_t) * (psys.output.nsteps));
+	for(j = 0; j < psys.output.nsteps; j++) {
+		psys.output.steps[j] = psys.epoch.nticks * (j+1)/ EPOCHS[i].output_nsteps;
+		MESSAGE("step %ld, tick=%ld", j + 1, psys.output.steps[j]);
+	}
 
 	if(EPOCHS[i].source) {
 		free(psys.srcs);
@@ -294,3 +307,70 @@ static float dist(const float p1[3], const float p2[3]) {
 	return sqrt(result);
 }
 
+void psystem_write_output(int outputnum) {
+	char * basename;
+	asprintf(&basename, psys.output.filename, outputnum);
+	int fid = 0;
+	for(fid = 0; fid < psys.output.nfiles; fid++) {
+		char * filename;
+		if(psys.output.nfiles == 1) {
+			filename = strdup(basename);
+		} else {
+			asprintf(&filename, "%s.%d", basename, fid);
+		}
+		/* write the gas */
+		intptr_t gas_start = psys.npar * fid / psys.output.nfiles;
+		intptr_t gas_end = psys.npar * (fid + 1)/ psys.output.nfiles;
+		intptr_t gas_size = gas_end - gas_start;
+		intptr_t bh_start = psys.nsrcs * fid / psys.output.nfiles;
+		intptr_t bh_end = psys.nsrcs * (fid + 1)/ psys.output.nfiles;
+		intptr_t bh_size = bh_end - bh_start;
+		Reader * r = reader_new("psphray");
+		reader_create(r, filename);
+		ReaderConstants * c = reader_constants(r);
+		c->Ntot[0] = psys.npar;
+		c->N[0] = gas_size;
+		c->Ntot[5] = psys.nsrcs;
+		c->N[5] = bh_size;
+
+		c->OmegaL = C_OMEGA_L;
+		c->OmegaM = C_OMEGA_M;
+		c->OmegaB = C_OMEGA_B;
+		double znow = t2z(psys.epoch.age + psys.tick * psys.tick_time);
+		c->time = 1. / (1. + znow);
+		c->h = C_H;
+		c->redshift = psys.epoch.redshift;
+		c->boxsize = psys.boxsize;
+		reader_update_header(r);
+		reader_write(r, "pos", 0, psys.pos[gas_start]);
+		reader_write(r, "sml", 0, &psys.sml[gas_start]);
+		reader_write(r, "rho", 0, &psys.rho[gas_start]);
+		reader_write(r, "mass", 0, &psys.mass[gas_start]);
+		reader_write(r, "xHI", 0, &psys.xHI[gas_start]);
+		reader_write(r, "ye", 0, &psys.ye[gas_start]);
+		reader_write(r, "ie", 0, &psys.ie[gas_start]);
+		reader_write(r, "lasthit", 0, &psys.lasthit[gas_start]);
+		reader_write(r, "id", 0, &psys.id[gas_start]);
+		/* write the bh */
+		float (*pos)[3] = reader_alloc(r, "pos", 5);
+		intptr_t i;
+		for(i = 0; i < bh_size; i++) {
+			pos[i][0] = psys.srcs[i+bh_start].pos[0];
+			pos[i][1] = psys.srcs[i+bh_start].pos[1];
+			pos[i][2] = psys.srcs[i+bh_start].pos[2];
+		}
+		reader_write(r, "pos", 5, pos);
+		free(pos);
+		double * ngammas = reader_alloc(r, "ngammas", 5);
+		for(i = 0; i < bh_size; i++) {
+			ngammas[i] = psys.srcs[i+bh_start].Ngamma_sec;
+		}
+		reader_write(r, "ngammas", 5, ngammas);
+		free(ngammas);
+
+		reader_close(r);
+		reader_destroy(r);
+		free(filename);
+	}
+	free(basename);
+}

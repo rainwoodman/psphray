@@ -15,8 +15,8 @@ typedef struct {
 	char * mask;
 	size_t npar;
 
-	float * recomb; /* number of photons from recombination */
-	float * deposit; /* number of photons deposited since last update*/
+	double * recomb; /* number of photons from recombination */
+	double * deposit; /* number of photons deposited since last update*/
 	intptr_t * lasthit; /* time tick of last update */
 
 	unsigned long long * id;
@@ -29,8 +29,19 @@ typedef struct {
 	Source * srcs;
 	size_t nsrcs;
 	intptr_t tick;
-	size_t nticks;
 	double tick_time;
+	struct {
+		size_t nticks;
+		double age; /* start time of the epoch */
+		double redshift; /* start redshift of the epoch */
+	} epoch;
+	struct {
+		intptr_t * steps;
+		intptr_t nsteps;
+		size_t nfiles;
+		const char * filename;
+	} output;
 } PSystem;
 
 void psys_switch_epoch(int epoch);
+void psystem_write_output(int outputnum);

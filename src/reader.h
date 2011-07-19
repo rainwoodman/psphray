@@ -6,10 +6,12 @@ typedef struct _ReaderConstants {
 	double mass[6];
 	double boxsize;
 	double redshift;
-	double time;
+	double time; /* 1 / redshift, not the code time !!*/
 	double OmegaL;
 	double OmegaM;
+	double OmegaB;
 	double h;
+	double PhysDensThresh;
 } ReaderConstants;
 Reader * reader_new(const char * format);
 void reader_destroy(Reader * reader);
@@ -18,6 +20,8 @@ void * reader_alloc(Reader * reader, const char * blk, int ptype);
 size_t reader_itemsize(Reader * reader, const char * blk);
 void reader_read(Reader * reader, const char * blk, int ptype, void * buf);
 int reader_has(Reader * reader, const char * blk);
+void reader_update_header(Reader * reader);
+void reader_update_constants(Reader * reader);
 void reader_write(Reader * reader, const char * blk, int ptype, void *buf);
 size_t reader_length(Reader * reader, const char * blk);
 void reader_open(Reader * reader, const char * filename);

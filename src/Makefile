@@ -16,9 +16,10 @@ atomic-rate.c \
 loop.c \
 sph-depth.c \
 reader-massiveblack.c \
+reader-psphray.c \
 
 OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
-ALL = sane
+ALL = sane test-solve
 
 .SUFFIXES: .inc .F90
 
@@ -34,6 +35,9 @@ psphray: $(OBJS) main.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 sane: $(OBJS) sane.o
+	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
+
+test-solve: $(OBJS) test-solve.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 clean:
