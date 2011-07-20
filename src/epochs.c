@@ -70,9 +70,9 @@ void epochs_init() {
 		EPOCHS[i].ngas = ngas;
 		EPOCHS[i].nray = nray;
 		EPOCHS[i].nticks = nticks;
-		EPOCHS[i].output = output;
-		EPOCHS[i].output_nfiles = output_nfiles;
-		EPOCHS[i].output_nsteps = output_nsteps;
+		EPOCHS[i].output.filename = output;
+		EPOCHS[i].output.nfiles = output_nfiles;
+		EPOCHS[i].output.nsteps = output_nsteps;
 	}
 	for(i = 0; i < N_EPOCHS; i++) {
 		if(EPOCHS[i].duration == -1 && i != N_EPOCHS - 1) {
@@ -88,6 +88,11 @@ void epochs_init() {
 		EPOCHS[i].ngas,
 		units_format(EPOCHS[i].age, "myr"),
 		units_format(EPOCHS[i].duration, "myr"));
+		int j;
+		EPOCHS[i].output.steps = calloc(sizeof(size_t), EPOCHS[i].output.nsteps);
+		for(j = 0; j < EPOCHS[i].output.nsteps; j++) {
+			EPOCHS[i].output.steps[j] = EPOCHS[i].nticks * (j+1)/ EPOCHS[i].output.nsteps;
+		}
 	}
 }
 

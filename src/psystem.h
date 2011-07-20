@@ -29,18 +29,7 @@ typedef struct {
 	size_t nsrcs;
 	intptr_t tick;
 	double tick_time;
-	struct {
-		size_t nticks;
-		double age; /* start time of the epoch */
-		double redshift; /* start redshift of the epoch */
-		size_t nray; /* ray per tick*/
-	} epoch;
-	struct {
-		intptr_t * steps;
-		intptr_t nsteps;
-		size_t nfiles;
-		const char * filename;
-	} output;
+	Epoch * epoch;
 } PSystem;
 
 void psys_switch_epoch(int epoch);

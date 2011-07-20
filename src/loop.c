@@ -81,17 +81,17 @@ void run() {
 	bitmask_clear_all(active);
 	ARRAY_ENSURE(res, struct res_t, psys.nsrcs);
 
-	ARRAY_RESIZE(r, struct res_t, psys.epoch.nray);
+	ARRAY_RESIZE(r, struct res_t, psys.epoch->nray);
 
 	intptr_t istep = 0;
 	while(1) {
-		if(istep < psys.output.nsteps && psys.tick == psys.output.steps[istep]) {
+		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
 			MESSAGE("rays: %lu(rec) %lu(src)", recomb_count, src_count);
 			MESSAGE("tick: %lu", psys.tick);
 			psystem_write_output(istep + 1);
 			istep++;
 		}
-		if(psys.tick == psys.epoch.nticks) break;
+		if(psys.tick == psys.epoch->nticks) break;
 
 		make_photons();
 		psys.tick++;

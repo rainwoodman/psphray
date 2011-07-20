@@ -9,9 +9,12 @@ typedef struct {
 	const char * source;
 	const char * snapshot;
 	const char * format;
-	const char * output;
-	size_t output_nfiles;
-	size_t output_nsteps;
+	struct {
+		size_t * steps;
+		size_t nsteps;
+		size_t nfiles;
+		const char * filename;
+	} output;
 } Epoch;
 
 extern config_t CFG[];

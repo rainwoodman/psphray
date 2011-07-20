@@ -196,20 +196,7 @@ void psystem_switch_epoch(int i) {
 
 	psys.tick = 0;
 	psys.tick_time = EPOCHS[i].duration / EPOCHS[i].nticks;
-	psys.epoch.nticks = EPOCHS[i].nticks;
-	psys.epoch.nray = EPOCHS[i].nray;
-	psys.epoch.age = EPOCHS[i].age;
-	psys.epoch.redshift = EPOCHS[i].redshift;
-	psys.output.filename = EPOCHS[i].output;
-	psys.output.nfiles = EPOCHS[i].output_nfiles;
-	/* if write_init is true, for the first epoch we write an extra init output */
-	intptr_t j;
-	psys.output.nsteps = EPOCHS[i].output_nsteps;
-	psys.output.steps = realloc(psys.output.steps, sizeof(intptr_t) * (psys.output.nsteps));
-	for(j = 0; j < psys.output.nsteps; j++) {
-		psys.output.steps[j] = psys.epoch.nticks * (j+1)/ EPOCHS[i].output_nsteps;
-		MESSAGE("step %ld, tick=%ld", j + 1, psys.output.steps[j]);
-	}
+	psys.epoch = &EPOCHS[i];
 
 	if(EPOCHS[i].source) {
 		free(psys.srcs);
@@ -309,21 +296,22 @@ static float dist(const float p1[3], const float p2[3]) {
 
 void psystem_write_output(int outputnum) {
 	char * basename;
-	asprintf(&basename, psys.output.filename, outputnum);
+	asprintf(&basename, psys.epoch->output.filename, outputnum);
 	int fid = 0;
-	for(fid = 0; fid < psys.output.nfiles; fid++) {
+	size_t nfiles = psys.epoch->output.nfiles;
+	for(fid = 0; fid < nfiles; fid++) {
 		char * filename;
-		if(psys.output.nfiles == 1) {
+		if(nfiles == 1) {
 			filename = strdup(basename);
 		} else {
 			asprintf(&filename, "%s.%d", basename, fid);
 		}
 		/* write the gas */
-		intptr_t gas_start = psys.npar * fid / psys.output.nfiles;
-		intptr_t gas_end = psys.npar * (fid + 1)/ psys.output.nfiles;
+		intptr_t gas_start = psys.npar * fid / nfiles;
+		intptr_t gas_end = psys.npar * (fid + 1)/ nfiles;
 		intptr_t gas_size = gas_end - gas_start;
-		intptr_t bh_start = psys.nsrcs * fid / psys.output.nfiles;
-		intptr_t bh_end = psys.nsrcs * (fid + 1)/ psys.output.nfiles;
+		intptr_t bh_start = psys.nsrcs * fid / nfiles;
+		intptr_t bh_end = psys.nsrcs * (fid + 1)/ nfiles;
 		intptr_t bh_size = bh_end - bh_start;
 		Reader * r = reader_new("psphray");
 		reader_create(r, filename);
@@ -336,10 +324,10 @@ void psystem_write_output(int outputnum) {
 		c->OmegaL = C_OMEGA_L;
 		c->OmegaM = C_OMEGA_M;
 		c->OmegaB = C_OMEGA_B;
-		double znow = t2z(psys.epoch.age + psys.tick * psys.tick_time);
+		double znow = t2z(psys.epoch->age + psys.tick * psys.tick_time);
 		c->time = 1. / (1. + znow);
 		c->h = C_H;
-		c->redshift = psys.epoch.redshift;
+		c->redshift = psys.epoch->redshift;
 		c->boxsize = psys.boxsize;
 		reader_update_header(r);
 		reader_write(r, "pos", 0, psys.pos[gas_start]);

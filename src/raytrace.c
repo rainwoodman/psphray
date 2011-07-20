@@ -4,6 +4,7 @@
 #include <string.h>
 #include <messages.h>
 #include <bitmask.h>
+#include "config.h"
 #include "psystem.h"
 
 typedef struct _Cell Cell;
