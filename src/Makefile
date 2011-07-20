@@ -1,8 +1,8 @@
-CFLAGS = -g -I ../support
+CFLAGS = -g -I ../support -fopenmp
 F90FLAGS = -g
 FC = gfortran
 LDFLAGS = -L ../support/libconfig/
-LIBS = -lconfig -lm -lgfortran -lgsl -lgslcblas
+LIBS = -lconfig -lm -lgfortran -lgsl -lgslcblas -lgomp
 
 SOURCES = \
 config.c \

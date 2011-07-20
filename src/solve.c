@@ -76,7 +76,7 @@ int solver_evolve(Solver * s, intptr_t ipar) {
 	double nH = C_HMF * psys.rho[ipar] / (U_MPROTON / (U_CM * U_CM * U_CM));
 	/* everything multiplied by nH, saving some calculations */
 	double gamma = ar_get(AR_HI_CI, logT) * nH;
-	double alpha = ar_get(AR_HII_RC_B, logT) * nH;
+	double alpha = ar_get(AR_HII_RC_A, logT) * nH;
 	double Gamma = 0;
 	double y = psys.ye[ipar] - (1. - psys.xHI[ipar]);
 
@@ -84,13 +84,13 @@ int solver_evolve(Solver * s, intptr_t ipar) {
 	x[0] = psys.xHI[ipar];
 	int code = solver_evolve_numerical (s, Gamma, gamma, alpha, y, x, seconds);
 
-	if(GSL_SUCCESS != code && code !=GSL_ENOPROG) {
-		WARNING("gsl failed: %s: %ld Gamma=%g gamma=%g alpha=%g nH=%g xHI=%g ye=%g, seconds=%g", 
-			gsl_strerror(code), ipar, Gamma, gamma, alpha, nH, x[0], x[1], seconds); /*FIXME: add a counter, and recover */
+	if(GSL_SUCCESS != code ) {
+	//	WARNING("gsl failed: %s: %ld Gamma=%g gamma=%g alpha=%g nH=%g xHI=%g ye=%g, seconds=%g", 
+	//		gsl_strerror(code), ipar, Gamma, gamma, alpha, nH, x[0], x[1], seconds); /*FIXME: add a counter, and recover */
 		return 0;
 	}
 
-	double dxHI = psys.xHI[ipar] - x[0];
+	double dxHI = x[0] - psys.xHI[ipar];
 	psys.xHI[ipar] = x[0];
 	psys.ye[ipar] = y + 1 - x[0];
 	/*FIXME: turn on recombine later*/
@@ -136,7 +136,7 @@ int solver_evolve_numerical (Solver * s, double Gamma, double gamma, double alph
 	}
 	double t = 0;
 
-	s->driver = gsl_odeiv2_driver_alloc_y_new(&s->sys, gsl_odeiv2_step_rk1imp,
+	s->driver = gsl_odeiv2_driver_alloc_y_new(&s->sys, gsl_odeiv2_step_msbdf,
 			seconds/ 10000., 1e-6, 0.0);
 	gsl_odeiv2_driver_reset(s->driver);
 	gsl_odeiv2_driver_set_hmin(s->driver, seconds/ 100000.);

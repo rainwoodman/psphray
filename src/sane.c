@@ -12,7 +12,7 @@ extern PSystem psys;
 
 int main(int argc, char* argv[]) {
 	intptr_t i;
-	cfg_init("../test/uniform.config");
+	cfg_init(argv[1]);
 	cfg_dump("used-config");
 
 	MESSAGE("1 ryd verner cross section is %e", ar_verner(1.0));

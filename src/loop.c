@@ -66,7 +66,12 @@ ARRAY_DEFINE(ipars, intptr_t);
 
 char * active = NULL;
 static size_t recomb_count;
-static size_t src_count;
+static size_t emission_count;
+static size_t destructive_ionization;
+static double total_emission;
+static double total_recomb;
+static size_t evolve_errors;
+static size_t evolve_count;
 
 void init() {
 	rng = gsl_rng_alloc(gsl_rng_mt19937);
@@ -74,20 +79,31 @@ void init() {
 }
 
 void run() {
-	size_t Nrecrays = 0;
-	size_t Nsrcrays = 1;
 
 	active = bitmask_alloc(psys.npar);
 	bitmask_clear_all(active);
 	ARRAY_ENSURE(res, struct res_t, psys.nsrcs);
 
-	ARRAY_RESIZE(r, struct res_t, psys.epoch->nray);
+	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray);
+
+	total_emission = 0;
+	total_recomb = 0;
+	destructive_ionization = 0;
+	evolve_errors = 0;
+	evolve_count = 0;
 
 	intptr_t istep = 0;
 	while(1) {
 		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
-			MESSAGE("rays: %lu(rec) %lu(src)", recomb_count, src_count);
+			MESSAGE("rays: %lu(rec) %lu(src)", recomb_count, emission_count);
+			MESSAGE("rays: %le(rec) %le(src)", total_recomb, total_emission);
+			MESSAGE("destructive: %lu", destructive_ionization);
+			MESSAGE("evolve error: %lu / %lu", evolve_errors, evolve_count);
 			MESSAGE("tick: %lu", psys.tick);
+			STAT(xHI, double)
+			STAT(ye, double)
+			STAT(recomb, double)
+
 			psystem_write_output(istep + 1);
 			istep++;
 		}
@@ -131,7 +147,9 @@ static void make_photons() {
 		res[i].type = 0;
 		res[i].isrc = i;
 	}
-	
+
+	if(CFG_DISABLE_2ND_GEN_PHOTONS) return;
+
 	for(i = 0; i < ipars_length; i++) {
 		intptr_t ipar = ipars[i];
 		if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
@@ -153,7 +171,7 @@ static void emit_rays() {
 			weights[i] = res[i].Nph;
 			break;
 			case 1:
-			weights[i] = res[i].Nph * 1e10;
+			weights[i] = res[i].Nph;
 		}
 		raycount[i] = 0;
 	}
@@ -195,10 +213,12 @@ static void emit_rays() {
 		res[ires].Nph = 0.0;
 		switch(res[ires].type) {
 			case 0: /* from a src */
-				src_count++;
+				emission_count++;
+				total_emission += r[i].Nph;
 			break;
 			case 1: /* from a recombination, aka particle */
 				recomb_count++;
+				total_recomb += r[i].Nph;
 				psys.recomb[res[ires].ipar] = 0;
 			break;
 			default: ERROR("never each here");
@@ -209,6 +229,7 @@ static void emit_rays() {
 
 static void trace() {
 	intptr_t i;
+	#pragma omp parallel for private(i)
 	for(i = 0; i < r_length; i++) {
 		r[i].ipars_length = rt_trace(r[i].s, r[i].dir, r[i].length, 
 			&r[i].ipars, &r[i].ipars_size);
@@ -261,14 +282,17 @@ static void deposit(){
 		//	MESSAGE("b = %g transimt = %g absorb = %g Tau=%g", b, TM,absorb, Tau);
 			/* make this atomic */
 			if(absorb > NHI) {
+				destructive_ionization ++;
 				absorb = NHI;
+				TM -= NHI;
+			} else {
+				TM *= exp(-tau);
 			}
+			
 			double dxHI = - absorb / NH;
 			psys.ye[ipar] -= dxHI;
 			psys.xHI[ipar] += dxHI;
-
-			TM -= absorb;
-			
+			if(psys.xHI[ipar] < 0.0) psys.xHI[ipar] = 0.0;
 			Tau += tau;
 			/* cut off at around 10^-10 */
 			if(Tau > 30.0) {
@@ -278,6 +302,7 @@ static void deposit(){
 		}
 	}
 }
+
 static void merge_ipars() {
 	intptr_t i;
 	/* now merge the list */
@@ -308,14 +333,22 @@ static void merge_ipars() {
 }
 
 static void update_pars() {
-	Solver * s = solver_new();
 	intptr_t j;
+	size_t d1 = 0, d2 = 0;
+	#pragma omp parallel for reduction(+: d1, d2) private(j)
 	for(j = 0; j < ipars_length; j++) {
+		Solver * s = solver_new();
 		intptr_t ipar = ipars[j];
-		solver_evolve(s, ipar);
+		if(!solver_evolve(s, ipar)) {
+			d1++;
+		}
+		d2++;
 		psys.lasthit[ipar] = psys.tick;
+		solver_delete(s);
+		
 	}
-	solver_delete(s);
+	evolve_errors += d1;
+	evolve_count += d2;
 }
 
 	

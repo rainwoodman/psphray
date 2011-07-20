@@ -81,8 +81,9 @@ tryagain:
 				MESSAGE("OCTTREE full %lu mean occupy = %f", rt.pool_size, (double)ipar / rt.pool_size);
 				size_t trysize = psys.npar / ((double) ipar / rt.pool_size);
 				free(rt.pool);
-				if(rt.pool_size < trysize) rt.pool_size = trysize;
-				else rt.pool_size *= 2;
+				if(rt.pool_size < trysize && 8 * rt.pool_size > trysize) {
+					rt.pool_size = trysize;
+				} else rt.pool_size *= 2;
 				rt.pool = malloc(sizeof(Cell) * rt.pool_size);
 				MESSAGE("retry with %lu", rt.pool_size);
 				goto tryagain;

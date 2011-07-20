@@ -19,6 +19,7 @@ typedef struct {
 
 extern config_t CFG[];
 extern int CFG_WRITE_INIT;
+extern int CFG_DISABLE_2ND_GEN_PHOTONS;
 
 extern Epoch * EPOCHS;
 extern int N_EPOCHS;

@@ -15,6 +15,9 @@ int N_EPOCHS = 0;
 
 void epochs_init() {
 	config_setting_t * list = config_lookup(CFG, "epochs");
+	if(list == NULL) {
+		return;
+	}
 	N_EPOCHS = config_setting_length(list);
 	int i;
 	EPOCHS = calloc(sizeof(Epoch), N_EPOCHS);

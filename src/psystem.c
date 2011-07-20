@@ -52,7 +52,7 @@ void psystem_switch_epoch(int i) {
 	else if(!strcmp(boundary, "periodic"))
 		psys.periodic = 1;
 	else ERROR("boundary type %s unknown, be vaccum or periodic", boundary);
-	MESSAGE("epoch %d, redshift %g, snapshot %s, format %s, source %s, ticks %u, ngas %lu, age %f [myr], duration %f [myr]",
+	MESSAGE("epoch %d, redshift %g, snapshot %s, format %s, source %s, ticks %u, ngas %lu, age %f [myr], duration %f [myr], boxsize = %g",
 	i, 
 	EPOCHS[i].redshift,
 	EPOCHS[i].snapshot,
@@ -61,7 +61,8 @@ void psystem_switch_epoch(int i) {
 	EPOCHS[i].nticks,
 	EPOCHS[i].ngas,
 	units_format(EPOCHS[i].age, "myr"),
-	units_format(EPOCHS[i].duration, "myr"));
+	units_format(EPOCHS[i].duration, "myr"),
+	psys.boxsize);
 
 	if(i == 0) {
 		size_t ngas = EPOCHS[i].ngas;
@@ -321,6 +322,7 @@ void psystem_write_output(int outputnum) {
 		c->Ntot[5] = psys.nsrcs;
 		c->N[5] = bh_size;
 
+		c->Nfiles = nfiles;
 		c->OmegaL = C_OMEGA_L;
 		c->OmegaM = C_OMEGA_M;
 		c->OmegaB = C_OMEGA_B;

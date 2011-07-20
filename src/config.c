@@ -9,6 +9,7 @@ extern void ar_init(const char * filename);
 
 config_t CFG[] = {{0}};
 int CFG_WRITE_INIT = 0;
+int CFG_DISABLE_2ND_GEN_PHOTONS = 0;
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 #define config_ensure_int(c, p, v)  if(!config_lookup(c, p)) config_setting_set_int(config_ensure(c, p, CONFIG_TYPE_INT), v)
@@ -26,6 +27,8 @@ void cfg_init(char * filename) {
 	config_ensure        (CFG, "psphray", CONFIG_TYPE_GROUP);
 	config_ensure_string (CFG, "psphray.atomicRates", "<filename>");
 	config_ensure_bool   (CFG, "psphray.writeInit", CONFIG_TRUE);
+	config_ensure_bool   (CFG, "psphray.disable2ndGenPhotons", CONFIG_FALSE);
+
 	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
 	config_ensure_bool   (CFG, "cosmology.comoving", CONFIG_TRUE);
 	config_ensure_float  (CFG, "cosmology.omegaL", 0.74);
@@ -40,9 +43,9 @@ void cfg_init(char * filename) {
 	config_ensure_float  (CFG, "units.massGramh", 1.9847005219450705e+43);
 	config_ensure_float  (CFG, "units.lengthCMh", 3.0835455558318480e+21);
 	config_ensure_float  (CFG, "units.timeSh", 3.08568025e+16);
-	config_ensure        (CFG, "epochs", CONFIG_TYPE_LIST);
 
 	config_lookup_bool(CFG, "psphray.writeInit", &CFG_WRITE_INIT);
+	config_lookup_bool(CFG, "psphray.disable2ndGenPhotons", &CFG_DISABLE_2ND_GEN_PHOTONS);
 
 	units_init();
 	const char * arfilename = NULL;
