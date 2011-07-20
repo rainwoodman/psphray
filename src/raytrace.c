@@ -241,7 +241,7 @@ static int hit(const float s[3], const float dir[3], const float dist, const int
 static void add(intptr_t ipar, intptr_t icell) {
 	Cell * cell = &rt.pool[icell];
 	if(cell->first_child != -1) {
-		ERROR("never shall reach here, adding to a none leaf")
+		ERROR("never shall reach here, adding to a none leaf");
 	}
 	rt.next[ipar] = cell->head_par;
 	cell->head_par = ipar;
