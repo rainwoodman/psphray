@@ -47,7 +47,7 @@ double ar_get(int id, double logT) {
 	double leftwt = (right - logT);
 	double rightwt = (logT - left);
 	double dlogT = right - left;
-	return leftwt * ar.data[id][index] + rightwt * ar.data[id][index+1] / dlogT;
+	return (leftwt * ar.data[id][index] + rightwt * ar.data[id][index+1]) / dlogT;
 }
 
 static int ar_col_id(char * col) {
