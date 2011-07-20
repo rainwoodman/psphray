@@ -16,7 +16,6 @@ typedef struct {
 	size_t npar;
 
 	double * recomb; /* number of photons from recombination */
-	double * deposit; /* number of photons deposited since last update*/
 	intptr_t * lasthit; /* time tick of last update */
 
 	unsigned long long * id;
@@ -34,6 +33,7 @@ typedef struct {
 		size_t nticks;
 		double age; /* start time of the epoch */
 		double redshift; /* start redshift of the epoch */
+		size_t nray; /* ray per tick*/
 	} epoch;
 	struct {
 		intptr_t * steps;

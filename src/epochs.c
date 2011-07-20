@@ -30,10 +30,12 @@ void epochs_init() {
 		double duration = -1;
 		double redshift;
 		size_t ngas = 0;
-		int nticks= 0;
+		int nticks = 0;
+		int nray = 1;
 
 		config_setting_lookup_string(e, "source", &source);
 		config_setting_lookup_int(e, "nticks", &nticks);
+		config_setting_lookup_int(e, "nray", &nray);
 
 		config_setting_t * o = config_setting_get_member(e, "output");
 		if(o != NULL) {
@@ -66,6 +68,7 @@ void epochs_init() {
 		EPOCHS[i].age = z2t(redshift);
 		EPOCHS[i].duration = duration;
 		EPOCHS[i].ngas = ngas;
+		EPOCHS[i].nray = nray;
 		EPOCHS[i].nticks = nticks;
 		EPOCHS[i].output = output;
 		EPOCHS[i].output_nfiles = output_nfiles;

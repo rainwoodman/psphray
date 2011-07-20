@@ -77,7 +77,6 @@ void psystem_switch_epoch(int i) {
 		psys.xHI = calloc(sizeof(float), ngas);
 		psys.ye = calloc(sizeof(float), ngas);
 		psys.recomb = calloc(sizeof(double), ngas);
-		psys.deposit = calloc(sizeof(double), ngas);
 		psys.lasthit = calloc(sizeof(intptr_t), ngas);
 
 		psys.mask = bitmask_alloc(ngas);
@@ -198,6 +197,7 @@ void psystem_switch_epoch(int i) {
 	psys.tick = 0;
 	psys.tick_time = EPOCHS[i].duration / EPOCHS[i].nticks;
 	psys.epoch.nticks = EPOCHS[i].nticks;
+	psys.epoch.nray = EPOCHS[i].nray;
 	psys.epoch.age = EPOCHS[i].age;
 	psys.epoch.redshift = EPOCHS[i].redshift;
 	psys.output.filename = EPOCHS[i].output;

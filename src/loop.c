@@ -4,6 +4,7 @@
 #include <math.h>
 #include <string.h>
 #include <bitmask.h>
+#include <array.h>
 #include <messages.h>
 
 #include "config.h"
@@ -24,12 +25,19 @@ struct r_t {
 	float dir[3];
 	double Nph;
 	double freq;
-	intptr_t * ipars;
-	struct x_t * x;
 	double length;
-	size_t ipars_size;
-	size_t ipars_length;
+
+	intptr_t ires;
+
+	ARRAY_DEFINE_S(ipars, intptr_t)
+	ARRAY_DEFINE_S(x, struct x_t)
+};
+
+struct res_t {
+	double Nph;
 	intptr_t isrc;
+	intptr_t ipar;
+	int type;
 };
 
 extern PSystem psys;
@@ -43,18 +51,23 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, intptr_t
 
 static int x_t_compare(const void * p1, const void * p2);
 static float dist(const float p1[3], const float p2[3]);
-
-static void evolve_srcs(struct r_t * r, size_t Nr);
-static void trace(struct r_t * r, size_t Nr);
-static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipars_size);
-static void solve(intptr_t * ipars, size_t ipars_length);
-static size_t recombine_rays(intptr_t * ipars, size_t ipars_length, struct r_t ** r, size_t * r_size, size_t extra);
-
-static void write_output();
+static void trace();
+static void make_photons();
+static void emit_rays();
+static void merge_ipars();
+static void deposit();
+static void update_pars();
 
 gsl_rng * rng = NULL;;
-double * reservoir = NULL;
+
+ARRAY_DEFINE(res, struct res_t);
+ARRAY_DEFINE(r, struct r_t);
+ARRAY_DEFINE(ipars, intptr_t);
+
 char * active = NULL;
+static size_t recomb_count;
+static size_t src_count;
+
 void init() {
 	rng = gsl_rng_alloc(gsl_rng_mt19937);
 	gsl_rng_set(rng, 123456);
@@ -63,179 +76,146 @@ void init() {
 void run() {
 	size_t Nrecrays = 0;
 	size_t Nsrcrays = 1;
-	struct r_t * r = NULL;
-	size_t r_size = 0;
-	intptr_t * ipars = NULL;
-	size_t ipars_size = 0;	
-	size_t ipars_length = 0;
-	/* */
 
 	active = bitmask_alloc(psys.npar);
 	bitmask_clear_all(active);
-	reservoir = calloc(sizeof(double), psys.nsrcs);
+	ARRAY_ENSURE(res, struct res_t, psys.nsrcs);
+
+	ARRAY_RESIZE(r, struct res_t, psys.epoch.nray);
 
 	intptr_t istep = 0;
 	while(1) {
 		if(istep < psys.output.nsteps && psys.tick == psys.output.steps[istep]) {
-			MESSAGE("rays: %lu(rec) %lu(src)", Nrecrays, Nsrcrays);
-			MESSAGE("pars: %lu", ipars_length);
+			MESSAGE("rays: %lu(rec) %lu(src)", recomb_count, src_count);
 			MESSAGE("tick: %lu", psys.tick);
 			psystem_write_output(istep + 1);
 			istep++;
 		}
 		if(psys.tick == psys.epoch.nticks) break;
 
+		make_photons();
 		psys.tick++;
-		Nrecrays = recombine_rays(ipars, ipars_length, &r, &r_size, Nsrcrays);
-		evolve_srcs(r, Nsrcrays);
+
+		emit_rays();
 
 		/* trace rays */
-		trace(r, Nrecrays + Nsrcrays);
+		trace();
+
 		/* deposit photons */
-		ipars_length = deposit(r, Nrecrays + Nsrcrays, &ipars, &ipars_length);
+		deposit();
 
-		solve(ipars, ipars_length);
+		merge_ipars();
+
+		update_pars();
 	}
 
-	free(ipars);
+	ARRAY_FREE(ipars);
 	intptr_t i;
-	for(i = 0 ;i < r_size; i++) {
-		free(r[i].ipars);
-		free(r[i].x);
+	for(i = 0 ;i < r_length; i++) {
+		ARRAY_FREE(r[i].ipars);
+		ARRAY_FREE(r[i].x);
 	}
-	free(r);
+	ARRAY_FREE(r);
 
-	free(reservoir);
+	ARRAY_FREE(res);
 	free(active);
 }
 
-static void evolve_srcs(struct r_t * r, size_t Nr) {
+static void make_photons() {
 	intptr_t i;
-	
-	gsl_ran_discrete_t * randist = gsl_ran_discrete_preproc(psys.nsrcs, reservoir);
 
-	size_t raycount[psys.nsrcs];
+	ARRAY_RESIZE(res, struct res_t, psys.nsrcs);
 
 	for(i = 0; i < psys.nsrcs; i++) {
-		raycount[i] = 0;
-		reservoir[i] += psys.srcs[i].Ngamma_sec * psys.tick_time / U_SEC;
+		res[i].Nph += psys.srcs[i].Ngamma_sec * psys.tick_time / U_SEC;
+		res[i].type = 0;
+		res[i].isrc = i;
 	}
 	
-	for(i = 0; i < Nr; i++) {
-		intptr_t isrc = gsl_ran_discrete(rng, randist);
-		r[i].isrc = isrc;
-		raycount[isrc]++;
-	}
-	for(i = 0; i < Nr; i++) {
-		intptr_t isrc = r[i].isrc;
-		int d;
-		for(d = 0; d < 3; d++) {
-			r[i].s[d] = psys.srcs[isrc].pos[d];
+	for(i = 0; i < ipars_length; i++) {
+		intptr_t ipar = ipars[i];
+		if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
+			struct res_t * t = ARRAY_APPEND(res, struct res_t);
+			t->Nph = psys.recomb[ipar];
+			t->type = 1;
+			t->ipar = ipar;
 		}
+	}
+}
+
+static void emit_rays() {
+	double weights[res_length];
+	intptr_t i;
+	size_t raycount[res_length];
+	for(i = 0; i < res_length; i++) {
+		switch(res[i].type) {
+			case 0:
+			weights[i] = res[i].Nph;
+			break;
+			case 1:
+			weights[i] = res[i].Nph * 1e10;
+		}
+		raycount[i] = 0;
+	}
+
+	gsl_ran_discrete_t * randist = gsl_ran_discrete_preproc(res_length, weights);
+
+	for(i = 0; i < r_length; i++) {
+		intptr_t ires = gsl_ran_discrete(rng, randist);
+		r[i].ires = ires;
+		raycount[ires]++;
+	}
+	for(i = 0; i < r_length; i++) {
+		intptr_t ires = r[i].ires;
+		int d;
 		double dx, dy, dz;
+		switch(res[ires].type) {
+			case 0: /* from a src */
+			for(d = 0; d < 3; d++) {
+				r[i].s[d] = psys.srcs[res[ires].isrc].pos[d];
+			}
+			break;
+			case 1: /* from a recombination, aka particle */
+			for(d = 0; d < 3; d++) {
+				r[i].s[d] = psys.pos[res[ires].ipar][d];
+			}
+			break;
+			default: ERROR("never each here");
+		}
 		gsl_ran_dir_3d(rng, &dx, &dy, &dz);
 		r[i].dir[0] = dx;
 		r[i].dir[1] = dy;
 		r[i].dir[2] = dz;
-		r[i].Nph = reservoir[isrc] / raycount[isrc];
 		r[i].freq = 1.0;
+		r[i].Nph = res[ires].Nph / raycount[ires];
 		r[i].length = 2.0 * psys.boxsize;
 	}
-	for(i = 0; i < Nr; i++) {
-		intptr_t isrc = r[i].isrc;
-		reservoir[isrc] = 0.0;
+	for(i = 0; i < r_length; i++) {
+		intptr_t ires = r[i].ires;
+		res[ires].Nph = 0.0;
+		switch(res[ires].type) {
+			case 0: /* from a src */
+				src_count++;
+			break;
+			case 1: /* from a recombination, aka particle */
+				recomb_count++;
+				psys.recomb[res[ires].ipar] = 0;
+			break;
+			default: ERROR("never each here");
+		}
 	}
 	gsl_ran_discrete_free(randist);
 }
 
-static size_t recombine_rays(intptr_t * ipars, size_t ipars_length, 
-		struct r_t ** r, size_t * r_size, size_t preserve){
-	size_t r_length = 0;
-	intptr_t * index = malloc(ipars_length * sizeof(intptr_t));
-	intptr_t j;
-	for(j = 0; j < ipars_length; j++) {
-		intptr_t ipar = ipars[j];
-		if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
-			index[j] = r_length + preserve;
-			MESSAGE("%ld %ld recombine = %g", index[j], ipar, psys.recomb[ipar])
-			r_length++;
-		}
-	}
-
-	if(r_length + preserve > *r_size) {
-		size_t old_size = *r_size;
-		while(r_length + preserve > *r_size) {
-			if(*r_size == 0) *r_size = 1024;
-			*r_size *=2;
-		}
-		*r = realloc(*r, sizeof(struct r_t) * *r_size);
-		
-		intptr_t i;
-		for(i = old_size; i < *r_size; i++) {
-			(*r)[i].x = NULL;
-			(*r)[i].ipars = NULL;
-			(*r)[i].ipars_length = 0;
-			(*r)[i].ipars_size = 0;
-		}
-	}
-
-	if(r_length == 0) {
-		free(index);
-		return 0;
-	}
-
-	for(j = 0; j < ipars_length; j++) {
-		intptr_t ipar = ipars[j];
-		intptr_t i = index[j];
-		MESSAGE("%ld %ld recombine = %g", i, ipar, psys.recomb[ipar])
-		if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
-			(*r)[i].s[0] = psys.pos[ipar][0];
-			(*r)[i].s[1] = psys.pos[ipar][1];
-			(*r)[i].s[2] = psys.pos[ipar][2];
-			double dx,dy,dz;
-			#pragma omp atmoic
-			gsl_ran_dir_3d(rng, &dx, &dy, &dz);
-			(*r)[i].dir[0] = dx;
-			(*r)[i].dir[1] = dy;
-			(*r)[i].dir[2] = dz;
-			(*r)[i].Nph = psys.recomb[ipar];
-			(*r)[i].freq = 1.0;
-			(*r)[i].length = 2.0 * psys.boxsize;
-			psys.recomb[ipar] = 0;
-		}
-	}
-	free(index);
-	return r_length;
-}
-
-static void trace(struct r_t * r, size_t Nr) {
+static void trace() {
 	intptr_t i;
-	for(i = 0; i < Nr; i++) {
-		size_t ipars_size_new = r[i].ipars_size;
-		r[i].ipars_length = rt_trace(r[i].s, r[i].dir, r[i].length, &r[i].ipars, &ipars_size_new);
-		if(ipars_size_new > r[i].ipars_size) {
-			free(r[i].x);
-			r[i].x = malloc(sizeof(struct x_t) * ipars_size_new);
-		}
-		r[i].ipars_size = ipars_size_new;
-	}
+	for(i = 0; i < r_length; i++) {
+		r[i].ipars_length = rt_trace(r[i].s, r[i].dir, r[i].length, 
+			&r[i].ipars, &r[i].ipars_size);
 
-}
-static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipars_size) {
+		ARRAY_RESIZE(r[i].x, struct x_t, r[i].ipars_length);
 
-	intptr_t i;
-	for(i = 0; i < Nr; i++) {
-		intptr_t j; /*index of the partilce in pars */
-		/* clear the deposit of the relavant particles */
-		/* this shall loop over all rays */
-		for(j = 0; j < r[i].ipars_length; j++) {
-			intptr_t ipar = r[i].ipars[j];
-			psys.deposit[ipar] = 0.0;
-		}
-	}
-
-	for(i = 0; i < Nr; i++) {
-		intptr_t j; /*index of the partilce in pars */
+		intptr_t j;
 		/* sort particles by distance from source */
 		for(j = 0; j < r[i].ipars_length; j++) {
 			intptr_t ipar = r[i].ipars[j];
@@ -254,7 +234,12 @@ static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipar
 		qsort(r[i].x, r[i].ipars_length, sizeof(struct x_t), x_t_compare);
 	}
 
-	for(i = 0; i < Nr; i++) {
+}
+
+static void deposit(){
+	intptr_t i;
+
+	for(i = 0; i < r_length; i++) {
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
 		intptr_t j;
@@ -275,52 +260,59 @@ static size_t deposit(struct r_t * r, size_t Nr, intptr_t **ipars, size_t * ipar
 
 		//	MESSAGE("b = %g transimt = %g absorb = %g Tau=%g", b, TM,absorb, Tau);
 			/* make this atomic */
-			
-			bitmask_set(active, ipar);
+			if(absorb > NHI) {
+				absorb = NHI;
+			}
+			double dxHI = - absorb / NH;
+			psys.ye[ipar] -= dxHI;
+			psys.xHI[ipar] += dxHI;
 
 			TM -= absorb;
 			
 			Tau += tau;
+			/* cut off at around 10^-10 */
 			if(Tau > 30.0) {
-				r[i].ipars_length = j;
+				ARRAY_RESIZE(r[i].ipars, struct r_t, j);
 				break;
 			}
 		}
 	}
-
+}
+static void merge_ipars() {
+	intptr_t i;
+	/* now merge the list */
 	size_t ipars_length_est = 0;
-	for(i = 0; i < Nr; i++) {
+	for(i = 0; i < r_length; i++) {
 		ipars_length_est += r[i].ipars_length;
 	}
 
-	if(ipars_length_est > *ipars_size) {
-		*ipars_size = ipars_length_est;
-		free(*ipars);
-		*ipars = malloc(sizeof(intptr_t) * *ipars_size);
+	ARRAY_ENSURE(ipars, intptr_t, ipars_length_est);
+	ARRAY_CLEAR(ipars);
+
+	for(i = 0; i < r_length; i++) {
+		intptr_t j;
+		for(j = 0; j < r[i].ipars_length; j++) {
+			bitmask_set(active, r[i].ipars[j]);
+		}
 	}
 
-	size_t ipars_length = 0;
-	
-	for(i = 0; i < Nr; i++) {
+	for(i = 0; i < r_length; i++) {
 		intptr_t j;
 		for(j = 0; j < r[i].ipars_length; j++) {
 			intptr_t ipar = r[i].ipars[j];
 			if(bitmask_test_and_clear(active, ipar)) {
-				(*ipars)[ipars_length] = ipar;
-				ipars_length++;
+				* (ARRAY_APPEND(ipars, intptr_t)) = ipar;
 			}
 		}
 	}
-	return ipars_length;
 }
 
-static void solve(intptr_t * ipars, size_t ipars_length) {
+static void update_pars() {
 	Solver * s = solver_new();
 	intptr_t j;
 	for(j = 0; j < ipars_length; j++) {
 		intptr_t ipar = ipars[j];
 		solver_evolve(s, ipar);
-		psys.deposit[ipar] = 0;
 		psys.lasthit[ipar] = psys.tick;
 	}
 	solver_delete(s);

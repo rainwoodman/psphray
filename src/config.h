@@ -5,6 +5,7 @@ typedef struct {
 	double duration;
 	size_t ngas;
 	size_t nticks;
+	size_t nray;
 	const char * source;
 	const char * snapshot;
 	const char * format;

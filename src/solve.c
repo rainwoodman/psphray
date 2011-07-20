@@ -46,7 +46,7 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], voi
 }
 typedef struct _Solver Solver;
 
-int solver_evolve_internal (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds);
+int solver_evolve_numerical (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds);
 
 struct _Solver {
 	double param[4];
@@ -72,26 +72,29 @@ int solver_evolve(Solver * s, intptr_t ipar) {
 	double seconds = (psys.tick - psys.lasthit[ipar]) * psys.tick_time / U_SEC;
 
 	double logT = 4;log10(ieye2T(psys.ie[ipar], psys.ye[ipar]));
+	double NH = C_HMF * psys.mass[ipar] / U_MPROTON;
 	double nH = C_HMF * psys.rho[ipar] / (U_MPROTON / (U_CM * U_CM * U_CM));
 	/* everything multiplied by nH, saving some calculations */
 	double gamma = ar_get(AR_HI_CI, logT) * nH;
 	double alpha = ar_get(AR_HII_RC_B, logT) * nH;
-	double Gamma = psys.deposit[ipar] / seconds / (C_HMF * psys.mass[ipar] / U_MPROTON);
+	double Gamma = 0;
 	double y = psys.ye[ipar] - (1. - psys.xHI[ipar]);
 
 	double x[1];
 	x[0] = psys.xHI[ipar];
-	int code = solver_evolve_internal(s, Gamma, gamma, alpha, y, x, seconds);
+	int code = solver_evolve_numerical (s, Gamma, gamma, alpha, y, x, seconds);
+
 	if(GSL_SUCCESS != code && code !=GSL_ENOPROG) {
 		WARNING("gsl failed: %s: %ld Gamma=%g gamma=%g alpha=%g nH=%g xHI=%g ye=%g, seconds=%g", 
 			gsl_strerror(code), ipar, Gamma, gamma, alpha, nH, x[0], x[1], seconds); /*FIXME: add a counter, and recover */
 		return 0;
 	}
 
+	double dxHI = psys.xHI[ipar] - x[0];
 	psys.xHI[ipar] = x[0];
 	psys.ye[ipar] = y + 1 - x[0];
 	/*FIXME: turn on recombine later*/
-	psys.recomb[ipar] += 0; //x[2] * C_HMF * psys.mass[ipar] / (U_MPROTON);
+	psys.recomb[ipar] += dxHI * NH;
 	return 1;
 }
 int solver_evolve_analytic (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds) {
@@ -105,7 +108,7 @@ int solver_evolve_analytic (Solver * s, double Gamma, double gamma, double alpha
 	x[0] = x1;
 	return GSL_SUCCESS;
 }
-int solver_evolve_internal (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds) {
+int solver_evolve_numerical (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds) {
 
 	double R = (gamma + alpha);
 	double Q = -(Gamma + (gamma + 2 * alpha) + (gamma + alpha) * y);
