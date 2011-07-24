@@ -90,11 +90,21 @@ int solver_evolve(Solver * s, intptr_t ipar) {
 		return 0;
 	}
 
+	if(x[0] > 1) x[0] = 1;
+	if(x[0] < 0) x[0] = 0;
+
 	double dxHI = x[0] - psys.xHI[ipar];
+	double xHII = 1 - x[0];
+
+	if(xHII > 1) xHII = 1;
+	if(xHII < 0) xHII = 0;
 	psys.xHI[ipar] = x[0];
-	psys.ye[ipar] = y + 1 - x[0];
-	/*FIXME: turn on recombine later*/
-	psys.recomb[ipar] += dxHI * NH;
+	psys.ye[ipar] = y + xHII;
+	double alpha_A = ar_get(AR_HII_RC_A, logT);
+
+	double alpha_B = ar_get(AR_HII_RC_B, logT);
+	double fac = (alpha_A - alpha_B) / alpha_B;
+	psys.recomb[ipar] += dxHI * NH * fac;
 	return 1;
 }
 int solver_evolve_analytic (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds) {
