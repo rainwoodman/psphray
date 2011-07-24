@@ -59,6 +59,10 @@ void cfg_dump(char * filename) {
 	config_write_file(CFG, filename);
 }
 
+void cfg_dump_stream(FILE * file) {
+	config_write(CFG, file);
+}
+
 config_setting_t * config_ensure(config_t * config, char * path, int type) {
 	config_setting_t * st = config_lookup(config, path);
 	if(st == NULL) {

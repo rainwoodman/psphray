@@ -27,6 +27,8 @@ extern int N_EPOCHS;
 
 void cfg_init(char * filename);
 void cfg_dump(char * filename);
+void cfg_dump_stream(char * FILE);
+
 double config_setting_parse_units(config_setting_t * e);
 config_setting_t * config_setting_ensure_member(config_setting_t * e, char * member, int type);
 config_setting_t * config_ensure(config_t * config, char * path, int type);
