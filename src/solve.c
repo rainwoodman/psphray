@@ -44,45 +44,24 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], voi
 
 	return GSL_SUCCESS;
 }
-typedef struct _Solver Solver;
 
-int solver_evolve_numerical (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds);
 
-struct _Solver {
-	double param[4];
-	gsl_odeiv2_driver * driver;
-	gsl_odeiv2_system sys;
-};
+int step_evolve(Step * step, double time) {
+	double seconds = time / U_SEC;
 
-Solver * solver_new() {
-	Solver * s = malloc(sizeof(Solver));
-	s->sys.function = function;
-	s->sys.jacobian = jacobian;
-	s->sys.dimension = 1;
-	s->sys.params = s->param;
-	return s;
-}
-void solver_delete(Solver * s) {
-	free(s);
-}
-int solver_evolve(Solver * s, intptr_t ipar) {
-	if(psys.tick == psys.lasthit[ipar]) {
-		ERROR("particle solved twice at one tick");
-	}
-	double seconds = (psys.tick - psys.lasthit[ipar]) * psys.tick_time / U_SEC;
-
-	double logT = 4;log10(ieye2T(psys.ie[ipar], psys.ye[ipar]));
-	double NH = C_HMF * psys.mass[ipar] / U_MPROTON;
-	double nH = C_HMF * psys.rho[ipar] / (U_MPROTON / (U_CM * U_CM * U_CM));
-	/* everything multiplied by nH, saving some calculations */
-	double gamma = ar_get(AR_HI_CI, logT) * nH;
-	double alpha = ar_get(AR_HII_RC_A, logT) * nH;
-	double Gamma = 0;
-	double y = psys.ye[ipar] - (1. - psys.xHI[ipar]);
+	double logT = log10(step->T);
+	double gamma_HI = ar_get(AR_HI_CI, logT) * step->nH;
+	double alpha_HII = ar_get(AR_HII_RC_A, logT) * step->nH;
+	double alpha_HII1 = alpha_HII - ar_get(AR_HII_RC_B, logT) * step->nH;
+	double Gamma_HI = 0;
 
 	double x[1];
-	x[0] = psys.xHI[ipar];
-	int code = solver_evolve_numerical (s, Gamma, gamma, alpha, y, x, seconds);
+	x[0] = step->xHI;
+	double y = step->y;
+
+	double dx[1] = {0};
+	
+	int code = step_evolve_numerical (Gamma_HI, gamma_HI, alpha_HII, y, x, dx, seconds);
 
 	if(GSL_SUCCESS != code ) {
 	//	WARNING("gsl failed: %s: %ld Gamma=%g gamma=%g alpha=%g nH=%g xHI=%g ye=%g, seconds=%g", 
@@ -90,24 +69,15 @@ int solver_evolve(Solver * s, intptr_t ipar) {
 		return 0;
 	}
 
-	if(x[0] > 1) x[0] = 1;
-	if(x[0] < 0) x[0] = 0;
+	double fac = (alpha_HII1 / alpha_HII);
 
-	double dxHI = x[0] - psys.xHI[ipar];
-	double xHII = 1 - x[0];
+	step->dxHI = dx[0];
+	step->dye = - dx[0];
+	step->dyGH = dx[0] * fac;
 
-	if(xHII > 1) xHII = 1;
-	if(xHII < 0) xHII = 0;
-	psys.xHI[ipar] = x[0];
-	psys.ye[ipar] = y + xHII;
-	double alpha_A = ar_get(AR_HII_RC_A, logT);
-
-	double alpha_B = ar_get(AR_HII_RC_B, logT);
-	double fac = (alpha_A - alpha_B) / alpha_B;
-	psys.recomb[ipar] += dxHI * NH * fac;
 	return 1;
 }
-int solver_evolve_analytic (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds) {
+int step_evolve_analytic (double Gamma, double gamma, double alpha, double y, double x[], double dx[], double seconds) {
 	double R = (gamma + alpha);
 	double Q = -(Gamma + (gamma + 2 * alpha) + (gamma + alpha) * y);
 	double P = alpha * (1. + y);
@@ -115,10 +85,10 @@ int solver_evolve_analytic (Solver * s, double Gamma, double gamma, double alpha
 	double x1 = P / q;
 	double x2 = q / R;
 
-	x[0] = x1;
+	dx[0] = x1 - x[0];
 	return GSL_SUCCESS;
 }
-int solver_evolve_numerical (Solver * s, double Gamma, double gamma, double alpha, double y, double x[], double seconds) {
+int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, double x[], double dx[], double seconds) {
 
 	double R = (gamma + alpha);
 	double Q = -(Gamma + (gamma + 2 * alpha) + (gamma + alpha) * y);
@@ -132,34 +102,41 @@ int solver_evolve_numerical (Solver * s, double Gamma, double gamma, double alph
 	else B = x1;
 //	MESSAGE("x1 = %le , x2 = %le x[0] - B %g", x1, x2, x[0] - B);
 
-	s->param[0] = R;
-	s->param[1] = Q;
-	s->param[2] = P;
-	s->param[3] = B;
+	gsl_odeiv2_system sys;
+	gsl_odeiv2_driver * driver;
+
+	double param[4] = {R, Q, P, B};
+	sys.function = function;
+	sys.jacobian = jacobian;
+	sys.dimension = 1;
+	sys.params = param;
 
 	if(seconds * d > 2e1) {
 	/* if we are already equilibriem*/
 	/* characteristic time is 2 / d, but the dependence is exponetial,
      * see Gabe's notes */
-		x[0] = x1;
+		dx[0] = x1 - x[0];
 		return GSL_SUCCESS;
 	}
 	double t = 0;
 
-	s->driver = gsl_odeiv2_driver_alloc_y_new(&s->sys, gsl_odeiv2_step_msbdf,
+
+	dx[0] = x[0];
+	driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_msbdf,
 			seconds/ 10000., 1e-6, 0.0);
-	gsl_odeiv2_driver_reset(s->driver);
-	gsl_odeiv2_driver_set_hmin(s->driver, seconds/ 100000.);
-	int code = gsl_odeiv2_driver_apply(s->driver, &t, seconds, x);
+	gsl_odeiv2_driver_reset(driver);
+	gsl_odeiv2_driver_set_hmin(driver, seconds/ 100000.);
+	int code = gsl_odeiv2_driver_apply(driver, &t, seconds, dx);
 
-	gsl_odeiv2_driver_free(s->driver);
+	gsl_odeiv2_driver_free(driver);
 
-	if(x[0] > 1.0) {
-		x[0] = 1.0;
+	if(dx[0] > 1.0) {
+		dx[0] = 1.0;
 	}
-	if(x[0] < 0.0) {
-		WARNING("%ld output x[0] = %e < 0.0\n", psys.tick, x[0]);
-		x[0] = 0.0;
+	if(dx[0] < 0.0) {
+		WARNING("%ld output x[0] = %e < 0.0\n", psys.tick, dx[0]);
+		dx[0] = 0.0;
 	}
+	dx[0] -= x[0];
 	return code;
 }

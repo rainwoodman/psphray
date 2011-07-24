@@ -343,14 +343,29 @@ static void update_pars() {
 	size_t d1 = 0, d2 = 0;
 	#pragma omp parallel for reduction(+: d1, d2) private(j)
 	for(j = 0; j < ipars_length; j++) {
-		Solver * s = solver_new();
 		intptr_t ipar = ipars[j];
-		if(!solver_evolve(s, ipar)) {
+		Step step;
+		if(psys.tick == psys.lasthit[ipar]) {
+			ERROR("particle solved twice at one tick");
+		}
+		double NH = C_HMF * psys.mass[ipar] / U_MPROTON;
+		/* everything multiplied by nH, saving some calculations */
+		step.xHI = psys.xHI[ipar];
+		step.ye = psys.ye[ipar];
+		step.y = psys.ye[ipar] - (1.0 - psys.xHI[ipar]);
+		step.nH = C_HMF * psys.rho[ipar] / (U_MPROTON / (U_CM * U_CM * U_CM));
+		//double logT = 4;log10(ieye2T(psys.ie[ipar], psys.ye[ipar]));
+		step.T = 1e4;
+		double time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
+		if(!step_evolve(&step, time)) {
 			d1++;
 		}
+		psys.recomb[ipar] += step.dyGH * NH;
+		psys.xHI[ipar] += step.dxHI;
+		psys.ye[ipar] += step.dye;
+
 		d2++;
 		psys.lasthit[ipar] = psys.tick;
-		solver_delete(s);
 		
 	}
 	evolve_errors += d1;

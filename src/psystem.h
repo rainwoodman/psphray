@@ -50,3 +50,15 @@ void psystem_write_output(int outputnum);
 	} \
 	MESSAGE("%s = (%e %e %e)",  # field, field[0], field[1], field[2]/psys.npar); \
 }
+
+typedef struct _Step {
+	double xHI;
+	double ye;
+	double y;
+
+	double nH;
+	double T;
+	double dxHI;
+	double dye;
+	double dyGH;
+} Step;
