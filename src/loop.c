@@ -70,6 +70,7 @@ static size_t emission_count;
 static size_t destructive_ionization;
 static double total_emission;
 static double total_recomb;
+static double total_lost;
 static size_t evolve_errors;
 static size_t evolve_count;
 
@@ -91,12 +92,13 @@ void run() {
 	destructive_ionization = 0;
 	evolve_errors = 0;
 	evolve_count = 0;
+	total_lost = 0;
 
 	intptr_t istep = 0;
 	while(1) {
 		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
-			MESSAGE("rays: %lu(rec) %lu(src)", recomb_count, emission_count);
-			MESSAGE("rays: %le(rec) %le(src)", total_recomb, total_emission);
+			MESSAGE("NUM Rays: %lu(rec) %lu(src)", recomb_count, emission_count);
+			MESSAGE("photons: %le(rec) %le(src) %le(lost)", total_recomb, total_emission, total_lost);
 			MESSAGE("destructive: %lu", destructive_ionization);
 			MESSAGE("evolve error: %lu / %lu", evolve_errors, evolve_count);
 			MESSAGE("tick: %lu", psys.tick);
@@ -289,10 +291,13 @@ static void deposit(){
 				TM *= exp(-tau);
 			}
 			
-			double dxHI = - absorb / NH;
+			double newxHI = psys.xHI[ipar] - absorb / NH;
+			if(newxHI < 0.0) newxHI = 0.0;
+			if(newxHI > 1.0) newxHI = 1.0;
+			
+			double dxHI = newxHI - psys.xHI[ipar];
 			psys.ye[ipar] -= dxHI;
-			psys.xHI[ipar] += dxHI;
-			if(psys.xHI[ipar] < 0.0) psys.xHI[ipar] = 0.0;
+			psys.xHI[ipar] = newxHI;
 			Tau += tau;
 			/* cut off at around 10^-10 */
 			if(Tau > 30.0) {
@@ -300,6 +305,7 @@ static void deposit(){
 				break;
 			}
 		}
+		total_lost += TM;
 	}
 }
 
