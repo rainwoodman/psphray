@@ -144,6 +144,7 @@ size_t reader_itemsize(Reader * reader, const char * blk) {
 	}
 	return b;
 }
+
 void reader_read(Reader * reader, const char * blk, int ptype, void *buf) {
 	char * error = NULL;
 	size_t pstart = 0;
