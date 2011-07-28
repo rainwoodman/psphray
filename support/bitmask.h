@@ -9,60 +9,62 @@ static int __bitmask_log2[] = {
 #define LOG2_BLOCK  (__bitmask_log2[sizeof(BLOCK_TYPE)])
 #define BLOCK_1 (BLOCK - 1)
 
-static inline BLOCK_TYPE * bitmask_alloc(size_t size) {
+static inline void * bitmask_alloc(size_t size) {
 	size_t total = (size + BLOCK_1 ) >> LOG2_BLOCK;
 	BLOCK_TYPE * rt = malloc(total * sizeof(BLOCK_TYPE) + sizeof(size_t));
 	*(size_t *) rt = size;
 	return rt;
 }
-static inline void bitmask_set_all(BLOCK_TYPE * mask) {
+static inline void bitmask_set_all(void * mask) {
 	size_t size = *(size_t *) mask;
 	size_t total = (size + BLOCK_1 ) >> LOG2_BLOCK;
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	memset(buf, -1, total * sizeof(BLOCK_TYPE));
-	BLOCK_TYPE m = ((1 << ((size & BLOCK_1))) -1);
-	buf[total - 1] &= m;
+	if((size & BLOCK_1) != 0) {
+		BLOCK_TYPE m = ((((BLOCK_TYPE)1) << ((size & BLOCK_1))) -1);
+		buf[total - 1] &= m;
+	}
 }
 
-static inline void bitmask_clear_all(BLOCK_TYPE * mask) {
+static inline void bitmask_clear_all(void * mask) {
 	size_t size = *(size_t *) mask;
 	size_t total = (size + BLOCK_1 ) >> LOG2_BLOCK;
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	memset(buf, 0, total * sizeof(BLOCK_TYPE));
 }
 
-static inline void bitmask_set(BLOCK_TYPE * mask, intptr_t idx) {
+static inline void bitmask_set(void * mask, intptr_t idx) {
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	int offset = idx & BLOCK_1;
-	BLOCK_TYPE bit = 1 << offset;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
 	//buf[idx >> LOG2_BLOCK] |= bit;
 	__sync_or_and_fetch(&buf[idx >> LOG2_BLOCK], bit);
 }
 
-static inline void bitmask_clear(BLOCK_TYPE * mask, intptr_t idx) {
+static inline void bitmask_clear(void * mask, intptr_t idx) {
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	int offset = idx & BLOCK_1;
-	BLOCK_TYPE bit = 1 << offset;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
 	//buf[idx >> LOG2_BLOCK] &= ~bit;
 	__sync_and_and_fetch(&buf[idx >> LOG2_BLOCK], ~bit);
 }
 
-static inline int bitmask_test_and_clear(BLOCK_TYPE * mask, intptr_t idx) {
+static inline int bitmask_test_and_clear(void * mask, intptr_t idx) {
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	int offset = idx & BLOCK_1;
-	BLOCK_TYPE bit = 1 << offset;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
 //	return (buf[idx >> LOG2_BLOCK] & bit) != 0;
 	return __sync_fetch_and_and(&buf[idx >> LOG2_BLOCK], ~bit) & bit;
 }
 
-static inline int bitmask_test(BLOCK_TYPE * mask, intptr_t idx) {
+static inline int bitmask_test(void * mask, intptr_t idx) {
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	int offset = idx & BLOCK_1;
-	BLOCK_TYPE bit = 1 << offset;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
 	return (buf[idx >> LOG2_BLOCK] & bit) != 0;
 }
 
-static inline size_t bitmask_sum(BLOCK_TYPE * mask) {
+static inline size_t bitmask_sum(void * mask) {
 //int __builtin_popcount(unsigned int x);
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	size_t size = *(size_t *) mask;
