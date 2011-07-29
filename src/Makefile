@@ -1,7 +1,8 @@
-CFLAGS = -g  -I ../support
-F90FLAGS = -g 
+CFLAGS = -g -ffast-math -fopenmp -I ../support
+OPT=-O3
+F90FLAGS = -g -ffast-math -O3 
 FC = gfortran
-LDFLAGS = -L ../support/libconfig/
+LDFLAGS = -pg -L ../support/libconfig/
 LIBS = -lconfig -lm -lgfortran -lgsl -lgslcblas -lgomp
 
 SOURCES = \
@@ -16,7 +17,7 @@ atomic-rate.c \
 loop.c \
 sph-depth.c \
 reader-massiveblack.c \
-reader-psphray.c \
+reader-psphray.c
 
 OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
 ALL = sane test-solve
@@ -26,7 +27,13 @@ ALL = sane test-solve
 all: $(ALL)
 
 .c.o:
-	$(CC) $(CFLAGS) -c -o $@ $^
+	$(CC) $(OPT) $(CFLAGS) -c -o $@ $^
+
+sane.o: sane.c
+	$(CC) -O3 $(CFLAGS) -c -o $@ $^
+
+loop.o: loop.c
+	$(CC) -O3 $(CFLAGS) -c -o $@ $^
 
 .F90.o:
 	$(FC) $(F90FLAGS) -c -o $@ $<

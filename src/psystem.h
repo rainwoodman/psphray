@@ -49,3 +49,9 @@ typedef struct _Step {
 	double die;
 	double dyGH;
 } Step;
+
+typedef struct x_t {
+	intptr_t ipar;
+	float d;
+	float b;
+} Xtype;

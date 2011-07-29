@@ -13,12 +13,12 @@ extern PSystem psys;
 
 static int function(double t, const double x[], double dxdt[], void * params){
 	double * p = params;
-	double R = p[0];
-	double Q = p[1];
-	double P = p[2];
-	double B = p[3];
+	const double R = p[0];
+	const double Q = p[1];
+	const double P = p[2];
+	const double B = p[3];
 
-	double d = x[0] - B;
+	const double d = x[0] - B;
 /* from GABE's notes  */
 	dxdt[0] = R * x[0] * x[0] + Q * x[0] + P;
 	dxdt[0] *= - tanh(10 * d);
@@ -29,16 +29,16 @@ static int function(double t, const double x[], double dxdt[], void * params){
 
 static int jacobian(double t, const double x[], double *dfdx, double dfdt[], void * params) {
 	double * p = params;
-	double R = p[0];
-	double Q = p[1];
-	double P = p[2];
-	double B = p[3];
+	const double R = p[0];
+	const double Q = p[1];
+	const double P = p[2];
+	const double B = p[3];
 
-	double d = x[0] - B;
+	const double d = x[0] - B;
 
 	dfdx[0] = 2 * R * x[0] + Q;
 /* force the unstable solution to converge back to the stable one */
-	double th = tanh(- 10 * d);
+	const double th = tanh(- 10 * d);
 	dfdx[0] += - (R * x[0] * x[0] + Q * x[0] + P) *  (1 - th * th) * 10;
 	dfdt[0] = 0;
 

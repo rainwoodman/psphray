@@ -44,10 +44,6 @@ config_setting_t * config_ensure(config_t * config, char * path, int type);
 
 double units_parse(char * units);
 double units_format(double value, char * units);
-double z2t(double z);
-double t2z(double z);
-float ieye2T(const float ie, const float ye);
-float Tye2ie(const float T, const float ye);
 
 extern double U_CM;
 extern double U_GRAM;
@@ -67,7 +63,20 @@ extern double C_OMEGA_M;
 extern double C_OMEGA_B;
 extern double C_H;
 extern double C_BOLTZMANN;
+extern double U_MPROTON_OVER_C_BOLTZMANN;
+extern double C_BOLTZMANN_OVER_U_MPROTON;
 
+double z2t(double z);
+double t2z(double z);
+static inline float ieye2T(const float ie, const float ye) {
+	return U_MPROTON_OVER_C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
+			C_HMF + C_HMF * ye) * 2.0 / 3.0 ;
+
+}
+static inline float Tye2ie(const float T, const float ye) {
+	return T * C_BOLTZMANN_OVER_U_MPROTON * ( (1.0 - C_HMF) * 0.25 + 
+			C_HMF + C_HMF * ye) / 2.0 * 3.0 ;
+}
 
 extern int AR_LOG_T;
 extern int AR_HI_CI;

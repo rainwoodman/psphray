@@ -23,6 +23,9 @@ double C_H = 0.0;
 double C_HMF = 0.0;
 double C_BOLTZMANN = 0.0;
 
+double U_MPROTON_OVER_C_BOLTZMANN = 0.0;
+double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
+
 	static struct {
 		const char * name;
 		double * value;
@@ -68,6 +71,9 @@ double units_init() {
 	U_MPROTON = U_KG * 1.67262158e-27;
 	U_KELVIN = 1.0;
 	C_BOLTZMANN = 1.3806503e-23 * U_M * U_M * U_KG / U_SEC / U_SEC;
+
+	U_MPROTON_OVER_C_BOLTZMANN = U_MPROTON / C_BOLTZMANN;
+	C_BOLTZMANN_OVER_U_MPROTON = 1.0 / (U_MPROTON / C_BOLTZMANN);
 }
 
 double units_simple(char * simple) {
@@ -152,11 +158,13 @@ double t2z(double t) {
 	return 1.0 / a - 1.0;
 }
 
+/*
 float ieye2T(const float ie, const float ye) {
-	return U_MPROTON / C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
+	return U_MPROTON_OVER_C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
 			C_HMF + C_HMF * ye) * 2.0 / 3.0 ;
 }
 float Tye2ie(const float T, const float ye) {
-	return T / U_MPROTON * C_BOLTZMANN * ( (1.0 - C_HMF) * 0.25 + 
+	return T * C_BOLTZMANN_OVER_U_MPROTON * ( (1.0 - C_HMF) * 0.25 + 
 			C_HMF + C_HMF * ye) / 2.0 * 3.0 ;
 }
+*/

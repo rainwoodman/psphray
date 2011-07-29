@@ -13,6 +13,7 @@ typedef struct {
 	double logTmin; 
 	double logTmax; 
 	double step;
+	double step_inv;
 } AtomicRate;
 
 int AR_LOG_T = -1;
@@ -32,22 +33,25 @@ double ar_verner(double Ry) {
 }
 
 double ar_get(int id, double logT) {
+/*
 	if(isnan(logT) || isinf(logT)) 
 		ERROR("temperature non-positive: logT = %lg", logT);
-	ssize_t index = (logT - ar.logTmin) / ar.step;
+*/
+	ssize_t index = (logT - ar.logTmin) * ar.step_inv;
 	if(index < 0) {
-		ERROR("temperature lower than the mininal.(logT= %lg)", logT);
+		index = 0;
+//		ERROR("temperature lower than the mininal.(logT= %lg)", logT);
 	}
 	if(index >= ar.nrows - 1) {
-		ERROR("temperature higher than the maximal.(logT= %lg)", logT);
+		index = ar.nrows - 2;
+//		ERROR("temperature higher than the maximal.(logT= %lg)", logT);
 	}
-	double left = ar.data[AR_LOG_T][index];
-	double right = ar.data[AR_LOG_T][index + 1];
+	float left = ar.data[AR_LOG_T][index];
+	float right = ar.data[AR_LOG_T][index + 1];
 	/* the first col is the temprature */
-	double leftwt = (right - logT);
-	double rightwt = (logT - left);
-	double dlogT = right - left;
-	return (leftwt * ar.data[id][index] + rightwt * ar.data[id][index+1]) / dlogT;
+	float leftwt = (right - logT);
+	float rightwt = (logT - left);
+	return (leftwt * ar.data[id][index] + rightwt * ar.data[id][index+1]) * ar.step_inv;
 }
 
 static int ar_col_id(char * col) {
@@ -83,6 +87,7 @@ void ar_init(char * filename) {
 					&ar.logTmin, &ar.logTmax, &ar.nrows, &ar.step)) {
 				ERROR("expecting header logTmin logTmax nrows stepsize, at %s, %d", filename, NR);
 			}
+			ar.step_inv = 1.0 / ar.step;
 			stage++;
 		break;
 		case 1:
