@@ -98,6 +98,11 @@ void run() {
 	memset(&stat, 0, sizeof(stat));
 
 	intptr_t istep = 0;
+	psystem_stat("xHI");
+	psystem_stat("ye");
+	psystem_stat("ie");
+	psystem_stat("T");
+	psystem_stat("recomb");
 	while(1) {
 		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
 			MESSAGE("tick: %lu, full recomb scans = %lu", psys.tick, stat.full_scans);
@@ -105,9 +110,10 @@ void run() {
 			MESSAGE("Ray photons: %le(rec) %le(src) %le(lost)", stat.ray_photon.recomb, stat.ray_photon.source, stat.ray_photon.lost);
 			MESSAGE("destructive: %lu, evolve error %lu/%lu", stat.destruct, stat.errors, stat.count);
 			MESSAGE("recombine pool %le RES pool %lu", stat.total_recomb, res_size);
-			STAT(xHI, double)
-			STAT(ye, double)
-			STAT(recomb, double)
+			psystem_stat("xHI");
+			psystem_stat("ye");
+			psystem_stat("ie");
+			psystem_stat("recomb");
 
 			psystem_write_output(istep + 1);
 			istep++;
@@ -311,6 +317,7 @@ static void deposit(){
 				TM *= exp(-tau);
 			}
 			
+			double T = ieye2T(psys.ie[ipar], psys.ye[ipar]);
 			double newxHI = psys.xHI[ipar] - absorb / NH;
 			if(newxHI < 0.0) newxHI = 0.0;
 			if(newxHI > 1.0) newxHI = 1.0;
@@ -318,6 +325,9 @@ static void deposit(){
 			double dxHI = newxHI - psys.xHI[ipar];
 			psys.ye[ipar] -= dxHI;
 			psys.xHI[ipar] = newxHI;
+			if(CFG_ISOTHERMAL) {
+				psys.ie[ipar] = Tye2ie(T, psys.ye[ipar]);
+			}
 			Tau += tau;
 			/* cut off at around 10^-10 */
 			if(Tau > 30.0) {
@@ -375,20 +385,27 @@ static void update_pars() {
 		step.ye = psys.ye[ipar];
 		step.y = psys.ye[ipar] - (1.0 - psys.xHI[ipar]);
 		step.nH = C_HMF * psys.rho[ipar] / (U_MPROTON / (U_CM * U_CM * U_CM));
-		//double logT = 4;log10(ieye2T(psys.ie[ipar], psys.ye[ipar]));
-		step.T = 1e4;
+		step.ie = psys.ie[ipar];
+		step.T = ieye2T(psys.ie[ipar], psys.ye[ipar]);
+
 		double time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		if(!step_evolve(&step, time)) {
+			psystem_stat("T");
 			d1++;
-		}
-		psys.recomb[ipar] += step.dyGH * NH;
-		increase_recomb += step.dyGH * NH;
-		psys.xHI[ipar] += step.dxHI;
-		psys.ye[ipar] += step.dye;
+		} else {
+			psys.recomb[ipar] += step.dyGH * NH;
+			increase_recomb += step.dyGH * NH;
+			psys.xHI[ipar] += step.dxHI;
+			psys.ye[ipar] += step.dye;
+			psys.ie[ipar] += step.die;
+			psys.lasthit[ipar] = psys.tick;
 
+			if(CFG_ISOTHERMAL) {
+				psys.ie[ipar] = Tye2ie(step.T, psys.ye[ipar]);
+			}
+			MESSAGE("new T = %g", ieye2T(psys.ie[ipar], psys.ye[ipar]));
+		}
 		d2++;
-		psys.lasthit[ipar] = psys.tick;
-		
 	}
 	stat.errors += d1;
 	stat.count += d2;

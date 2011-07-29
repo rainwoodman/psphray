@@ -1,5 +1,5 @@
-CFLAGS = -g -I ../support -fopenmp
-F90FLAGS = -g
+CFLAGS = -g  -I ../support
+F90FLAGS = -g 
 FC = gfortran
 LDFLAGS = -L ../support/libconfig/
 LIBS = -lconfig -lm -lgfortran -lgsl -lgslcblas -lgomp

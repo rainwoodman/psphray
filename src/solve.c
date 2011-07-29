@@ -49,7 +49,8 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], voi
 int step_evolve(Step * step, double time) {
 	double seconds = time / U_SEC;
 
-	double logT = log10(step->T);
+	double T = step->T;
+	double logT = log10(T);
 	double gamma_HI = ar_get(AR_HI_CI, logT) * step->nH;
 	double alpha_HII = ar_get(AR_HII_RC_A, logT) * step->nH;
 	double alpha_HII1 = alpha_HII - ar_get(AR_HII_RC_B, logT) * step->nH;
@@ -70,7 +71,6 @@ int step_evolve(Step * step, double time) {
 	}
 
 	double fac = (alpha_HII1 / alpha_HII);
-
 	step->dxHI = dx[0];
 	step->dye = - dx[0];
 	step->dyGH = dx[0] * fac;

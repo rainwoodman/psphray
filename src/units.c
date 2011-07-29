@@ -156,3 +156,7 @@ float ieye2T(const float ie, const float ye) {
 	return U_MPROTON / C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
 			C_HMF + C_HMF * ye) * 2.0 / 3.0 ;
 }
+float Tye2ie(const float T, const float ye) {
+	return T / U_MPROTON * C_BOLTZMANN * ( (1.0 - C_HMF) * 0.25 + 
+			C_HMF + C_HMF * ye) / 2.0 * 3.0 ;
+}

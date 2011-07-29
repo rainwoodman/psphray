@@ -9,6 +9,8 @@ extern void ar_init(const char * filename);
 
 config_t CFG[] = {{0}};
 int CFG_WRITE_INIT = 0;
+int CFG_ISOTHERMAL = 0;
+int CFG_ADIABATIC = 0;
 int CFG_DISABLE_2ND_GEN_PHOTONS = 0;
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
@@ -20,7 +22,7 @@ config_setting_t * config_ensure(config_t * config, char * path, int type);
 
 void cfg_init(char * filename) {
 	config_init(CFG);
-	config_set_auto_convert(CFG, 1);
+	config_set_auto_convert(CFG, CONFIG_TRUE);
 	if(!config_read_file(CFG, filename)) {
 		ERROR("%s: %d: %s", config_error_file(CFG), config_error_line(CFG), config_error_text(CFG));
 	}
@@ -28,6 +30,8 @@ void cfg_init(char * filename) {
 	config_ensure_string (CFG, "psphray.atomicRates", "<filename>");
 	config_ensure_bool   (CFG, "psphray.writeInit", CONFIG_TRUE);
 	config_ensure_bool   (CFG, "psphray.disable2ndGenPhotons", CONFIG_FALSE);
+	config_ensure_bool   (CFG, "psphray.isothermal", CONFIG_TRUE);
+	config_ensure_bool   (CFG, "psphray.adiabatic", CONFIG_FALSE);
 
 	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
 	config_ensure_bool   (CFG, "cosmology.comoving", CONFIG_TRUE);
@@ -46,6 +50,8 @@ void cfg_init(char * filename) {
 
 	config_lookup_bool(CFG, "psphray.writeInit", &CFG_WRITE_INIT);
 	config_lookup_bool(CFG, "psphray.disable2ndGenPhotons", &CFG_DISABLE_2ND_GEN_PHOTONS);
+	config_lookup_bool(CFG, "psphray.isothermal", &CFG_ISOTHERMAL);
+	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
 
 	units_init();
 	const char * arfilename = NULL;

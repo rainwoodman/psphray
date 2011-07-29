@@ -5,13 +5,12 @@ typedef struct {
 
 typedef struct {
 	float (*pos)[3];
-	float *xHI;
-	float *ye;
+	double *xHI;
+	double *ye;
 	float *mass;
 	float *sml;
 	float *rho;
 	float *ie;
-
 	char * mask;
 	size_t npar;
 
@@ -34,31 +33,19 @@ typedef struct {
 
 void psys_switch_epoch(int epoch);
 void psystem_write_output(int outputnum);
-
-#define STAT(field, type) { \
-	intptr_t ipar; \
-	type field[3]; \
-	for(ipar = 0; ipar < psys.npar; ipar++) { \
-		if(ipar == 0) { \
-			field[0] = psys.field[ipar]; \
-			field[1] = psys.field[ipar]; \
-			field[2] = psys.field[ipar]; \
-		} \
-		if(field[0] < psys.field[ipar]) field[0] = psys.field[ipar]; \
-		if(field[1] > psys.field[ipar]) field[1] = psys.field[ipar]; \
-		field[2] += psys.field[ipar]; \
-	} \
-	MESSAGE("%s = (%e %e %e)",  # field, field[0], field[1], field[2]/psys.npar); \
-}
+void psystem_stat(const char * component);
 
 typedef struct _Step {
 	double xHI;
 	double ye;
+	double ie;
 	double y;
 
 	double nH;
 	double T;
+
 	double dxHI;
 	double dye;
+	double die;
 	double dyGH;
 } Step;

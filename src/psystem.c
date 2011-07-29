@@ -402,3 +402,77 @@ void psystem_write_output(int outputnum) {
 	}
 	free(basename);
 }
+
+static inline void _get_value(void * field, intptr_t ipar, int type, int dim, double * value) {
+	int d;
+	for(d = 0; d < dim; d++) {
+		switch(type) {
+			case 0:
+				value[d] = ((float*)field)[ipar * dim + d];
+			break;
+			case 1:
+				value[d] = ((double*)field)[ipar * dim + d];
+			break;
+		}
+	}
+}
+
+static void psystem_stat_internal(void * field, size_t npar, int type, int dim, double * max, double * min, double * mean) {
+	intptr_t ipar = 0;
+	double mn[dim], mx[dim], sum[dim];
+	double value[dim];
+	int d;
+	_get_value(field, 0, type, dim, value);
+	for(d = 0; d < dim; d++) {
+		mn[d] = value[d]; 
+		mx[d] = value[d];
+		sum[d] = value[d];
+	}
+	for(ipar = 1; ipar < npar; ipar++) {
+		_get_value(field, ipar, type, dim, value);
+		for(d = 0; d < dim; d++) {
+			if(mx[d] < value[d]) mx[d] = value[d];
+			if(mn[d] > value[d]) mn[d] = value[d];
+			sum[d] += value[d];
+		}
+	}
+	for(d = 0; d < dim; d++) {
+		max[d] = mx[d];
+		min[d] = mn[d];
+		mean[d] = sum[d] / npar;
+	}
+}
+void psystem_stat(const char * component) {
+	double min[3], max[3], mean[3];
+	if(!strcmp(component, "xHI")) {
+		psystem_stat_internal(psys.xHI, psys.npar, 1, 1, max, min, mean);
+	}
+	if(!strcmp(component, "recomb")) {
+		psystem_stat_internal(psys.recomb, psys.npar, 1, 1, max, min, mean);
+	}
+	if(!strcmp(component, "ye")) {
+		psystem_stat_internal(psys.ye, psys.npar, 1, 1, max, min, mean);
+	}
+	if(!strcmp(component, "mass")) {
+		psystem_stat_internal(psys.mass, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "sml")) {
+		psystem_stat_internal(psys.sml, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "rho")) {
+		psystem_stat_internal(psys.rho, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "ie")) {
+		psystem_stat_internal(psys.ie, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "T")) {
+		float * T = malloc(sizeof(float) * psys.npar);
+		intptr_t i;
+		for(i = 0; i < psys.npar; i++) {
+			T[i] = ieye2T(psys.ie[i], psys.ye[i]);
+		}
+		psystem_stat_internal(T, psys.npar, 0, 1, max, min, mean);
+		free(T);
+	}
+	MESSAGE("%s: mean=%g min=%g max=%g", component, mean[0], min[0], max[0]);
+}
