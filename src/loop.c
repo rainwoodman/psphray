@@ -403,7 +403,6 @@ static void update_pars() {
 			if(CFG_ISOTHERMAL) {
 				psys.ie[ipar] = Tye2ie(step.T, psys.ye[ipar]);
 			}
-			MESSAGE("new T = %g", ieye2T(psys.ie[ipar], psys.ye[ipar]));
 		}
 		d2++;
 	}
