@@ -6,7 +6,8 @@ static int __bitmask_log2[] = {
    -1, 3, 4, -1, 5, -1, -1, -1, 6, -1, -1, 
 };
 
-#define LOG2_BLOCK  (__bitmask_log2[sizeof(BLOCK_TYPE)])
+#define LOG2_BLOCK  5
+//(__bitmask_log2[sizeof(BLOCK_TYPE)])
 #define BLOCK_1 (BLOCK - 1)
 
 static inline void * bitmask_alloc(size_t size) {
