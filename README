@@ -1,0 +1,117 @@
+P-SPHRAY.
+==============
+
+OpenMP for now.
+
+CRASH scheme on a SPH densiy field.
+
+Passes Illiev-test1 for isothermal field.
+
+
+USAGE
+========
+
+$ psphray config
+
+Configuration format. Example. Comments inline with #
+
+----oxoxoxoxox-----------------
+version = "1.0";
+
+psphray: {
+# the atomic rates. see below. Relative path supported.
+	atomicRates = "../test/atomic_rates_Hui.txt"; 
+# whether to write an output of the unprocessed field.
+	writeInit = false;
+};
+
+cosmology: {
+# comoving unsupported yet.
+	comoving = false;
+	omegaL = 0.74;
+	omegaM = 0.26;
+	omegaB = 0.044;
+	h      = 0.72;
+	hmf    = 1.0;
+};
+
+units: {
+# these numbers determine the internal unit in cgs.
+  mass_gram = 1.9847005219450705e+43;
+  length_cm = 3.083545555831848e+21;
+  time_s = 3.08568025e16;
+};
+
+box: {
+#	another is boundary= "periodic" but it is not implemented yet.
+	boundary= "vaccum";
+# also specify the boxsize if the information infered from the input files
+# are inaccurate
+#   size = 100;
+};
+
+
+epochs : ( 
+	{
+# input snapshot from SPH simulation and its format
+# massiveblack and d6 for now.
+		snapshot = ["iliev-test1.field", "massiveblack"];
+# the location and luminosity of sources see below
+		source = "../iliev-test1.source";
+# number of rays traced in one time tick
+		nray = 32;
+# number of ticks
+		nticks = 1000000;
+		output = {
+# format of output for this epoch
+			filename = "out-iliev-test1-%d";
+# divide the output input nfiles
+			nfiles = 1;
+# checkpoints of the outputs. if steps is an integer, the output will be
+# equally distributed.
+			steps = ((10, "myr"), (30, "myr"), (100, "myr"), (200, "myr"), (500, "myr"));
+		};
+# total duration of the Epoch. This is optional when the epoch is not the last
+  one, as the duration can be inferred in that case.
+		duration = ( 500, "myr");
+	}
+);
+----oxoxoxoxox-----------------
+
+
+Source file format. Example.
+-----------oxoxoxoxoxoxxo-------
+# first line says how many sources there are
+1
+# what follows are locations(x,y,z), velocity(u,v,w), and luminosity/1e50, then two unused fields.
+0.00 0.0 0.0 0 0 0 5e-2 test junk
+
+----------------oxoxoxoxoxxox-------------
+
+Atomic rate file format. Example (excerption)
+the fields has to be in a straight fortran format. each number uses 14 bytes
+exact.
+
+-------------------oxoxoxoxxoxo--------
+#header
+# lowtemp hightemp    numpoints stepsize
+ 0.00000E+00 9.00000E+00    2251 4.00000E-03
+# columnnames, important used by the program to lookup rates
+ LogT          HIci          HIIrcA        HIIrcB        HIIrccA       HIIrccB       HIcic         HIcec         
+# the reference of the rate. this line is ignored
+               cen92         cen92         hui97         cen92         hui97         cen92         cen92         
+# rates
+ 0.00000E+00   0.00000E+00   3.34389E-10   1.15238E-10   3.46331E-26   1.41724E-26   0.00000E+00   0.00000E+00   
+ 4.00000E-03   0.00000E+00   3.32240E-10   1.14607E-10   3.47290E-26   1.42264E-26   0.00000E+00   0.00000E+00   
+ 8.00000E-03   0.00000E+00   3.30105E-10   1.13981E-10   3.48250E-26   1.42806E-26   0.00000E+00   0.00000E+00   
+---------------------oxoxoxoxoxo-----------
+
+COMPILATION
+===========
+
+first make libconfig in support/libconfig.
+
+then make the main code in src/
+
+the binary is psphray.
+
