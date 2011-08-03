@@ -79,7 +79,7 @@ void init() {
 	gsl_rng_set(rng, 123456);
 }
 
-void run() {
+void run_epoch() {
 
 	active = bitmask_alloc(psys.npar);
 	bitmask_clear_all(active);

@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 
 	rt_switch_epoch(0);
 
-	run();
+	run_epoch();
 	return 0;
 
 	psystem_switch_epoch(1);
