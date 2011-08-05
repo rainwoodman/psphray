@@ -2,12 +2,16 @@
 #include <string.h>
 #include <messages.h>
 #include <libconfig/libconfig.h>
+#include <gsl/gsl_rng.h>
 
 extern void units_init();
 extern double units_parse(const char * units);
 extern void ar_init(const char * filename);
 
 config_t CFG[] = {{0}};
+
+gsl_rng * RNG = NULL;
+
 int CFG_WRITE_INIT = 0;
 int CFG_ISOTHERMAL = 0;
 int CFG_ADIABATIC = 0;
@@ -28,6 +32,7 @@ void cfg_init(char * filename) {
 	}
 	config_ensure        (CFG, "psphray", CONFIG_TYPE_GROUP);
 	config_ensure_string (CFG, "psphray.atomicRates", "<filename>");
+	config_ensure_int64  (CFG, "psphray.seed", 123456);
 	config_ensure_bool   (CFG, "psphray.writeInit", CONFIG_TRUE);
 	config_ensure_bool   (CFG, "psphray.disable2ndGenPhotons", CONFIG_FALSE);
 	config_ensure_bool   (CFG, "psphray.isothermal", CONFIG_TRUE);
@@ -52,6 +57,11 @@ void cfg_init(char * filename) {
 	config_lookup_bool(CFG, "psphray.disable2ndGenPhotons", &CFG_DISABLE_2ND_GEN_PHOTONS);
 	config_lookup_bool(CFG, "psphray.isothermal", &CFG_ISOTHERMAL);
 	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
+
+	unsigned long long seed = 123456;
+	config_lookup_int64(CFG, "psphray.seed", &seed);
+	RNG = gsl_rng_alloc(gsl_rng_mt19937);
+	gsl_rng_set(RNG, seed);
 
 	units_init();
 	const char * arfilename = NULL;

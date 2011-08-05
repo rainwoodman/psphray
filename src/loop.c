@@ -48,8 +48,6 @@ static void merge_ipars();
 static void deposit();
 static void update_pars();
 
-gsl_rng * rng = NULL;;
-
 ARRAY_DEFINE(r, struct r_t);
 ARRAY_DEFINE(ipars, intptr_t);
 
@@ -82,8 +80,6 @@ static struct {
 } stat;
 
 void init() {
-	rng = gsl_rng_alloc(gsl_rng_mt19937);
-	gsl_rng_set(rng, 123456);
 }
 
 void run_epoch() {
@@ -174,17 +170,17 @@ static void emit_rays() {
 	gsl_ran_discrete_t * rec_ran = NULL;
 	const double branch = total_src / (total_src + stat.recomb_pool_photon);
 	for(i = 0; i < r_length; i++) {
-		const double sample = gsl_rng_uniform(rng);
+		const double sample = gsl_rng_uniform(RNG);
 		if(!CFG_DISABLE_2ND_GEN_PHOTONS 
 		&& sample > branch) {
 			/* recomb ray */
 			if(rec_ran == NULL) rec_ran = gsl_ran_discrete_preproc(psys.npar, psys.recomb);
-			const intptr_t ipar = gsl_ran_discrete(rng, rec_ran);
+			const intptr_t ipar = gsl_ran_discrete(RNG, rec_ran);
 			r[i].ipar = ipar;
 			r[i].type = 1;
 		} else {
 			if(src_ran == NULL) src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
-			const intptr_t isrc = gsl_ran_discrete(rng, src_ran);
+			const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
 			r[i].isrc = isrc;
 			/* src ray */
 			r[i].type = 0;
@@ -215,7 +211,7 @@ static void emit_rays() {
 			break;
 			default: ERROR("never each here");
 		}
-		gsl_ran_dir_3d(rng, &dx, &dy, &dz);
+		gsl_ran_dir_3d(RNG, &dx, &dy, &dz);
 		r[i].dir[0] = dx;
 		r[i].dir[1] = dy;
 		r[i].dir[2] = dz;

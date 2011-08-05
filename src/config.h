@@ -1,4 +1,6 @@
 #include <libconfig/libconfig.h>
+#include <gsl/gsl_rng.h>
+
 typedef struct {
 	double redshift;
 	double age;
@@ -23,6 +25,7 @@ extern int CFG_ADIABATIC;
 extern int CFG_ISOTHERMAL;
 extern int CFG_DISABLE_2ND_GEN_PHOTONS;
 
+extern gsl_rng * RNG;
 extern Epoch * EPOCHS;
 extern int N_EPOCHS;
 
