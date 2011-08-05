@@ -21,16 +21,13 @@ struct r_t {
 	double freq;
 	double length;
 
-	intptr_t ires;
+	int type;
+	union {
+		intptr_t isrc;
+		intptr_t ipar;
+	};
 
 	ARRAY_DEFINE_S(x, Xtype)
-};
-
-struct res_t {
-	double Nph;
-	intptr_t isrc;
-	intptr_t ipar;
-	int type;
 };
 
 extern PSystem psys;
@@ -43,8 +40,9 @@ extern float sph_depth(const float r_h);
 size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype ** pars, size_t * size);
 
 static int x_t_compare(const void * p1, const void * p2);
+static int r_t_compare(const void * p1, const void * p2);
+
 static void trace();
-static void make_photons();
 static void emit_rays();
 static void merge_ipars();
 static void deposit();
@@ -52,7 +50,6 @@ static void update_pars();
 
 gsl_rng * rng = NULL;;
 
-ARRAY_DEFINE(res, struct res_t);
 ARRAY_DEFINE(r, struct r_t);
 ARRAY_DEFINE(ipars, intptr_t);
 
@@ -60,18 +57,28 @@ char * active = NULL;
 static struct {
 	struct {
 		double recomb;
-		double source;
+		double src;
 		double lost;
-	} ray_photon;
+	} tick_photon;
+	struct {
+		double recomb;
+		double src;
+		double lost;
+	} total_photon;
 	struct {
 		size_t recomb;
-		size_t source;
-	} ray_count;
+		size_t src;
+	} total_ray;
+	struct {
+		size_t recomb;
+		size_t src;
+	} tick_ray;
+
 	size_t destruct;
 	size_t errors;
 	size_t count;
-	size_t full_scans;
-	double total_recomb;
+	double recomb_pool_photon;
+	size_t tick;
 } stat;
 
 void init() {
@@ -83,7 +90,6 @@ void run_epoch() {
 
 	active = bitmask_alloc(psys.npar);
 	bitmask_clear_all(active);
-	ARRAY_ENSURE(res, struct res_t, psys.nsrcs);
 
 	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray);
 
@@ -97,11 +103,22 @@ void run_epoch() {
 	psystem_stat("recomb");
 	while(1) {
 		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
-			MESSAGE("-----tick: %lu, full recomb scans = %lu---", psys.tick, stat.full_scans);
-			MESSAGE("Rays: %lu(rec) %lu(src)", stat.ray_count.recomb, stat.ray_count.source);
-			MESSAGE("Ray photons: %le(rec) %le(src) %le(lost)", stat.ray_photon.recomb, stat.ray_photon.source, stat.ray_photon.lost);
-			MESSAGE("destructive: %lu, evolve error %lu/%lu", stat.destruct, stat.errors, stat.count);
-			MESSAGE("recombine pool %le RES pool %lu", stat.total_recomb, res_size);
+			stat.total_ray.src += stat.tick_ray.src;
+			stat.total_ray.recomb += stat.tick_ray.recomb;
+			stat.total_photon.src += stat.tick_photon.src;
+			stat.total_photon.lost += stat.tick_photon.lost;
+			stat.total_photon.recomb += stat.tick_photon.recomb;
+
+			MESSAGE("-----tick: %lu ---[SRC REC]----", psys.tick);
+			MESSAGE("RY %lu/%lu %lu/%lu", 
+			        stat.tick_ray.src / stat.tick, stat.total_ray.src, 
+			        stat.tick_ray.recomb / stat.tick, stat.total_ray.recomb);
+			MESSAGE("PH %le/%le %le/%le %le/%le", 
+			        stat.tick_photon.src / stat.tick, stat.total_photon.src,
+			        stat.tick_photon.recomb / stat.tick, stat.total_photon.recomb,
+			        stat.tick_photon.lost / stat.tick, stat.total_photon.lost);
+			MESSAGE("RP: %le", stat.recomb_pool_photon);
+			MESSAGE("EV: %lu/%lu", stat.errors, stat.count);
 			psystem_stat("T");
 			psystem_stat("xHI");
 			psystem_stat("ye");
@@ -110,10 +127,13 @@ void run_epoch() {
 
 			psystem_write_output(istep + 1);
 			istep++;
+			memset(&stat.tick_ray, 0, sizeof(stat.tick_ray));
+			memset(&stat.tick_photon, 0, sizeof(stat.tick_photon));
+			stat.tick = 0;
 		}
 		if(psys.tick == psys.epoch->nticks) break;
 
-		make_photons();
+		stat.tick++;
 		psys.tick++;
 
 		emit_rays();
@@ -136,86 +156,62 @@ void run_epoch() {
 	}
 	ARRAY_FREE(r);
 
-	ARRAY_FREE(res);
 	free(active);
 }
 
-static void make_photons(){
-	intptr_t i;
-
-	ARRAY_RESIZE(res, struct res_t, psys.nsrcs);
-
-	double total_src = 0.0;
-	for(i = 0; i < psys.nsrcs; i++) {
-		res[i].Nph += psys.srcs[i].Ngamma_sec * psys.tick_time / U_SEC;
-		res[i].type = 0;
-		res[i].isrc = i;
-		total_src += res[i].Nph;
-	}
-
-	if(CFG_DISABLE_2ND_GEN_PHOTONS) return;
-
-	if(stat.total_recomb > 0.1 * total_src) {
-		/* if there are too many recomb photons, do a full recombineation scan*/
-		stat.full_scans++;
-		intptr_t ipar;
-		for(ipar = 0; ipar < psys.npar; ipar++) {
-			if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
-				struct res_t * t = ARRAY_APPEND(res, struct res_t);
-				t->Nph = psys.recomb[ipar];
-				t->type = 1;
-				t->ipar = ipar;
-			}
-		}
-	} else {
-		for(i = 0; i < ipars_length; i++) {
-			const intptr_t ipar = ipars[i];
-			if(psys.recomb[ipar] > 0.0 /*FIXME: use a bigger threshold*/) {
-				struct res_t * t = ARRAY_APPEND(res, struct res_t);
-				t->Nph = psys.recomb[ipar];
-				t->type = 1;
-				t->ipar = ipar;
-			}
-		}
-	}
-}
 
 static void emit_rays() {
-	double weights[res_length];
+	double weights[psys.nsrcs];
+	double total_src = 0.0;
 	intptr_t i;
-	size_t raycount[res_length];
-	for(i = 0; i < res_length; i++) {
-		switch(res[i].type) {
-			case 0:
-			weights[i] = res[i].Nph;
-			break;
-			case 1:
-			weights[i] = res[i].Nph;
+	for(i = 0; i < psys.nsrcs; i++) {
+		weights[i] = psys.srcs[i].Ngamma_sec * psys.tick_time / U_SEC;
+		total_src += weights[i];
+	}
+
+	
+	gsl_ran_discrete_t * src_ran = NULL;
+	gsl_ran_discrete_t * rec_ran = NULL;
+	const double branch = total_src / (total_src + stat.recomb_pool_photon);
+	for(i = 0; i < r_length; i++) {
+		const double sample = gsl_rng_uniform(rng);
+		if(!CFG_DISABLE_2ND_GEN_PHOTONS 
+		&& sample > branch) {
+			/* recomb ray */
+			if(rec_ran == NULL) rec_ran = gsl_ran_discrete_preproc(psys.npar, psys.recomb);
+			const intptr_t ipar = gsl_ran_discrete(rng, rec_ran);
+			r[i].ipar = ipar;
+			r[i].type = 1;
+		} else {
+			if(src_ran == NULL) src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
+			const intptr_t isrc = gsl_ran_discrete(rng, src_ran);
+			r[i].isrc = isrc;
+			/* src ray */
+			r[i].type = 0;
 		}
-		raycount[i] = 0;
 	}
 
-	gsl_ran_discrete_t * randist = gsl_ran_discrete_preproc(res_length, weights);
-
+	/* sort the rays by type and ipar/isrc so that
+     * so that we know how many times a source is sampled */
+	qsort(r, r_length, sizeof(struct r_t), r_t_compare);
+    
+	/* now make the photons in the rays */
+	int identical_count = -10000;
 	for(i = 0; i < r_length; i++) {
-		const intptr_t ires = gsl_ran_discrete(rng, randist);
-		r[i].ires = ires;
-		raycount[ires]++;
-	}
-	for(i = 0; i < r_length; i++) {
-		const intptr_t ires = r[i].ires;
 		int d;
 		double dx, dy, dz;
-		switch(res[ires].type) {
+		switch(r[i].type) {
 			case 0: /* from a src */
 			for(d = 0; d < 3; d++) {
-				r[i].s[d] = psys.srcs[res[ires].isrc].pos[d];
+				r[i].s[d] = psys.srcs[r[i].isrc].pos[d];
 			}
+			r[i].Nph = weights[r[i].isrc];
 			break;
 			case 1: /* from a recombination, aka particle */
 			for(d = 0; d < 3; d++) {
-				r[i].s[d] = psys.pos[res[ires].ipar][d];
+				r[i].s[d] = psys.pos[r[i].ipar][d];
 			}
+			r[i].Nph = psys.recomb[r[i].ipar]; 
 			break;
 			default: ERROR("never each here");
 		}
@@ -224,27 +220,47 @@ static void emit_rays() {
 		r[i].dir[1] = dy;
 		r[i].dir[2] = dz;
 		r[i].freq = 1.0;
-		r[i].Nph = res[ires].Nph / raycount[ires];
 		r[i].length = 2.0 * psys.boxsize;
 	}
+	for(i = 0; i <= r_length; i++) {
+		if(i == 0) {
+			identical_count = 1;
+			continue;
+		}
+		if(i == r_length || r_t_compare(&r[i-1], &r[i])) {
+			const double factor = 1.0 / identical_count;
+			while(identical_count > 0) {
+				r[i - identical_count].Nph *= factor;
+				identical_count --;
+			}
+			identical_count = 1;
+		} else {
+			identical_count ++;
+		}
+	}
+
+	/* rays generated, do some stat and purge the recomb pool in psys*/
 	for(i = 0; i < r_length; i++) {
-		const intptr_t ires = r[i].ires;
-		res[ires].Nph = 0.0;
-		switch(res[ires].type) {
+		switch(r[i].type) {
 			case 0: /* from a src */
-				stat.ray_count.source++;
-				stat.ray_photon.source += r[i].Nph;
+				stat.tick_ray.src++;
+				stat.tick_photon.src += r[i].Nph;
 			break;
 			case 1: /* from a recombination, aka particle */
-				stat.ray_count.recomb++;
-				stat.ray_photon.recomb += r[i].Nph;
-				stat.total_recomb -= r[i].Nph;
-				psys.recomb[res[ires].ipar] -= r[i].Nph;
+				stat.tick_ray.recomb++;
+				stat.tick_photon.recomb += r[i].Nph;
+				stat.recomb_pool_photon -= r[i].Nph;
+				psys.recomb[r[i].ipar] -= r[i].Nph;
+				if(psys.recomb[r[i].ipar] < 0) {
+					psys.recomb[r[i].ipar] = 0;
+				}
 			break;
 			default: ERROR("never each here");
 		}
 	}
-	gsl_ran_discrete_free(randist);
+
+	if(src_ran != NULL) gsl_ran_discrete_free(src_ran);
+	if(rec_ran != NULL) gsl_ran_discrete_free(rec_ran);
 }
 
 static void trace() {
@@ -316,7 +332,7 @@ static void deposit(){
 				break;
 			}
 		}
-		stat.ray_photon.lost += TM;
+		stat.tick_photon.lost += TM;
 	}
 }
 
@@ -380,6 +396,7 @@ static void update_pars() {
 		} else {
 			const double recphotons = step.dyGH * NH;
 			psys.recomb[ipar] += recphotons;
+			if(psys.recomb[ipar] < 0) psys.recomb[ipar] = 0;
 			increase_recomb += recphotons;
 			psys.xHI[ipar] += step.dxHI;
 			psys.ye[ipar] += step.dye;
@@ -394,14 +411,26 @@ static void update_pars() {
 	}
 	stat.errors += d1;
 	stat.count += d2;
-	stat.total_recomb += increase_recomb;
+	stat.recomb_pool_photon += increase_recomb;
 }
 
-	
 static int x_t_compare(const void * p1, const void * p2) {
 	const double d1 = ((const Xtype * )p1)->d;
 	const double d2 = ((const Xtype * )p2)->d;
 	if(d1 < d2) return -1;
 	if(d1 > d2) return 1;
 	if(d1 == d2) return 0;
+}
+static int r_t_compare(const void * p1, const void * p2) {
+	const int t1 = ((const struct r_t * )p1)->type;
+	const int t2 = ((const struct r_t * )p2)->type;
+	if(t1 != t2) {
+		return t1 - t2;
+	}
+	const intptr_t i1 = ((const struct r_t * )p1)->ipar;
+	const intptr_t i2 = ((const struct r_t * )p2)->ipar;
+	/* note that intptr_t is longer than int, truncating may make errors*/
+	if(i1 > i2) return -1;
+	if(i1 < i2) return 1;
+	return 0;
 }

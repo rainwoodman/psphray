@@ -30,10 +30,10 @@ all: $(ALL)
 	$(CC) $(OPT) $(CFLAGS) -c -o $@ $^
 
 sane.o: sane.c
-	$(CC) -O3 $(CFLAGS) -c -o $@ $^
+	$(CC) -pg -O2 $(CFLAGS) -c -o $@ $^
 
 loop.o: loop.c
-	$(CC) -O3 $(CFLAGS) -c -o $@ $^
+	$(CC) -pg -O2 $(CFLAGS) -c -o $@ $^
 
 .F90.o:
 	$(FC) $(F90FLAGS) -c -o $@ $<
