@@ -10,6 +10,8 @@
 typedef struct {
 	char * name;
 	char * filename;
+	int type;  /* 0 for multi, 1 for mono */
+	double mono_freq;
 	ARRAY_DEFINE_S(freq, double)
 	ARRAY_DEFINE_S(weight, double)
 	gsl_ran_discrete_t * randist;
@@ -32,10 +34,15 @@ const char * spec_name(const int id) {
 }
 
 double spec_gen_freq(const int id) {
-	return specs[id].freq[gsl_ran_discrete(RNG, specs[id].randist)];
+	switch(specs[id].type) {
+	case 0:
+		return specs[id].freq[gsl_ran_discrete(RNG, specs[id].randist)];
+	case 1:
+		return specs[id].mono_freq;
+	}
 }
 
-static void spec_from_file(const int id, const char * name, const char * filename);
+static void spec_from_file(Spec * newitem, const char * filename);
 void spec_init() {
 	config_setting_t * list = config_lookup(CFG, "specs");
 	if(list == NULL) {
@@ -46,13 +53,17 @@ void spec_init() {
 	int i;
 	for(i = 0; i < N_SPECS; i++) {
 		config_setting_t * ele = config_setting_get_elem(list, i);
-		spec_from_file(i, config_setting_name(ele), config_setting_get_string(ele));
+		specs[i].name = config_setting_name(ele);
+		if(config_setting_type(ele) == CONFIG_TYPE_STRING) {
+			specs[i].type = 0;
+			spec_from_file(&specs[i], config_setting_get_string(ele));
+		} else {
+			specs[i].type = 1;
+			specs[i].mono_freq = config_setting_get_float(ele);
+		}
 	}
 }
-static void spec_from_file(const int id, const char * name, const char * filename) {
-	Spec * newitem = &specs[id];
-
-	newitem->name = strdup(name);
+static void spec_from_file(Spec * newitem, const char * filename) {
 	FILE * fp = fopen(filename, "r");
 	if(fp == NULL) {
 		ERROR("failed to open %s", filename);

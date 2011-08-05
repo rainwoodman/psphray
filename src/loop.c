@@ -202,12 +202,14 @@ static void emit_rays() {
 				r[i].s[d] = psys.srcs[r[i].isrc].pos[d];
 			}
 			r[i].Nph = weights[r[i].isrc];
+			r[i].freq = spec_gen_freq(psys.srcs[r[i].isrc].specid);
 			break;
 			case 1: /* from a recombination, aka particle */
 			for(d = 0; d < 3; d++) {
 				r[i].s[d] = psys.pos[r[i].ipar][d];
 			}
 			r[i].Nph = psys.recomb[r[i].ipar]; 
+			r[i].freq = 1.0;
 			break;
 			default: ERROR("never each here");
 		}
@@ -215,7 +217,6 @@ static void emit_rays() {
 		r[i].dir[0] = dx;
 		r[i].dir[1] = dy;
 		r[i].dir[2] = dz;
-		r[i].freq = 1.0;
 		r[i].length = 2.0 * psys.boxsize;
 	}
 	for(i = 0; i <= r_length; i++) {

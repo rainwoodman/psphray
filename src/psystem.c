@@ -277,6 +277,7 @@ void psystem_switch_epoch(int i) {
 				psys.srcs[isrc].pos[1] = y;
 				psys.srcs[isrc].pos[2] = z;
 				psys.srcs[isrc].Ngamma_sec = L * 1e50;
+				psys.srcs[isrc].specid = spec_get(type);
 				isrc ++;
 				if(isrc == psys.nsrcs) {
 					stage ++;
