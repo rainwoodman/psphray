@@ -5,6 +5,7 @@
 #include <gsl/gsl_rng.h>
 
 extern void units_init();
+extern void spec_init();
 extern double units_parse(const char * units);
 extern void ar_init(const char * filename);
 
@@ -67,6 +68,8 @@ void cfg_init(char * filename) {
 	const char * arfilename = NULL;
 	config_lookup_string(CFG, "psphray.atomicRates", &arfilename);
 	ar_init(arfilename);
+
+	spec_init();
 
 	epochs_init();
 }

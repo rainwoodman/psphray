@@ -12,6 +12,7 @@ epochs.c \
 reader.c \
 psystem.c \
 raytrace.c \
+spectra.c \
 solve.c \
 atomic-rate.c \
 loop.c \

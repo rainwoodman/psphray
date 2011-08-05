@@ -91,3 +91,6 @@ extern int AR_HII_RCC_B;
 double ar_get(int id, double logT);
 double ar_verner(double Ry);
 
+const int spec_get(const char * name);
+double spec_gen_freq(const int id);
+

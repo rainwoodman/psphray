@@ -5,11 +5,6 @@
 #include "config.h"
 #include "psystem.h"
 
-extern size_t rt_trace(const float s[3], const float dir[3], const float dist, intptr_t ** pars, size_t * size);
-extern int pluecker_(float dir[3], float * dist, float s2b[3], float s2t[3]);
-
-extern PSystem psys;
-
 int main(int argc, char* argv[]) {
 	intptr_t i;
 	cfg_init(argv[1]);
@@ -29,16 +24,9 @@ int main(int argc, char* argv[]) {
 	MESSAGE("density 1 = %f proton / cm^3", 1 / units_parse(" mproton / cm cm cm"));
 	MESSAGE("--------unit sanity check------");
 
-	init();
-	psystem_switch_epoch(0);
-
-	rt_switch_epoch(0);
-
-	run_epoch();
-	return 0;
-
-	psystem_switch_epoch(1);
-	rt_switch_epoch(1);
-
+	const int spec = spec_get("d6bh");
+	for(i = 0; i < 100; i++) {
+		printf("%lg\n", spec_gen_freq(spec));
+	}
 	return 0;
 }
