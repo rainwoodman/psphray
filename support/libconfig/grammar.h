@@ -56,7 +56,7 @@
      TOK_COMMA = 272,
      TOK_GROUP_START = 273,
      TOK_GROUP_END = 274,
-     TOK_END = 275,
+     TOK_SEMICOLON = 275,
      TOK_GARBAGE = 276,
      TOK_ERROR = 277
    };
@@ -79,7 +79,7 @@
 #define TOK_COMMA 272
 #define TOK_GROUP_START 273
 #define TOK_GROUP_END 274
-#define TOK_END 275
+#define TOK_SEMICOLON 275
 #define TOK_GARBAGE 276
 #define TOK_ERROR 277
 

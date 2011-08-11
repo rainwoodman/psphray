@@ -780,28 +780,72 @@ static config_setting_t *config_setting_create(config_setting_t *parent,
 
 /* ------------------------------------------------------------------------- */
 
-int config_setting_get_int(const config_setting_t *setting)
+static int __config_setting_get_int(const config_setting_t *setting,
+                                    int *value)
 {
   switch(setting->type)
   {
     case CONFIG_TYPE_INT:
-      return(setting->value.ival);
+      *value = setting->value.ival;
+      return(CONFIG_TRUE);
 
     case CONFIG_TYPE_INT64:
       if((setting->value.llval > INT32_MAX)
          || (setting->value.llval < INT32_MIN))
-        return(0);
+        *value = 0;
       else
-        return((int)setting->value.llval);
+        *value = (int)(setting->value.llval);
+      return(CONFIG_TRUE);
 
     case CONFIG_TYPE_FLOAT:
       if((setting->config->flags & CONFIG_OPTION_AUTOCONVERT) != 0)
-        return((int)(setting->value.fval));
+      {
+        *value = (int)(setting->value.fval);
+        return(CONFIG_TRUE);
+      }
       else
-        /* fall through */;
+      { /* fall through */ }
 
     default:
-      return(0);
+      return(CONFIG_FALSE);
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+int config_setting_get_int(const config_setting_t *setting)
+{
+  int value = 0;
+  __config_setting_get_int(setting, &value);
+  return(value);
+}
+
+/* ------------------------------------------------------------------------- */
+
+static int __config_setting_get_int64(const config_setting_t *setting,
+                                      long long *value)
+{
+  switch(setting->type)
+  {
+    case CONFIG_TYPE_INT64:
+      *value = setting->value.llval;
+      return(CONFIG_TRUE);
+
+    case CONFIG_TYPE_INT:
+      *value = (long long)(setting->value.ival);
+      return(CONFIG_TRUE);
+
+    case CONFIG_TYPE_FLOAT:
+      if((setting->config->flags & CONFIG_OPTION_AUTOCONVERT) != 0)
+      {
+        *value = (long long)(setting->value.fval);
+        return(CONFIG_TRUE);
+      }
+      else
+      { /* fall through */ }
+
+    default:
+      return(CONFIG_FALSE);
   }
 }
 
@@ -809,23 +853,9 @@ int config_setting_get_int(const config_setting_t *setting)
 
 long long config_setting_get_int64(const config_setting_t *setting)
 {
-  switch(setting->type)
-  {
-    case CONFIG_TYPE_INT64:
-      return(setting->value.llval);
-
-    case CONFIG_TYPE_INT:
-      return((long long)setting->value.ival);
-
-    case CONFIG_TYPE_FLOAT:
-      if((setting->config->flags & CONFIG_OPTION_AUTOCONVERT) != 0)
-        return((long long)(setting->value.fval));
-      else
-        /* fall through */;
-
-    default:
-      return(0);
-  }
+  long long value = 0;
+  __config_setting_get_int64(setting, &value);
+  return(value);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -837,11 +867,7 @@ int config_setting_lookup_int(const config_setting_t *setting,
   if(! member)
     return(CONFIG_FALSE);
 
-  if(config_setting_type(member) != CONFIG_TYPE_INT)
-    return(CONFIG_FALSE);
-
-  *value = config_setting_get_int(member);
-  return(CONFIG_TRUE);
+  return(__config_setting_get_int(member, value));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -853,11 +879,50 @@ int config_setting_lookup_int64(const config_setting_t *setting,
   if(! member)
     return(CONFIG_FALSE);
 
-  if(config_setting_type(member) != CONFIG_TYPE_INT64)
-    return(CONFIG_FALSE);
+  return(__config_setting_get_int64(member, value));
+}
 
-  *value = config_setting_get_int64(member);
-  return(CONFIG_TRUE);
+/* ------------------------------------------------------------------------- */
+
+static int __config_setting_get_float(const config_setting_t *setting,
+                                      double *value)
+{
+  switch(setting->type)
+  {
+    case CONFIG_TYPE_FLOAT:
+      *value = setting->value.fval;
+      return(CONFIG_TRUE);
+
+    case CONFIG_TYPE_INT:
+      if(config_get_auto_convert(setting->config))
+      {
+        *value = (double)(setting->value.ival);
+        return(CONFIG_TRUE);
+      }
+      else
+        return(CONFIG_FALSE);
+
+    case CONFIG_TYPE_INT64:
+      if(config_get_auto_convert(setting->config))
+      {
+        *value = (double)(setting->value.llval);
+        return(CONFIG_TRUE);
+      }
+      else
+      { /* fall through */ }
+
+    default:
+      return(CONFIG_FALSE);
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+double config_setting_get_float(const config_setting_t *setting)
+{
+  double value = 0.0;
+  __config_setting_get_float(setting, &value);
+  return(value);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -869,11 +934,7 @@ int config_setting_lookup_float(const config_setting_t *setting,
   if(! member)
     return(CONFIG_FALSE);
 
-  if(config_setting_type(member) != CONFIG_TYPE_FLOAT)
-    return(CONFIG_FALSE);
-
-  *value = config_setting_get_float(member);
-  return(CONFIG_TRUE);
+  return(__config_setting_get_float(member, value));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -968,32 +1029,6 @@ int config_setting_set_int64(config_setting_t *setting, long long value)
 
     default:
       return(CONFIG_FALSE);
-  }
-}
-
-/* ------------------------------------------------------------------------- */
-
-double config_setting_get_float(const config_setting_t *setting)
-{
-  switch(setting->type)
-  {
-    case CONFIG_TYPE_FLOAT:
-      return(setting->value.fval);
-
-    case CONFIG_TYPE_INT:
-      if(config_get_auto_convert(setting->config))
-        return((double)(setting->value.ival));
-      else
-        return(0.0);
-
-    case CONFIG_TYPE_INT64:
-      if(config_get_auto_convert(setting->config))
-        return((double)(setting->value.llval));
-      else
-        return(0.0);
-
-    default:
-      return(0.0);
   }
 }
 
@@ -1165,12 +1200,7 @@ int config_lookup_int(const config_t *config, const char *path,
   if(! s)
     return(CONFIG_FALSE);
 
-  if(config_setting_type(s) != CONFIG_TYPE_INT)
-    return(CONFIG_FALSE);
-
-  *value = config_setting_get_int(s);
-
-  return(CONFIG_TRUE);
+  return(__config_setting_get_int(s, value));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1182,12 +1212,7 @@ int config_lookup_int64(const config_t *config, const char *path,
   if(! s)
     return(CONFIG_FALSE);
 
-  if(config_setting_type(s) != CONFIG_TYPE_INT64)
-    return(CONFIG_FALSE);
-
-  *value = config_setting_get_int64(s);
-
-  return(CONFIG_TRUE);
+  return(__config_setting_get_int64(s, value));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1199,11 +1224,7 @@ int config_lookup_float(const config_t *config, const char *path,
   if(! s)
     return(CONFIG_FALSE);
 
-  if(config_setting_type(s) != CONFIG_TYPE_FLOAT)
-    return(CONFIG_FALSE);
-
-  *value = config_setting_get_float(s);
-  return(CONFIG_TRUE);
+  return(__config_setting_get_float(s, value));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1582,7 +1603,7 @@ int config_setting_index(const config_setting_t *setting)
 
   list = setting->parent->value.list;
 
-  for(i = 0, found = list->elements; i < list->length; ++i, ++found)
+  for(i = 0, found = list->elements; i < (int)list->length; ++i, ++found)
   {
     if(*found == setting)
       return(i);

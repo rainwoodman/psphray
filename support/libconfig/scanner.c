@@ -1186,7 +1186,7 @@ YY_RULE_SETUP
 case 38:
 YY_RULE_SETUP
 #line 176 "scanner.l"
-{ return(TOK_END); }
+{ return(TOK_SEMICOLON); }
 	YY_BREAK
 case 39:
 *yy_cp = yyg->yy_hold_char; /* undo effects of setting up yytext */
