@@ -38,13 +38,6 @@ double config_setting_parse_units(config_setting_t * e);
 config_setting_t * config_setting_ensure_member(config_setting_t * e, char * member, int type);
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 
-/* this macro works around the autoconversion problem in config_lookup,
-   I think they'll fix it in the next release thus leave it here till then
-*/
-#define config_lookup_float(config, key, addr) \
-((config_lookup(config, key)==NULL)?CONFIG_FALSE:\
-	(*addr = config_setting_get_float(config_lookup(config, key)), CONFIG_TRUE))
-
 double units_parse(char * units);
 double units_format(double value, char * units);
 
