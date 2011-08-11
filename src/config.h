@@ -24,6 +24,7 @@ extern int CFG_WRITE_INIT;
 extern int CFG_ADIABATIC;
 extern int CFG_ISOTHERMAL;
 extern int CFG_DISABLE_2ND_GEN_PHOTONS;
+extern int CFG_COMOVING;
 
 extern gsl_rng * RNG;
 extern Epoch * EPOCHS;

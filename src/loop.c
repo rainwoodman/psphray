@@ -278,6 +278,7 @@ static void deposit(){
 	const double U_CM2 = U_CM * U_CM;
 	const double NH_fac = C_HMF / U_MPROTON;
 
+	const double scaling_fac2_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1),2):1.0;
 	for(i = 0; i < r_length; i++) {
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
@@ -290,7 +291,7 @@ static void deposit(){
 			const float sml_inv = 1.0 / sml;
 			const double NH = psys.mass[ipar] * NH_fac;
 			const double NHI = psys.xHI[ipar] * NH;
-			const double Ncd = sph_depth(b * sml_inv) * (sml_inv * sml_inv) * NHI;
+			const double Ncd = sph_depth(b * sml_inv) * (sml_inv * sml_inv) * NHI * scaling_fac2_inv;
 			const double tau = sigma * Ncd;
 
 			double absorb = 0.0;
@@ -368,7 +369,7 @@ static void update_pars() {
 	double increase_recomb = 0;
 	const double NH_fac = C_HMF / U_MPROTON;
 	const double nH_fac = C_HMF / (U_MPROTON / (U_CM * U_CM * U_CM));
-
+	const double scaling_fac3_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1.0), 3):1.0;
 	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
 	for(j = 0; j < ipars_length; j++) {
 		const intptr_t ipar = ipars[j];
@@ -383,7 +384,7 @@ static void update_pars() {
 		step.xHI = psys.xHI[ipar];
 		step.ye = psys.ye[ipar];
 		step.y = psys.ye[ipar] - (1.0 - psys.xHI[ipar]);
-		step.nH = nH_fac * psys.rho[ipar];
+		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
 		step.T = ieye2T(psys.ie[ipar], psys.ye[ipar]);
 

@@ -17,6 +17,7 @@ int CFG_WRITE_INIT = 0;
 int CFG_ISOTHERMAL = 0;
 int CFG_ADIABATIC = 0;
 int CFG_DISABLE_2ND_GEN_PHOTONS = 0;
+int CFG_COMOVING = 1;
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 #define config_ensure_int(c, p, v)  if(!config_lookup(c, p)) config_setting_set_int(config_ensure(c, p, CONFIG_TYPE_INT), v)
@@ -58,6 +59,7 @@ void cfg_init(char * filename) {
 	config_lookup_bool(CFG, "psphray.disable2ndGenPhotons", &CFG_DISABLE_2ND_GEN_PHOTONS);
 	config_lookup_bool(CFG, "psphray.isothermal", &CFG_ISOTHERMAL);
 	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
+	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
 
 	unsigned long long seed = 123456;
 	config_lookup_int64(CFG, "psphray.seed", &seed);

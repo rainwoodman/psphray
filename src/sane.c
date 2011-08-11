@@ -10,6 +10,7 @@ int main(int argc, char* argv[]) {
 	cfg_init(argv[1]);
 	cfg_dump_stream(stdout);
 
+	MESSAGE("HMF = %g", C_HMF);
 	MESSAGE("1 ryd verner cross section is %e", ar_verner(1.0));
 	MESSAGE("1e5K HI_CI %e HII_RC_A %e HII_RCC_A %e", 
 			ar_get(AR_HI_CI, 5),
