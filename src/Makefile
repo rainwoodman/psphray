@@ -34,7 +34,7 @@ sane.o: sane.c
 	$(CC) -pg -O2 $(CFLAGS) -c -o $@ $^
 
 loop.o: loop.c
-	$(CC) -pg -O2 $(CFLAGS) -c -o $@ $^
+	$(CC) -O2 $(CFLAGS) -c -o $@ $^
 
 .F90.o:
 	$(FC) $(F90FLAGS) -c -o $@ $<

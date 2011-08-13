@@ -383,13 +383,15 @@ static void update_pars() {
 		/* everything multiplied by nH, saving some calculations */
 		step.xHI = psys.xHI[ipar];
 		step.ye = psys.ye[ipar];
-		step.y = psys.ye[ipar] - (1.0 - psys.xHI[ipar]);
+		step.y = psys.ye[ipar] + psys.xHI[ipar] - 1.0;
 		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
 		step.T = ieye2T(psys.ie[ipar], psys.ye[ipar]);
 
 		const double time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		if(!step_evolve(&step, time)) {
+			WARNING("evolve failed: time,T,xHI,y,nH,ie=%g, %g %g %g %g %g",
+				time/U_MYR, step.T, step.xHI, step.y, step.nH, step.ie);
 			d1++;
 		} else {
 			const double recphotons = step.dyGH * NH;
