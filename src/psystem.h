@@ -1,6 +1,7 @@
 typedef struct {
 	float pos[3];
 	double Ngamma_sec;
+	intptr_t lastemit;
 	int specid;
 } Source;
 

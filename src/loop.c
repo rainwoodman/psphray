@@ -161,7 +161,7 @@ static void emit_rays() {
 	double total_src = 0.0;
 	intptr_t i;
 	for(i = 0; i < psys.nsrcs; i++) {
-		weights[i] = psys.srcs[i].Ngamma_sec * psys.tick_time / U_SEC;
+		weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
 		total_src += weights[i];
 	}
 
@@ -169,6 +169,7 @@ static void emit_rays() {
 	gsl_ran_discrete_t * src_ran = NULL;
 	gsl_ran_discrete_t * rec_ran = NULL;
 	const double branch = total_src / (total_src + stat.recomb_pool_photon);
+	MESSAGE("branch = %g, total_src=%g recomb_pool=%g", branch, total_src, stat.recomb_pool_photon);
 	for(i = 0; i < r_length; i++) {
 		const double sample = gsl_rng_uniform(RNG);
 		if(!CFG_DISABLE_2ND_GEN_PHOTONS 
@@ -242,6 +243,7 @@ static void emit_rays() {
 			case 0: /* from a src */
 				stat.tick_ray.src++;
 				stat.tick_photon.src += r[i].Nph;
+				psys.srcs[r[i].isrc].lastemit = psys.tick;
 			break;
 			case 1: /* from a recombination, aka particle */
 				stat.tick_ray.recomb++;
