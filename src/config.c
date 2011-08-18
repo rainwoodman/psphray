@@ -6,6 +6,7 @@
 
 extern void units_init();
 extern void spec_init();
+extern void epochs_init();
 extern double units_parse(const char * units);
 extern void ar_init(const char * filename);
 

@@ -24,7 +24,7 @@ float sph_Wh3(const float r_h) {
 
 /* */
 float sph_depth(const float r_h) {
-	static const N = sizeof(_kernel_depth) / sizeof(double);
+	static const int N = sizeof(_kernel_depth) / sizeof(double);
 
 	int n = N * r_h;
 	if(n < N && n >=0) return _kernel_depth[n];

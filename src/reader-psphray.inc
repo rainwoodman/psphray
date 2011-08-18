@@ -33,8 +33,8 @@ static int _blockid(const char * blk, char ** error) {
 	if(!strcmp(blk, "mass")) return 3 ;
 	if(!strcmp(blk, "ie")) return 4 ;
 	if(!strcmp(blk, "rho")) return 5 ;
-	if(!strcmp(blk, "ye")) return 6 ;
-	if(!strcmp(blk, "xHI")) return 7 ;
+	if(!strcmp(blk, "yeMET")) return 6 ;
+	if(!strcmp(blk, "lambdaHI")) return 7 ;
 	if(!strcmp(blk, "sml")) return 8 ;
 	if(!strcmp(blk, "Hmf")) return 9 ;
 	if(!strcmp(blk, "Hemf")) return 10 ;
@@ -53,7 +53,7 @@ static int _blockid(const char * blk, char ** error) {
 
 static const char * _blockname(const int blockid, char ** error) {
 	static char * names[] = {"header", 
-"pos","id","mass","ie","rho","ye","xHI","sml","Hmf","Hemf","HeIa","HeIIa","gammaHI","HIa_cloudy","eos","lasthit","sft","ngammas","spec"
+"pos","id","mass","ie","rho","yeMET","lambdaHI","sml","Hmf","Hemf","HeIa","HeIIa","gammaHI","HIa_cloudy","eos","lasthit","sft","ngammas","spec"
 };
 
 	if(blockid < 0 || blockid >= sizeof(names) / sizeof(char*)) {
@@ -70,8 +70,8 @@ static size_t _itemsize(const char * blk, char ** error) {
 	if(!strcmp(blk, "mass")) return 4 ;
 	if(!strcmp(blk, "ie")) return 4 ;
 	if(!strcmp(blk, "rho")) return 4 ;
-	if(!strcmp(blk, "ye")) return 4 ;
-	if(!strcmp(blk, "xHI")) return 4 ;
+	if(!strcmp(blk, "yeMET")) return 4 ;
+	if(!strcmp(blk, "lambdaHI")) return 4 ;
 	if(!strcmp(blk, "sml")) return 4 ;
 	if(!strcmp(blk, "Hmf")) return 4 ;
 	if(!strcmp(blk, "Hemf")) return 4 ;
@@ -94,8 +94,8 @@ static size_t _pstart(const struct header_t * h, const char * blk, int ptype, ch
 	if(!strcmp(blk, "mass")) return (0 < ptype)?(size_t)(h->N[0]): 0+(4 < ptype)?(size_t)(h->N[4]): 0+(5 < ptype)?(size_t)(h->N[5]): 0 ;
 	if(!strcmp(blk, "ie")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "rho")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
-	if(!strcmp(blk, "ye")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
-	if(!strcmp(blk, "xHI")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "yeMET")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "lambdaHI")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "sml")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "Hmf")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "Hemf")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
@@ -190,7 +190,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	}
 
 
-	if(!strcmp(blk, "ye")) {
+	if(!strcmp(blk, "yeMET")) {
 
 
 		if(1) {
@@ -205,7 +205,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	}
 
 
-	if(!strcmp(blk, "xHI")) {
+	if(!strcmp(blk, "lambdaHI")) {
 
 
 		if(1) {

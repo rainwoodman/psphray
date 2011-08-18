@@ -1,4 +1,5 @@
-CFLAGS = -g -ffast-math -fopenmp -I ../support
+CC = gcc
+CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -fopenmp -I ../support
 OPT=-O3
 F90FLAGS = -g -ffast-math -O3 
 FC = gfortran
@@ -28,13 +29,13 @@ ALL = psphray sane test-solve
 all: $(ALL)
 
 .c.o:
-	$(CC) $(OPT) $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) $(OPT) -c -o $@ $^
 
 sane.o: sane.c
-	$(CC) -pg -O2 $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -O2 -pg -c -o $@ $^
 
 loop.o: loop.c
-	$(CC) -O2 $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -O2 -c -o $@ $^
 
 .F90.o:
 	$(FC) $(F90FLAGS) -c -o $@ $<

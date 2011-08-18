@@ -28,3 +28,4 @@ void reader_open(Reader * reader, const char * filename);
 size_t reader_npar(Reader * reader, int ptype);
 ReaderConstants * reader_constants(Reader * reader);
 void reader_close(Reader * reader);
+void reader_create(Reader * reader, const char * filename);

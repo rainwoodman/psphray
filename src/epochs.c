@@ -24,10 +24,12 @@ static void epochs_input(config_setting_t * list, int i) {
 	size_t ngas = 0;
 	int nticks = 0;
 	int nray = 1;
+	int nrec = 100;
 
 	config_setting_lookup_string(e, "source", &source);
 	config_setting_lookup_int(e, "nticks", &nticks);
 	config_setting_lookup_int(e, "nray", &nray);
+	config_setting_lookup_int(e, "nrec", &nrec);
 
 
 	Reader * r = reader_new(format);
@@ -48,6 +50,7 @@ static void epochs_input(config_setting_t * list, int i) {
 	EPOCHS[i].age = z2t(redshift);
 	EPOCHS[i].ngas = ngas;
 	EPOCHS[i].nray = nray;
+	EPOCHS[i].nrec= nrec;
 	EPOCHS[i].nticks = nticks;
 }
 

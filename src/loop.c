@@ -31,11 +31,9 @@ struct r_t {
 };
 
 extern PSystem psys;
-typedef struct _Solver Solver;
-extern Solver * solver_new();
-extern int solver_evolve(Solver * s, intptr_t ipar);
-extern void solver_delete(Solver * s);
+
 extern float sph_depth(const float r_h);
+extern int step_evolve(Step * step, double time);
 
 size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype ** pars, size_t * size);
 
@@ -87,8 +85,9 @@ void run_epoch() {
 	active = bitmask_alloc(psys.npar);
 	bitmask_clear_all(active);
 
-	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray);
+	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray + psys.epoch->nrec);
 
+	memset(r, 0, sizeof(struct r_t) * r_length);
 	memset(&stat, 0, sizeof(stat));
 
 	intptr_t istep = 0;
@@ -166,21 +165,21 @@ static void emit_rays() {
 	}
 
 	
-	gsl_ran_discrete_t * src_ran = NULL;
-	gsl_ran_discrete_t * rec_ran = NULL;
+	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
+	gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(psys.npar, psys.recomb);
 	const double branch = total_src / (total_src + stat.recomb_pool_photon);
-	MESSAGE("branch = %g, total_src=%g recomb_pool=%g", branch, total_src, stat.recomb_pool_photon);
+	//MESSAGE("branch = %g, total_src=%g recomb_pool=%g", branch, total_src, stat.recomb_pool_photon);
+	size_t rec_count = 0;
 	for(i = 0; i < r_length; i++) {
 		const double sample = gsl_rng_uniform(RNG);
 		if(!CFG_DISABLE_2ND_GEN_PHOTONS 
-		&& sample > branch) {
+		&& sample > branch && rec_count < psys.epoch->nrec) {
 			/* recomb ray */
-			if(rec_ran == NULL) rec_ran = gsl_ran_discrete_preproc(psys.npar, psys.recomb);
 			const intptr_t ipar = gsl_ran_discrete(RNG, rec_ran);
 			r[i].ipar = ipar;
 			r[i].type = 1;
+			rec_count++;
 		} else {
-			if(src_ran == NULL) src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
 			const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
 			r[i].isrc = isrc;
 			/* src ray */
@@ -204,6 +203,7 @@ static void emit_rays() {
 			}
 			r[i].Nph = weights[r[i].isrc];
 			r[i].freq = spec_gen_freq(psys.srcs[r[i].isrc].specid);
+			r[i].length = 2.0 * psys.boxsize;
 			break;
 			case 1: /* from a recombination, aka particle */
 			for(d = 0; d < 3; d++) {
@@ -211,6 +211,7 @@ static void emit_rays() {
 			}
 			r[i].Nph = psys.recomb[r[i].ipar]; 
 			r[i].freq = 1.0;
+			r[i].length = 0.1 * psys.boxsize;
 			break;
 			default: ERROR("never each here");
 		}
@@ -218,7 +219,6 @@ static void emit_rays() {
 		r[i].dir[0] = dx;
 		r[i].dir[1] = dy;
 		r[i].dir[2] = dz;
-		r[i].length = 2.0 * psys.boxsize;
 	}
 	for(i = 0; i <= r_length; i++) {
 		if(i == 0) {
@@ -292,7 +292,10 @@ static void deposit(){
 			const float sml = psys.sml[ipar];
 			const float sml_inv = 1.0 / sml;
 			const double NH = psys.mass[ipar] * NH_fac;
-			const double NHI = psys.xHI[ipar] * NH;
+			const double xHI = psys_xHI(ipar);
+			const double xHII = psys_xHII(ipar);
+
+			const double NHI = xHI * NH;
 			const double Ncd = sph_depth(b * sml_inv) * (sml_inv * sml_inv) * NHI * scaling_fac2_inv;
 			const double tau = sigma * Ncd;
 
@@ -311,20 +314,15 @@ static void deposit(){
 				TM *= exp(-tau);
 			}
 			
-			double newxHI = psys.xHI[ipar] - absorb / NH;
-			if(newxHI < 0.0) newxHI = 0.0;
-			if(newxHI > 1.0) newxHI = 1.0;
-			
-			const double dxHI = newxHI - psys.xHI[ipar];
-			const double newye = psys.ye[ipar] - dxHI;
+			const double delta = absorb / NH;
 
 			if(CFG_ISOTHERMAL) {
-				const double T = ieye2T(psys.ie[ipar], psys.ye[ipar]);
-				psys.ie[ipar] = Tye2ie(T, newye);
-			}
-			psys.xHI[ipar] = newxHI;
-			psys.ye[ipar] = newye;
-			
+				const double T = psys_T(ipar);
+				psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
+				psys.ie[ipar] = Tye2ie(T, psys_ye(ipar));
+			} else {
+				psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
+			}	
 			Tau += tau;
 			/* cut off at around 10^-10 */
 			if(Tau > 30.0) {
@@ -383,30 +381,32 @@ static void update_pars() {
 */
 		const double NH = NH_fac * psys.mass[ipar];
 		/* everything multiplied by nH, saving some calculations */
-		step.xHI = psys.xHI[ipar];
-		step.ye = psys.ye[ipar];
-		step.y = psys.ye[ipar] + psys.xHI[ipar] - 1.0;
+		step.xHI = psys_xHI(ipar);
+		step.xHII = psys_xHII(ipar);
+		step.ye = psys_ye(ipar);
+		step.y = psys.yeMET[ipar];
 		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
-		step.T = ieye2T(psys.ie[ipar], psys.ye[ipar]);
+		step.T = psys_T(ipar);
 
 		const double time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		if(!step_evolve(&step, time)) {
-			WARNING("evolve failed: time,T,xHI,y,nH,ie=%g, %g %g %g %g %g",
-				time/U_MYR, step.T, step.xHI, step.y, step.nH, step.ie);
+			WARNING("evolve failed: time,T,xHI,ye,y,nH,ie=%g %g %g %g %g %g %g",
+				time/U_MYR, step.T, step.xHI, step.ye, step.y, step.nH, step.ie);
+			exit(1);
 			d1++;
 		} else {
 			const double recphotons = step.dyGH * NH;
 			psys.recomb[ipar] += recphotons;
 			if(psys.recomb[ipar] < 0) psys.recomb[ipar] = 0;
 			increase_recomb += recphotons;
-			psys.xHI[ipar] += step.dxHI;
-			psys.ye[ipar] += step.dye;
+
+			psys_set_lambdaHI(ipar, step.xHI + step.dxHI, step.xHII - step.dxHI);
 			psys.ie[ipar] += step.die;
 			psys.lasthit[ipar] = psys.tick;
 
 			if(CFG_ISOTHERMAL) {
-				psys.ie[ipar] = Tye2ie(step.T, psys.ye[ipar]);
+				psys.ie[ipar] = Tye2ie(step.T, psys_ye(ipar));
 			}
 		}
 		d2++;

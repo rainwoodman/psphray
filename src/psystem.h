@@ -1,3 +1,4 @@
+#include <math.h>
 typedef struct {
 	float pos[3];
 	double Ngamma_sec;
@@ -7,8 +8,8 @@ typedef struct {
 
 typedef struct {
 	float (*pos)[3];
-	double *xHI;
-	double *ye;
+	double *lambdaHI;  /* lambdaHI = arctan(xHI / xHII) */
+	double *yeMET;
 	float *mass;
 	float *sml;
 	float *rho;
@@ -39,6 +40,7 @@ void psystem_stat(const char * component);
 
 typedef struct _Step {
 	double xHI;
+	double xHII;
 	double ye;
 	double ie;
 	double y;
@@ -57,3 +59,27 @@ typedef struct x_t {
 	float d;
 	float b;
 } Xtype;
+
+extern PSystem psys;
+
+static inline const double psys_xHI(const intptr_t i) {
+	const double r = tan(psys.lambdaHI[i]);
+	return r / (1. + r);
+}
+
+static inline const double psys_xHII(const intptr_t i) {
+	const double r = tan(psys.lambdaHI[i]);
+	return 1.0 / (1. + r);
+}
+
+static inline const double psys_ye(const intptr_t i) {
+	return psys_xHII(i) + psys.yeMET[i];
+}
+static inline const double psys_T(const intptr_t i) {
+	return ieye2T(psys.ie[i], psys_ye(i));
+}
+static inline void psys_set_lambdaHI(const intptr_t i, const double xHI, const double xHII) {
+	if(xHII > 1.0) psys.lambdaHI[i] = atan(HUGE_VALF);
+	else if(xHI < 0.0) psys.lambdaHI[i] = 0.0;
+	else psys.lambdaHI[i] = atan2(xHI, xHII);
+}

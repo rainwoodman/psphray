@@ -9,7 +9,7 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_odeiv2.h>
 
-extern PSystem psys;
+int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, double x[], double dx[], double seconds);
 
 static int function(double t, const double x[], double dxdt[], void * params){
 	double * p = params;

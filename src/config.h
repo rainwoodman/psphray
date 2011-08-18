@@ -8,6 +8,8 @@ typedef struct {
 	size_t ngas;
 	size_t nticks;
 	size_t nray;
+	size_t nrec;
+
 	const char * source;
 	const char * snapshot;
 	const char * format;
@@ -33,7 +35,7 @@ extern int N_EPOCHS;
 
 void cfg_init(char * filename);
 void cfg_dump(char * filename);
-void cfg_dump_stream(char * FILE);
+void cfg_dump_stream(FILE * file);
 
 double config_setting_parse_units(config_setting_t * e);
 config_setting_t * config_setting_ensure_member(config_setting_t * e, char * member, int type);
