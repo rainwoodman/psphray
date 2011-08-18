@@ -39,11 +39,12 @@ void psystem_write_output(int outputnum);
 void psystem_stat(const char * component);
 
 typedef struct _Step {
+	double lambdaHI;
 	double xHI;
 	double xHII;
 	double ye;
 	double ie;
-	double y;
+	double yeMET;
 
 	double nH;
 	double T;

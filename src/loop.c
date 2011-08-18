@@ -381,10 +381,9 @@ static void update_pars() {
 */
 		const double NH = NH_fac * psys.mass[ipar];
 		/* everything multiplied by nH, saving some calculations */
-		step.xHI = psys_xHI(ipar);
-		step.xHII = psys_xHII(ipar);
+		step.lambdaHI = psys.lambdaHI[ipar];
 		step.ye = psys_ye(ipar);
-		step.y = psys.yeMET[ipar];
+		step.yeMET = psys.yeMET[ipar];
 		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
 		step.T = psys_T(ipar);
@@ -392,7 +391,7 @@ static void update_pars() {
 		const double time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		if(!step_evolve(&step, time)) {
 			WARNING("evolve failed: time,T,xHI,ye,y,nH,ie=%g %g %g %g %g %g %g",
-				time/U_MYR, step.T, step.xHI, step.ye, step.y, step.nH, step.ie);
+				time/U_MYR, step.T, step.xHI, step.ye, step.yeMET, step.nH, step.ie);
 			exit(1);
 			d1++;
 		} else {
@@ -401,7 +400,7 @@ static void update_pars() {
 			if(psys.recomb[ipar] < 0) psys.recomb[ipar] = 0;
 			increase_recomb += recphotons;
 
-			psys_set_lambdaHI(ipar, step.xHI + step.dxHI, step.xHII - step.dxHI);
+			psys.lambdaHI[ipar] = step.lambdaHI;
 			psys.ie[ipar] += step.die;
 			psys.lasthit[ipar] = psys.tick;
 
