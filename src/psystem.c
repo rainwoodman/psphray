@@ -440,13 +440,32 @@ static void psystem_stat_internal(void * field, size_t npar, int type, int dim, 
 		mx[d] = value[d];
 		sum[d] = value[d];
 	}
+
+	#pragma omp parallel private(ipar)
+	{
+	double _mn[dim], _mx[dim], _sum[dim];
+	double value[dim];
+	int d;
+	for(d = 0; d < dim; d++) {
+		_mn[d] = mn[d]; 
+		_mx[d] = mx[d];
+		_sum[d] = 0.0;
+	}
+	#pragma omp for
 	for(ipar = 1; ipar < npar; ipar++) {
 		_get_value(field, ipar, type, dim, value);
 		for(d = 0; d < dim; d++) {
-			if(mx[d] < value[d]) mx[d] = value[d];
-			if(mn[d] > value[d]) mn[d] = value[d];
-			sum[d] += value[d];
+			if(_mx[d] < value[d]) _mx[d] = value[d];
+			if(_mn[d] > value[d]) _mn[d] = value[d];
+			_sum[d] += value[d];
 		}
+	}
+	#pragma omp critical
+	for(d = 0; d < dim; d++) {
+		if(mx[d] < _mx[d]) mx[d] = _mx[d];
+		if(mn[d] > _mn[d]) mn[d] = _mn[d];
+		sum[d] += _sum[d];
+	}
 	}
 	for(d = 0; d < dim; d++) {
 		max[d] = mx[d];
@@ -462,6 +481,7 @@ void psystem_stat(const char * component) {
 	if(!strcmp(component, "xHI")) {
 		float * xHI = malloc(sizeof(float) * psys.npar);
 		intptr_t i;
+		#pragma omp parallel for private(i)
 		for(i = 0; i < psys.npar; i++) {
 			xHI[i] = psys_xHI(i);
 		}
@@ -474,6 +494,7 @@ void psystem_stat(const char * component) {
 	if(!strcmp(component, "ye")) {
 		float * ye = malloc(sizeof(float) * psys.npar);
 		intptr_t i;
+		#pragma omp parallel for private(i)
 		for(i = 0; i < psys.npar; i++) {
 			ye[i] = psys_ye(i);
 		}
@@ -496,6 +517,7 @@ void psystem_stat(const char * component) {
 	if(!strcmp(component, "T")) {
 		float * T = malloc(sizeof(float) * psys.npar);
 		intptr_t i;
+		#pragma omp parallel for private(i)
 		for(i = 0; i < psys.npar; i++) {
 			T[i] = psys_T(i);
 		}
