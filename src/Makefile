@@ -1,10 +1,10 @@
 CC = gcc
-CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -fopenmp -I ../support
+CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -mfpmath=387,sse -ffast-math -fopenmp -I ../support
 OPT=-O3
 F90FLAGS = -g -ffast-math -O3 
 FC = gfortran
 LDFLAGS = -pg -L ../support/libconfig/
-LIBS = -lconfig -lm -lgfortran -lgsl -lgslcblas -lgomp
+LIBS = -lconfig -lgfortran -lgsl -lgslcblas -lgomp
 
 SOURCES = \
 config.c \
@@ -30,12 +30,10 @@ all: $(ALL)
 
 .c.o:
 	$(CC) $(CFLAGS) $(OPT) -c -o $@ $^
+#	$(CC) $(CFLAGS) $(OPT) -fverbose-asm -S $^
 
 sane.o: sane.c
-	$(CC) $(CFLAGS) -O2 -pg -c -o $@ $^
-
-loop.o: loop.c
-	$(CC) $(CFLAGS) -O2 -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 .F90.o:
 	$(FC) $(F90FLAGS) -c -o $@ $<
