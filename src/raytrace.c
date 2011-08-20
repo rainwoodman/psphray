@@ -172,14 +172,16 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype **
 					const float * pos = psys.pos[ipar];
 					const float sml = psys.sml[ipar];
 					int d ;
-					float dist = 0.0;
-					float proj = 0.0;
+					double dist = 0.0;
+					double proj = 0.0;
 					for(d = 0; d < 3; d++) {
 						const float dd = pos[d] - s[d];
 						proj += dd * dir[d];
 						dist += dd * dd;
 					}
-					if( sml * sml < (dist - proj * proj)) {
+					dist = sqrt(dist);
+					const double r2 = (dist - proj) * (dist + proj);
+					if( sml * sml < r2 ) {
 						continue;
 					}
 					if(length == *size) {
@@ -188,7 +190,7 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype **
 					}
 					(*x)[length].ipar = ipar;
 					(*x)[length].d = sqrt(d);
-					(*x)[length].b = sqrt(fabs(dist - proj * proj));
+					(*x)[length].b = sqrt(fabs(r2));
 					length ++;
 				}
 			}
