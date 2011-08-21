@@ -189,7 +189,7 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype **
 						*x = realloc(*x , *size * sizeof(Xtype));
 					}
 					(*x)[length].ipar = ipar;
-					(*x)[length].d = sqrt(d);
+					(*x)[length].d = dist;
 					(*x)[length].b = sqrt(fabs(r2));
 					length ++;
 				}
