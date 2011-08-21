@@ -45,7 +45,7 @@
 
 PSystem psys = {0};
 
-void idhash_build(unsigned long long * id, size_t n) {
+static void idhash_build(unsigned long long * id, size_t n) {
 	psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
 	psys.idhash.next = malloc(sizeof(intptr_t) * n);
 	intptr_t i;
