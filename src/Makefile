@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -mfpmath=387,sse -ffast-math -fopenmp -I ../support
 OPT=-O3
-F90FLAGS = -g -ffast-math -O3 
+F90FLAGS = -mfpmath=387,sse -ffast-math -O3 
 FC = gfortran
 LDFLAGS = -pg -L ../support/libconfig/
 LIBS = -lconfig -lgfortran -lgsl -lgslcblas -lgomp
@@ -15,6 +15,7 @@ psystem.c \
 raytrace.c \
 spectra.c \
 solve.c \
+peano.c \
 atomic-rate.c \
 loop.c \
 sph-depth.c \
