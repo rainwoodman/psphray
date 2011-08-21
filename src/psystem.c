@@ -60,10 +60,15 @@ static void idhash_build(unsigned long long * id, size_t n) {
 
 static float dist(const float p1[3], const float p2[3]);
 static void psystem_read_source();
+static void psystem_read_epoch(ReaderConstants * c);
+static void psystem_match_epoch(ReaderConstants * c);
 
 void psystem_switch_epoch(int i) {
 
 	psys.epoch = &EPOCHS[i];
+
+	psys.tick = 0;
+	psys.tick_time = psys.epoch->duration / psys.epoch->nticks;
 
 	Reader * r0 = reader_new(psys.epoch->format);
 	char * fname0 = reader_make_filename(psys.epoch->snapshot, 0);
@@ -97,147 +102,16 @@ void psystem_switch_epoch(int i) {
 	psys.boxsize);
 
 	if(i == 0) {
-		size_t ngas = psys.epoch->ngas;
-		psys.npar = ngas;
-		int fid;
-		size_t nread = 0;
-		psys.pos = calloc(sizeof(float) * 3, ngas);
-		psys.mass = calloc(sizeof(float), ngas);
-		psys.id = calloc(sizeof(unsigned long long), ngas);
-		psys.ie = calloc(sizeof(float), ngas);
-		psys.sml = calloc(sizeof(float), ngas);
-		psys.rho = calloc(sizeof(float), ngas);
-		psys.lambdaHI = calloc(sizeof(double), ngas);
-		psys.yeMET = calloc(sizeof(double), ngas);
-		psys.recomb = calloc(sizeof(double), ngas);
-		psys.lasthit = calloc(sizeof(intptr_t), ngas);
-
-		psys.mask = bitmask_alloc(ngas);
-
-		for(fid = 0; fid < c->Nfiles; fid ++) {
-			Reader * r = reader_new(psys.epoch->format);
-			char * fname = reader_make_filename(psys.epoch->snapshot, fid);
-			reader_open(r, fname);
-			free(fname);
-			reader_read(r, "pos", 0, psys.pos[nread]);
-			reader_read(r, "mass", 0, &psys.mass[nread]);
-			reader_read(r, "sml", 0, &psys.sml[nread]);
-			reader_read(r, "rho", 0, &psys.rho[nread]);
-			reader_read(r, "ie", 0, &psys.ie[nread]);
-
-			read_as(r, "ye", 0, &psys.yeMET[nread], float, double);
-			read_as(r, "xHI", 0, &psys.lambdaHI[nread], float, double);
-
-			intptr_t ipar;
-			size_t npar_file = reader_npar(r, 0);
-
-			for(ipar = 0; ipar < npar_file; ipar++) {
-				const double xHI = psys.lambdaHI[nread + ipar];
-				const double xHII = 1.0 - psys.lambdaHI[nread + ipar];
-				psys_set_lambdaHI(nread + ipar, xHI, xHII);
-
-				const double yeMET = psys.yeMET[nread + ipar] - xHII;
-				psys.yeMET[nread + ipar] = (yeMET < 0.0)?0.0:yeMET;
-			}
-
-			if(reader_itemsize(r, "id") == 4) {
-				unsigned int * id = reader_alloc(r, "id", 0);
-				reader_read(r, "id", 0, id);
-				intptr_t ipar;
-				for(ipar = 0; ipar < npar_file; ipar++) {
-					psys.id[nread + ipar] = id[ipar];
-				}
-				free(id);
-			} else {
-				reader_read(r, "id", 0, &psys.id[nread]);
-			}
-
-			nread += reader_npar(r, 0);
-			reader_destroy(r);
-		}
-		idhash_build(psys.id, nread);
-		bitmask_set_all(psys.mask);
+		/* initial read */
+		psystem_read_epoch(c);
 	} else {
-		int fid;
-		bitmask_clear_all(psys.mask);
-		double distsum = 0.0;
-		size_t lost = 0;
-		for(fid = 0; fid < c->Nfiles; fid ++) {
-			Reader * r = reader_new(psys.epoch->format);
-			char * fname = reader_make_filename(psys.epoch->snapshot, fid);
-			reader_open(r, fname);
-			float (*pos)[3] = reader_alloc(r, "pos", 0);
-			float * mass = reader_alloc(r, "mass", 0);
-			float * sml = reader_alloc(r, "sml", 0);
-			float * rho = reader_alloc(r, "rho", 0);
-			float * ie = reader_alloc(r, "ie", 0);
-			float * ye = reader_alloc(r, "ye", 0);
-			float * xHI = reader_alloc(r, "xHI", 0); 
-			/* FIXME: xHI not used yet, maybe a good idea to calculate
-             * the ye due to heavy elements and merge the contribution.
-             * */
-			reader_read(r, "pos", 0, pos);
-			reader_read(r, "mass", 0, mass);
-			reader_read(r, "sml", 0, sml);
-			reader_read(r, "rho", 0, rho);
-			reader_read(r, "ie", 0, ie);
-			reader_read(r, "ye", 0, ye);
-			reader_read(r, "xHI", 0, xHI);
-
-			unsigned long long * id = calloc(8, reader_npar(r, 0));
-			if(reader_itemsize(r, "id") == 4) {
-				unsigned int * sid = reader_alloc(r, "id", 0);
-				reader_read(r, "id", 0, id);
-				intptr_t ipar;
-				for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
-					id[ipar] = sid[ipar];
-				}
-				free(sid);
-			} else {
-				reader_read(r, "id", 0, id);
-			}
-
-			intptr_t ipar;
-			for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
-				intptr_t hash = id[ipar] & IDHASHMASK;
-				intptr_t best_jpar = -1;
-				float mindist = 0.0;
-				intptr_t jpar;
-				for(jpar = psys.idhash.head[hash];
-					jpar != -1; jpar = psys.idhash.next[jpar]) {
-					float dst = dist(pos[ipar], psys.pos[jpar]);
-					if(best_jpar == -1 || dst < mindist) {
-						mindist = dst;
-						best_jpar = jpar;
-					}
-				}
-				if(best_jpar != -1) {
-					memcpy(&psys.pos[best_jpar][0], &pos[ipar][0], sizeof(float) * 3);
-					distsum += mindist;
-					psys.mass[best_jpar] = mass[ipar];
-					psys.sml[best_jpar] = sml[ipar];
-					psys.rho[best_jpar] = rho[ipar];
-					psys.ie[best_jpar] = ie[ipar];
-					/*FIXME: somehow make use of the ye of the new snapshot*/
-					bitmask_set(psys.mask, best_jpar);
-				} else {
-					lost++;
-				}
-			}
-			free(fname);
-			free(mass);
-			free(xHI);
-			free(sml);
-			free(rho);
-			free(pos);
-			free(ye);
-			free(ie);
-			free(id);
-			reader_destroy(r);
-		}
-		MESSAGE("EPOCH matching: %ld skipped;  mean pos shifting = %lg", lost, 
-			distsum/ c->Ntot[0]);
+		/* matching with existing psystem */
+		psystem_match_epoch(c);
 	}
+
+	/* free r0 here, because we need c till now*/
+	reader_destroy(r0);
+
 	MESSAGE("EPOCH active gas particles %ld/%ld", bitmask_sum(psys.mask), c->Ntot[0]);
 	intptr_t ipar;
 	double mass = 0;
@@ -245,13 +119,9 @@ void psystem_switch_epoch(int i) {
 		mass += psys.mass[ipar];
 	}
 	MESSAGE("EPOCH # of protons %g", C_HMF * mass / U_MPROTON);
-	reader_destroy(r0);
-
-	psys.tick = 0;
-	psys.tick_time = psys.epoch->duration / psys.epoch->nticks;
 
 	if(psys.epoch->source) {
-		free(psys.srcs);
+		if(psys.srcs) free(psys.srcs);
 		psystem_read_source();
 	}
 
@@ -278,6 +148,152 @@ void psystem_switch_epoch(int i) {
 		psys.srcs[imin].pos[0],
 		psys.srcs[imin].pos[1],
 		psys.srcs[imin].pos[2]);
+}
+
+static void psystem_read_epoch(ReaderConstants * c) {
+	size_t ngas = psys.epoch->ngas;
+	psys.npar = ngas;
+	int fid;
+	size_t nread = 0;
+	psys.pos = calloc(sizeof(float) * 3, ngas);
+	psys.mass = calloc(sizeof(float), ngas);
+	psys.id = calloc(sizeof(unsigned long long), ngas);
+	psys.ie = calloc(sizeof(float), ngas);
+	psys.sml = calloc(sizeof(float), ngas);
+	psys.rho = calloc(sizeof(float), ngas);
+	psys.lambdaHI = calloc(sizeof(double), ngas);
+	psys.yeMET = calloc(sizeof(double), ngas);
+	psys.recomb = calloc(sizeof(double), ngas);
+	psys.lasthit = calloc(sizeof(intptr_t), ngas);
+
+	psys.mask = bitmask_alloc(ngas);
+
+	for(fid = 0; fid < c->Nfiles; fid ++) {
+		Reader * r = reader_new(psys.epoch->format);
+		char * fname = reader_make_filename(psys.epoch->snapshot, fid);
+		reader_open(r, fname);
+		free(fname);
+		reader_read(r, "pos", 0, psys.pos[nread]);
+		reader_read(r, "mass", 0, &psys.mass[nread]);
+		reader_read(r, "sml", 0, &psys.sml[nread]);
+		reader_read(r, "rho", 0, &psys.rho[nread]);
+		reader_read(r, "ie", 0, &psys.ie[nread]);
+
+		read_as(r, "ye", 0, &psys.yeMET[nread], float, double);
+		read_as(r, "xHI", 0, &psys.lambdaHI[nread], float, double);
+
+		intptr_t ipar;
+		size_t npar_file = reader_npar(r, 0);
+
+		for(ipar = 0; ipar < npar_file; ipar++) {
+			const double xHI = psys.lambdaHI[nread + ipar];
+			const double xHII = 1.0 - psys.lambdaHI[nread + ipar];
+			psys_set_lambdaHI(nread + ipar, xHI, xHII);
+
+			const double yeMET = psys.yeMET[nread + ipar] - xHII;
+			psys.yeMET[nread + ipar] = (yeMET < 0.0)?0.0:yeMET;
+		}
+
+		if(reader_itemsize(r, "id") == 4) {
+			unsigned int * id = reader_alloc(r, "id", 0);
+			reader_read(r, "id", 0, id);
+			intptr_t ipar;
+			for(ipar = 0; ipar < npar_file; ipar++) {
+				psys.id[nread + ipar] = id[ipar];
+			}
+			free(id);
+		} else {
+			reader_read(r, "id", 0, &psys.id[nread]);
+		}
+
+		nread += reader_npar(r, 0);
+		reader_destroy(r);
+	}
+	idhash_build(psys.id, nread);
+	bitmask_set_all(psys.mask);
+}
+
+static void psystem_match_epoch(ReaderConstants * c) {
+	/* match / read */
+	int fid;
+	bitmask_clear_all(psys.mask);
+	double distsum = 0.0;
+	size_t lost = 0;
+	for(fid = 0; fid < c->Nfiles; fid ++) {
+		Reader * r = reader_new(psys.epoch->format);
+		char * fname = reader_make_filename(psys.epoch->snapshot, fid);
+		reader_open(r, fname);
+		float (*pos)[3] = reader_alloc(r, "pos", 0);
+		float * mass = reader_alloc(r, "mass", 0);
+		float * sml = reader_alloc(r, "sml", 0);
+		float * rho = reader_alloc(r, "rho", 0);
+		float * ie = reader_alloc(r, "ie", 0);
+		float * ye = reader_alloc(r, "ye", 0);
+		float * xHI = reader_alloc(r, "xHI", 0); 
+		/* FIXME: xHI not used yet, maybe a good idea to calculate
+		 * the ye due to heavy elements and merge the contribution.
+		 * */
+		reader_read(r, "pos", 0, pos);
+		reader_read(r, "mass", 0, mass);
+		reader_read(r, "sml", 0, sml);
+		reader_read(r, "rho", 0, rho);
+		reader_read(r, "ie", 0, ie);
+		reader_read(r, "ye", 0, ye);
+		reader_read(r, "xHI", 0, xHI);
+
+		unsigned long long * id = calloc(8, reader_npar(r, 0));
+		if(reader_itemsize(r, "id") == 4) {
+			unsigned int * sid = reader_alloc(r, "id", 0);
+			reader_read(r, "id", 0, id);
+			intptr_t ipar;
+			for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
+				id[ipar] = sid[ipar];
+			}
+			free(sid);
+		} else {
+			reader_read(r, "id", 0, id);
+		}
+
+		intptr_t ipar;
+		for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
+			intptr_t hash = id[ipar] & IDHASHMASK;
+			intptr_t best_jpar = -1;
+			float mindist = 0.0;
+			intptr_t jpar;
+			for(jpar = psys.idhash.head[hash];
+				jpar != -1; jpar = psys.idhash.next[jpar]) {
+				float dst = dist(pos[ipar], psys.pos[jpar]);
+				if(best_jpar == -1 || dst < mindist) {
+					mindist = dst;
+					best_jpar = jpar;
+				}
+			}
+			if(best_jpar != -1) {
+				memcpy(&psys.pos[best_jpar][0], &pos[ipar][0], sizeof(float) * 3);
+				distsum += mindist;
+				psys.mass[best_jpar] = mass[ipar];
+				psys.sml[best_jpar] = sml[ipar];
+				psys.rho[best_jpar] = rho[ipar];
+				psys.ie[best_jpar] = ie[ipar];
+				/*FIXME: somehow make use of the ye of the new snapshot*/
+				bitmask_set(psys.mask, best_jpar);
+			} else {
+				lost++;
+			}
+		}
+		free(fname);
+		free(mass);
+		free(xHI);
+		free(sml);
+		free(rho);
+		free(pos);
+		free(ye);
+		free(ie);
+		free(id);
+		reader_destroy(r);
+	}
+	MESSAGE("EPOCH matching: %ld skipped;  mean pos shifting = %lg", lost, 
+		distsum/ c->Ntot[0]);
 }
 
 static void psystem_read_source() {
