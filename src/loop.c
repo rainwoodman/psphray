@@ -13,7 +13,9 @@
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 struct r_t {
 	float s[3];
 	float dir[3];
@@ -70,6 +72,11 @@ static struct {
 		size_t src;
 	} tick_ray;
 
+	struct {
+		double src_length;
+		double rec_length;
+	} ray;
+
 	size_t destruct;
 	size_t errors;
 	size_t count;
@@ -85,9 +92,6 @@ void run_epoch() {
 	active = bitmask_alloc(psys.npar);
 	bitmask_clear_all(active);
 
-	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray + psys.epoch->nrec);
-
-	memset(r, 0, sizeof(struct r_t) * r_length);
 	memset(&stat, 0, sizeof(stat));
 
 	intptr_t istep = 0;
@@ -105,14 +109,16 @@ void run_epoch() {
 			stat.total_photon.recomb += stat.tick_photon.recomb;
 
 			MESSAGE("-----tick: %lu ---[SRC REC]----", psys.tick);
-			MESSAGE("RY %lu/%lu %lu/%lu", 
+			MESSAGE("RY %lu/%lu(%g) %lu/%lu(%g)", 
 			        stat.tick_ray.src / stat.tick, stat.total_ray.src, 
-			        stat.tick_ray.recomb / stat.tick, stat.total_ray.recomb);
+					stat.ray.src_length,
+			        stat.tick_ray.recomb / stat.tick, stat.total_ray.recomb,
+					stat.ray.rec_length);
 			MESSAGE("PH %le/%le %le/%le %le/%le", 
 			        stat.tick_photon.src / stat.tick, stat.total_photon.src,
 			        stat.tick_photon.recomb / stat.tick, stat.total_photon.recomb,
 			        stat.tick_photon.lost / stat.tick, stat.total_photon.lost);
-			MESSAGE("RP: %le", stat.recomb_pool_photon);
+			MESSAGE("RP: %le, NRAY_MAX %ld", stat.recomb_pool_photon, r_size);
 			MESSAGE("EV: %lu/%lu", stat.errors, stat.count);
 			psystem_stat("T");
 			psystem_stat("xHI");
@@ -157,34 +163,61 @@ void run_epoch() {
 
 static void emit_rays() {
 	double weights[psys.nsrcs];
-	double total_src = 0.0;
 	intptr_t i;
 	for(i = 0; i < psys.nsrcs; i++) {
 		weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
-		total_src += weights[i];
 	}
 
-	
-	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
-	gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(psys.npar, psys.recomb);
-	const double branch = total_src / (total_src + stat.recomb_pool_photon);
-	//MESSAGE("branch = %g, total_src=%g recomb_pool=%g", branch, total_src, stat.recomb_pool_photon);
-	size_t rec_count = 0;
+	double max_src_length = -1.0;
+	double max_rec_length = -1.0;
 	for(i = 0; i < r_length; i++) {
-		const double sample = gsl_rng_uniform(RNG);
-		if(!CFG_DISABLE_2ND_GEN_PHOTONS 
-		&& sample > branch && rec_count < psys.epoch->nrec) {
-			/* recomb ray */
-			const intptr_t ipar = gsl_ran_discrete(RNG, rec_ran);
-			r[i].ipar = ipar;
-			r[i].type = 1;
-			rec_count++;
-		} else {
-			const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
-			r[i].isrc = isrc;
-			/* src ray */
-			r[i].type = 0;
+		if(r[i].type == 0 && max_src_length < r[i].length) max_src_length = r[i].length;
+		if(r[i].type == 1 && max_rec_length < r[i].length) max_rec_length = r[i].length;
+	}
+	if(max_src_length < 0 || max_src_length > 2.0 * psys.boxsize) {
+		max_src_length = 2.0 * psys.boxsize;
+	}
+	if(max_rec_length < 0 || max_rec_length > 2.0 * psys.boxsize) {
+		max_rec_length = 2.0 * psys.boxsize;
+	}
+
+	stat.ray.src_length = max_src_length;
+	stat.ray.rec_length = max_rec_length;
+
+	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray);
+
+	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
+	for(i = 0; i < psys.epoch->nray; i++) {
+		const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
+		r[i].isrc = isrc;
+		/* src ray */
+		r[i].type = 0;
+	}
+	size_t j = psys.epoch->nray;
+	const double NH_fac = C_HMF / U_MPROTON;
+	double fsum = 0.0;
+	double f[ipars_length];
+    #pragma omp parallel for private(i) reduction(+: fsum)
+	for(i = 0; i < ipars_length; i++) {
+		const intptr_t ipar = ipars[i];
+		const double rec = psys.recomb[ipar];
+		const double NH = psys.mass[ipar] * NH_fac;
+		f[i] = rec / NH;
+		fsum += f[i];
+	}
+	intptr_t k;
+	for(k = 0; k < psys.epoch->nrec; k++) {
+	for(i = 0; i < ipars_length; i++) {
+		double rand;
+		rand = gsl_rng_uniform(RNG);
+		if(rand < f[i] / fsum) {
+	//		if(nray < 1) nray = 1;
+			ARRAY_RESIZE(r, struct r_t, j);
+			r[j].type = 1;
+			r[j].ipar = ipars[i];
+			j++;
 		}
+	}
 	}
 
 	/* sort the rays by type and ipar/isrc so that
@@ -203,7 +236,7 @@ static void emit_rays() {
 			}
 			r[i].Nph = weights[r[i].isrc];
 			r[i].freq = spec_gen_freq(psys.srcs[r[i].isrc].specid);
-			r[i].length = 2.0 * psys.boxsize;
+			r[i].length = max_src_length;
 			break;
 			case 1: /* from a recombination, aka particle */
 			for(d = 0; d < 3; d++) {
@@ -211,7 +244,7 @@ static void emit_rays() {
 			}
 			r[i].Nph = psys.recomb[r[i].ipar]; 
 			r[i].freq = 1.0;
-			r[i].length = 0.1 * psys.boxsize;
+			r[i].length = max_rec_length;
 			break;
 			default: ERROR("never each here");
 		}
@@ -259,7 +292,6 @@ static void emit_rays() {
 	}
 
 	if(src_ran != NULL) gsl_ran_discrete_free(src_ran);
-	if(rec_ran != NULL) gsl_ran_discrete_free(rec_ran);
 }
 
 static void trace() {
@@ -330,6 +362,11 @@ static void deposit(){
 				break;
 			}
 		}
+		// enlarge the length by a bit 
+		// if we terminated the ray with Tau > 30.0 then it is safe to do this
+		// if the ray terminated before Tau > 30.0 we shall use a longer length
+		// next time.
+		r[i].length = r[i].x[j].d * 1.1;
 		stat.tick_photon.lost += TM;
 	}
 }
