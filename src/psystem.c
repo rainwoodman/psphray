@@ -59,11 +59,14 @@ static void idhash_build(unsigned long long * id, size_t n) {
 }
 
 static float dist(const float p1[3], const float p2[3]);
+static void psystem_read_source();
+
 void psystem_switch_epoch(int i) {
 
+	psys.epoch = &EPOCHS[i];
 
-	Reader * r0 = reader_new(EPOCHS[i].format);
-	char * fname0 = reader_make_filename(EPOCHS[i].snapshot, 0);
+	Reader * r0 = reader_new(psys.epoch->format);
+	char * fname0 = reader_make_filename(psys.epoch->snapshot, 0);
 	reader_open(r0, fname0);
 	free(fname0);
 	ReaderConstants * c = reader_constants(r0);
@@ -83,18 +86,18 @@ void psystem_switch_epoch(int i) {
 	else ERROR("boundary type %s unknown, be vaccum or periodic", boundary);
 	MESSAGE("epoch %d, redshift %g, snapshot %s, format %s, source %s, ticks %u, ngas %lu, age %f [myr], duration %f [myr], boxsize = %g",
 	i, 
-	EPOCHS[i].redshift,
-	EPOCHS[i].snapshot,
-	EPOCHS[i].format,
-	EPOCHS[i].source,
-	EPOCHS[i].nticks,
-	EPOCHS[i].ngas,
-	units_format(EPOCHS[i].age, "myr"),
-	units_format(EPOCHS[i].duration, "myr"),
+	psys.epoch->redshift,
+	psys.epoch->snapshot,
+	psys.epoch->format,
+	psys.epoch->source,
+	psys.epoch->nticks,
+	psys.epoch->ngas,
+	units_format(psys.epoch->age, "myr"),
+	units_format(psys.epoch->duration, "myr"),
 	psys.boxsize);
 
 	if(i == 0) {
-		size_t ngas = EPOCHS[i].ngas;
+		size_t ngas = psys.epoch->ngas;
 		psys.npar = ngas;
 		int fid;
 		size_t nread = 0;
@@ -112,8 +115,8 @@ void psystem_switch_epoch(int i) {
 		psys.mask = bitmask_alloc(ngas);
 
 		for(fid = 0; fid < c->Nfiles; fid ++) {
-			Reader * r = reader_new(EPOCHS[i].format);
-			char * fname = reader_make_filename(EPOCHS[i].snapshot, fid);
+			Reader * r = reader_new(psys.epoch->format);
+			char * fname = reader_make_filename(psys.epoch->snapshot, fid);
 			reader_open(r, fname);
 			free(fname);
 			reader_read(r, "pos", 0, psys.pos[nread]);
@@ -160,8 +163,8 @@ void psystem_switch_epoch(int i) {
 		double distsum = 0.0;
 		size_t lost = 0;
 		for(fid = 0; fid < c->Nfiles; fid ++) {
-			Reader * r = reader_new(EPOCHS[i].format);
-			char * fname = reader_make_filename(EPOCHS[i].snapshot, fid);
+			Reader * r = reader_new(psys.epoch->format);
+			char * fname = reader_make_filename(psys.epoch->snapshot, fid);
 			reader_open(r, fname);
 			float (*pos)[3] = reader_alloc(r, "pos", 0);
 			float * mass = reader_alloc(r, "mass", 0);
@@ -245,66 +248,11 @@ void psystem_switch_epoch(int i) {
 	reader_destroy(r0);
 
 	psys.tick = 0;
-	psys.tick_time = EPOCHS[i].duration / EPOCHS[i].nticks;
-	psys.epoch = &EPOCHS[i];
+	psys.tick_time = psys.epoch->duration / psys.epoch->nticks;
 
-	if(EPOCHS[i].source) {
+	if(psys.epoch->source) {
 		free(psys.srcs);
-		FILE * f = fopen(EPOCHS[i].source, "r");
-		if(f == NULL) {
-			ERROR("failed to open %s", EPOCHS[i].source);
-		}
-		int NR = 0;
-		char * line = NULL;
-		size_t len = 0;
-		intptr_t isrc = 0;
-		int stage = 0;
-		double x, y, z, dummy, L;
-		char type[128];
-		char garbage[128];
-
-		while(0 <= getline(&line, &len, f)) {
-			if(line[0] == '#') {
-				NR++;
-				continue;
-			}
-			switch(stage) {
-			case 0:
-				if(1 != sscanf(line, "%ld", &psys.nsrcs)) {
-					ERROR("%s format error at %d", EPOCHS[i].source, NR);
-				} else {
-					psys.srcs = calloc(sizeof(Source), psys.nsrcs);
-					isrc = 0;
-					stage ++;
-				}
-				break;
-			case 1:
-				if(9 != sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %80s %80s",
-					&x, &y, &z, &dummy, &dummy, &dummy, 
-					&L, type, garbage)) {
-					ERROR("%s format error at %d", EPOCHS[i].source, NR);
-				}
-				psys.srcs[isrc].pos[0] = x;
-				psys.srcs[isrc].pos[1] = y;
-				psys.srcs[isrc].pos[2] = z;
-				psys.srcs[isrc].Ngamma_sec = L * 1e50;
-				psys.srcs[isrc].specid = spec_get(type);
-				isrc ++;
-				if(isrc == psys.nsrcs) {
-					stage ++;
-				}
-				break;
-			case 2:
-				break;
-			}
-			NR++;
-			if(stage == 2) break;
-		}
-		if(isrc != psys.nsrcs) {
-			ERROR("%s expecting %lu, but has %lu sources, %lu", EPOCHS[i].source, psys.nsrcs, isrc, NR);
-		}
-		free(line);
-		fclose(f);
+		psystem_read_source();
 	}
 
 	intptr_t isrc;
@@ -330,6 +278,64 @@ void psystem_switch_epoch(int i) {
 		psys.srcs[imin].pos[0],
 		psys.srcs[imin].pos[1],
 		psys.srcs[imin].pos[2]);
+}
+
+static void psystem_read_source() {
+	FILE * f = fopen(psys.epoch->source, "r");
+	if(f == NULL) {
+		ERROR("failed to open %s", psys.epoch->source);
+	}
+	int NR = 0;
+	char * line = NULL;
+	size_t len = 0;
+	intptr_t isrc = 0;
+	int stage = 0;
+	double x, y, z, dummy, L;
+	char type[128];
+	char garbage[128];
+
+	while(0 <= getline(&line, &len, f)) {
+		if(line[0] == '#') {
+			NR++;
+			continue;
+		}
+		switch(stage) {
+		case 0:
+			if(1 != sscanf(line, "%ld", &psys.nsrcs)) {
+				ERROR("%s format error at %d", psys.epoch->source, NR);
+			} else {
+				psys.srcs = calloc(sizeof(Source), psys.nsrcs);
+				isrc = 0;
+				stage ++;
+			}
+			break;
+		case 1:
+			if(9 != sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %80s %80s",
+				&x, &y, &z, &dummy, &dummy, &dummy, 
+				&L, type, garbage)) {
+				ERROR("%s format error at %d", psys.epoch->source, NR);
+			}
+			psys.srcs[isrc].pos[0] = x;
+			psys.srcs[isrc].pos[1] = y;
+			psys.srcs[isrc].pos[2] = z;
+			psys.srcs[isrc].Ngamma_sec = L * 1e50;
+			psys.srcs[isrc].specid = spec_get(type);
+			isrc ++;
+			if(isrc == psys.nsrcs) {
+				stage ++;
+			}
+			break;
+		case 2:
+			break;
+		}
+		NR++;
+		if(stage == 2) break;
+	}
+	if(isrc != psys.nsrcs) {
+		ERROR("%s expecting %lu, but has %lu sources, %lu", psys.epoch->source, psys.nsrcs, isrc, NR);
+	}
+	free(line);
+	fclose(f);
 }
 
 static float dist(const float p1[3], const float p2[3]) {
