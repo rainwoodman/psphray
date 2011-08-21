@@ -11,6 +11,13 @@
 #include "reader.h"
 #include "psystem.h"
 
+#include <gsl/gsl_permutation.h>
+#include <gsl/gsl_permute_double.h>
+#include <gsl/gsl_permute_float.h>
+#include <gsl/gsl_permute_ulong.h>
+#include <gsl/gsl_permute_uchar.h>
+#include <gsl/gsl_heapsort.h>
+
 #define IDHASHBITS 24
 #define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
 
@@ -57,14 +64,87 @@ static void idhash_build(uint64_t * id, size_t n) {
 		psys.idhash.head[hash] = i;
 	}
 }
+static int intptr_t_compare(const intptr_t * p1, const intptr_t * p2) {
+	if(*p1 > *p2) return 1;
+	if(*p1 < *p2) return -1;
+	if(*p1 == *p2) return 0;
+}
+
+/* Adapted from GSL */
+static void permute (const size_t * p, void * data, const size_t ele_bytes, const size_t stride, const size_t n)
+{
+	size_t i, k, pk;
+
+	for (i = 0; i < n; i++) {
+		k = p[i];
+
+		while (k > i) 
+			k = p[k];
+
+		if (k < i)
+			continue ;
+
+		/* Now have k == i, i.e the least in its cycle */
+
+		pk = p[k];
+
+		if (pk == i)
+			continue ;
+
+		/* shuffle the elements of the cycle */
+
+		{
+			char t[ele_bytes];
+
+			memcpy(t, (char*)data + i * stride, ele_bytes);
+
+			while (pk != i)
+			{
+				memcpy((char*)data + k * stride, (char*)data + pk * stride, ele_bytes);
+				k = pk;
+				pk = p[k];
+			};
+
+			memcpy((char*)data + k * stride, t, ele_bytes);
+		}
+	}
+}
+
 static void hilbert_reorder() {
+	extern intptr_t peano_hilbert_key(int x, int y, int z, int bits);
+	size_t * perm = malloc(sizeof(size_t) * psys.npar);
+	intptr_t * peanokeys = malloc(sizeof(intptr_t) * psys.npar);
+	intptr_t ipar;
+	for(ipar = 0; ipar < psys.npar; ipar++) {
+		float * pos = psys.pos[ipar];
+		peanokeys[ipar] = peano_hilbert_key(
+			pos[0] / psys.boxsize * (1L << 20),
+			pos[1] / psys.boxsize * (1L << 20),
+			pos[2] / psys.boxsize * (1L << 20), 20);
+	}
+	gsl_heapsort_index(perm, peanokeys, psys.npar, sizeof(intptr_t), (void*)intptr_t_compare);
+
+	permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar);
+	permute(perm, psys.lambdaHI, sizeof(double), sizeof(double), psys.npar);
+	permute(perm, psys.yeMET, sizeof(double), sizeof(double), psys.npar);
+	permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar);
+	permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar);
+	permute(perm, psys.rho, sizeof(float), sizeof(float), psys.npar);
+	permute(perm, psys.ie, sizeof(float), sizeof(float), psys.npar);
+	//// FIXME: permute bits, not chars !)
+	permute(perm, psys.mask, sizeof(char), sizeof(char), psys.npar);
+	permute(perm, psys.recomb, sizeof(double), sizeof(double), psys.npar);
+	permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
+	permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar);
+
+	free(peanokeys);
+	free(perm);
 }
 
 static float dist(const float p1[3], const float p2[3]);
 static void psystem_read_source();
 static void psystem_read_epoch(ReaderConstants * c);
 static void psystem_match_epoch(ReaderConstants * c);
-extern intptr_t peano_hilbert_key(int x, int y, int z, int bits);
 
 void psystem_switch_epoch(int i) {
 
