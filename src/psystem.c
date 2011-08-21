@@ -241,7 +241,7 @@ void psystem_switch_epoch(int i) {
 	for(ipar = 0; ipar < psys.npar; ipar++) {
 		mass += psys.mass[ipar];
 	}
-	MESSAGE("EPOCH # of protons ", C_HMF * mass / U_MPROTON);
+	MESSAGE("EPOCH # of protons %g", C_HMF * mass / U_MPROTON);
 	reader_destroy(r0);
 
 	psys.tick = 0;
