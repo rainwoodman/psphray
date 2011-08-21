@@ -84,3 +84,22 @@ static inline void psys_set_lambdaHI(const intptr_t i, const double xHI, const d
 	else if(xHI < 0.0) psys.lambdaHI[i] = 0.0;
 	else psys.lambdaHI[i] = atan2(xHI, xHII);
 }
+
+#define __psystem_swap__(a, b, type) {const type __tmp__ = a; a = b; b = __tmp__;}
+/* swapping two particles note that IDHash will be corrupted after this call */
+static inline void psys_swap(intptr_t i, intptr_t j) {
+	int d;
+	for (d = 0; d < 3; d++) {
+		__psystem_swap__(psys.pos[i][d], psys.pos[j][d], float);
+	}
+	__psystem_swap__(psys.lambdaHI[i], psys.lambdaHI[j], double);
+	__psystem_swap__(psys.yeMET[i], psys.yeMET[j], double);
+	__psystem_swap__(psys.mass[i], psys.mass[j], float);
+	__psystem_swap__(psys.sml[i], psys.sml[j], float);
+	__psystem_swap__(psys.rho[i], psys.rho[j], float);
+	__psystem_swap__(psys.ie[i], psys.ie[j], float);
+	__psystem_swap__(psys.mask[i], psys.mask[j], char);
+	__psystem_swap__(psys.recomb[i], psys.recomb[j], double);
+	__psystem_swap__(psys.lasthit[i], psys.lasthit[j], intptr_t);
+	__psystem_swap__(psys.id[i], psys.id[j], unsigned long long);
+}
