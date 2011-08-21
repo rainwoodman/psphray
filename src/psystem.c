@@ -45,7 +45,7 @@
 
 PSystem psys = {0};
 
-static void idhash_build(unsigned long long * id, size_t n) {
+static void idhash_build(uint64_t * id, size_t n) {
 	psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
 	psys.idhash.next = malloc(sizeof(intptr_t) * n);
 	intptr_t i;
@@ -57,11 +57,14 @@ static void idhash_build(unsigned long long * id, size_t n) {
 		psys.idhash.head[hash] = i;
 	}
 }
+static void hilbert_reorder() {
+}
 
 static float dist(const float p1[3], const float p2[3]);
 static void psystem_read_source();
 static void psystem_read_epoch(ReaderConstants * c);
 static void psystem_match_epoch(ReaderConstants * c);
+extern intptr_t peano_hilbert_key(int x, int y, int z, int bits);
 
 void psystem_switch_epoch(int i) {
 
@@ -108,6 +111,8 @@ void psystem_switch_epoch(int i) {
 		/* matching with existing psystem */
 		psystem_match_epoch(c);
 	}
+
+	hilbert_reorder();
 
 	/* free r0 here, because we need c till now*/
 	reader_destroy(r0);
@@ -157,7 +162,7 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	size_t nread = 0;
 	psys.pos = calloc(sizeof(float) * 3, ngas);
 	psys.mass = calloc(sizeof(float), ngas);
-	psys.id = calloc(sizeof(unsigned long long), ngas);
+	psys.id = calloc(sizeof(uint64_t), ngas);
 	psys.ie = calloc(sizeof(float), ngas);
 	psys.sml = calloc(sizeof(float), ngas);
 	psys.rho = calloc(sizeof(float), ngas);
@@ -241,7 +246,7 @@ static void psystem_match_epoch(ReaderConstants * c) {
 		reader_read(r, "ye", 0, ye);
 		reader_read(r, "xHI", 0, xHI);
 
-		unsigned long long * id = calloc(8, reader_npar(r, 0));
+		uint64_t * id = calloc(8, reader_npar(r, 0));
 		if(reader_itemsize(r, "id") == 4) {
 			unsigned int * sid = reader_alloc(r, "id", 0);
 			reader_read(r, "id", 0, id);

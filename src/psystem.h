@@ -20,7 +20,7 @@ typedef struct {
 	double * recomb; /* number of photons from recombination */
 	intptr_t * lasthit; /* time tick of last update */
 
-	unsigned long long * id;
+	uint64_t * id;
 	struct {
 		intptr_t *head;
 		intptr_t *next;
@@ -101,5 +101,5 @@ static inline void psys_swap(intptr_t i, intptr_t j) {
 	__psystem_swap__(psys.mask[i], psys.mask[j], char);
 	__psystem_swap__(psys.recomb[i], psys.recomb[j], double);
 	__psystem_swap__(psys.lasthit[i], psys.lasthit[j], intptr_t);
-	__psystem_swap__(psys.id[i], psys.id[j], unsigned long long);
+	__psystem_swap__(psys.id[i], psys.id[j], uint64_t);
 }

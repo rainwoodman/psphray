@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <messages.h>
 #include <libconfig/libconfig.h>
 #include <gsl/gsl_rng.h>
@@ -62,7 +63,7 @@ void cfg_init(char * filename) {
 	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
 	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
 
-	unsigned long long seed = 123456;
+	int64_t seed = 123456;
 	config_lookup_int64(CFG, "psphray.seed", &seed);
 	RNG = gsl_rng_alloc(gsl_rng_mt19937);
 	gsl_rng_set(RNG, seed);
