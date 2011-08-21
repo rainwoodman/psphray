@@ -473,6 +473,7 @@ static void psystem_stat_internal(void * field, size_t npar, int type, int dim, 
 		mean[d] = sum[d] / npar;
 	}
 }
+
 void psystem_stat(const char * component) {
 	double min[3], max[3], mean[3];
 	if(!strcmp(component, "lambdaHI")) {
