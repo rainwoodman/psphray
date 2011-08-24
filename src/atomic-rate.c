@@ -10,11 +10,11 @@ typedef struct {
 	char ** headers;
 	int nrows;
 	int ncols;
-	double logTmin; 
-	double logTmax; 
+	double min; 
+	double max; 
 	double step;
 	double step_inv;
-} AtomicRate;
+} TabFun;
 
 int AR_LOG_T = -1;
 int AR_HI_CI = -1;
@@ -23,61 +23,47 @@ int AR_HII_RCC_A = -1;
 int AR_HII_RC_B = -1;
 int AR_HII_RCC_B = -1;
 
-static AtomicRate ar = {0};
+static TabFun ar = {0};
 
-typedef struct {
-	double ** data;
-	int nrows;
-	int ncols;
-	double freqmin;
-	double freqmax;
-	double step;
-	double step_inv;
-} XSection;
-
-static XSection xs = {0};
-void xs_init() {
-
-}
-
-double ar_verner(double Ry) {
+const double ar_verner(const double Ry) {
 	extern float verner_hi_photo_cs_(float *);
 	float ry = Ry;
 	return verner_hi_photo_cs_(&ry);
 }
 
-double ar_get(int id, double logT) {
+static const double tabfun_get(const TabFun * tabfun, const int id, const double value) {
 /*
 	if(isnan(logT) || isinf(logT)) 
 		ERROR("temperature non-positive: logT = %lg", logT);
 */
-	ssize_t index = (logT - ar.logTmin) * ar.step_inv;
+	ssize_t index = (value - tabfun->min) * tabfun->step_inv;
 	if(index < 0) {
 		index = 0;
 //		ERROR("temperature lower than the mininal.(logT= %lg)", logT);
 	}
-	if(index >= ar.nrows - 1) {
-		index = ar.nrows - 2;
+	if(index >= tabfun->nrows - 1) {
+		index = tabfun->nrows - 2;
 //		ERROR("temperature higher than the maximal.(logT= %lg)", logT);
 	}
-	float left = ar.data[AR_LOG_T][index];
-	float right = ar.data[AR_LOG_T][index + 1];
+	float left = tabfun->data[0][index];
+	float right = tabfun->data[0][index + 1];
 	/* the first col is the temprature */
-	float leftwt = (right - logT);
-	float rightwt = (logT - left);
-	return (leftwt * ar.data[id][index] + rightwt * ar.data[id][index+1]) * ar.step_inv;
+	float leftwt = (right - value);
+	float rightwt = (value- left);
+	return (leftwt * tabfun->data[id][index] + rightwt * tabfun->data[id][index+1]) * tabfun->step_inv;
 }
 
-static int ar_col_id(char * col) {
+static int tabfun_col_id(const TabFun * tabfun, const char * col) {
 	int i;
-	for(i = 0; i < ar.ncols; i++) {
-		if(!strcasecmp(col, ar.headers[i])) {
+	for(i = 0; i < tabfun->ncols; i++) {
+		if(!strcasecmp(col, tabfun->headers[i])) {
 			return i;
 		}
 	}
 	ERROR("column %s unknown", col);
 }
-void ar_init(char * filename) {
+
+static void tabfun_init(TabFun * tabfun, const char * filename) {
 	FILE * fp = fopen(filename, "r");
 	if(fp == NULL) {
 		ERROR("atomic rates %s no access", filename);
@@ -98,27 +84,27 @@ void ar_init(char * filename) {
 		switch(stage) {
 		case 0:
 			if(4 != sscanf(line, "%lf %lf %d %lf", 
-					&ar.logTmin, &ar.logTmax, &ar.nrows, &ar.step)) {
+					&tabfun->min, &tabfun->max, &tabfun->nrows, &tabfun->step)) {
 				ERROR("expecting header logTmin logTmax nrows stepsize, at %s, %d", filename, NR);
 			}
-			ar.step_inv = 1.0 / ar.step;
+			tabfun->step_inv = 1.0 / tabfun->step;
 			stage++;
 		break;
 		case 1:
 			p = line;
-			ar.ncols = len / 14;
-			ar.headers = malloc(sizeof(char*) * ar.ncols);
-			ar.data = malloc(sizeof(double*) * ar.ncols);
-			for(i = 0; i < ar.ncols; i++) {
+			tabfun->ncols = len / 14;
+			tabfun->headers = malloc(sizeof(char*) * tabfun->ncols);
+			tabfun->data = malloc(sizeof(double*) * tabfun->ncols);
+			for(i = 0; i < tabfun->ncols; i++) {
 				p = line + i * 14;
-				ar.data[i] = malloc(sizeof(double) * ar.nrows);
+				tabfun->data[i] = malloc(sizeof(double) * tabfun->nrows);
 				char * q = p + 14 - 1;
 				while(*q == ' ' && q >= p) {
 					*q = 0;
 					q--;
 				}
 				while(*p == ' ') p++;
-				ar.headers[i] = strdup(p);
+				tabfun->headers[i] = strdup(p);
 			}
 			stage++;
 		break;
@@ -129,16 +115,16 @@ void ar_init(char * filename) {
 		break;
 		case 3:
 			p = line;
-			for(i = 0; i < ar.ncols; i++) {
+			for(i = 0; i < tabfun->ncols; i++) {
 				p = line + i * 14;
 				if(p > line + len) {
 					ERROR("file %s line %d is too short", filename, NR);
 				}
 				p[14 - 1] = 0;
-				ar.data[i][irow] = atof(p);
+				tabfun->data[i][irow] = atof(p);
 			}
 			irow ++;
-			if(irow == ar.nrows) stage++;
+			if(irow == tabfun->nrows) stage++;
 		break;
 		}
 		NR++;
@@ -146,30 +132,36 @@ void ar_init(char * filename) {
 	}
 	free(line);
 	fclose(fp);
+}
+void ar_init(const char * filename) {
+	tabfun_init(&ar, filename);
+	MESSAGE("TABFUN: %d cols, %d rows", ar.ncols, ar.nrows);
 
-	MESSAGE("AR: %d cols, %d rows", ar.ncols, ar.nrows);
-
-	AR_HI_CI = ar_col_id("HIci");
-	AR_HII_RC_A = ar_col_id("HIIrcA");
-	AR_HII_RCC_A = ar_col_id("HIIrccA");
-	AR_HII_RC_B = ar_col_id("HIIrcB");
-	AR_HII_RCC_B = ar_col_id("HIIrccB");
+	AR_HI_CI = tabfun_col_id(&ar, "HIci");
+	AR_HII_RC_A = tabfun_col_id(&ar, "HIIrcA");
+	AR_HII_RCC_A = tabfun_col_id(&ar, "HIIrccA");
+	AR_HII_RC_B = tabfun_col_id(&ar, "HIIrcB");
+	AR_HII_RCC_B = tabfun_col_id(&ar, "HIIrccB");
 	AR_LOG_T = 0;
 }
 
-void ar_dump(char * filename) {
+const double ar_get(const int id, const double value) {
+	return tabfun_get(&ar, id, value);
+}
+
+void tabfun_dump(const TabFun * tabfun, const char * filename) {
 	FILE * fp = fopen(filename, "w");
-	fprintf(fp, "%-.5E %-.5E %-d %-.5E\n", ar.logTmin, ar.logTmax, ar.nrows, ar.step);
+	fprintf(fp, "%-.5E %-.5E %-d %-.5E\n", tabfun->min, tabfun->max, tabfun->nrows, tabfun->step);
 	int i;
-	for( i = 0; i < ar.ncols; i++) {
-		fprintf(fp, " %-14s", ar.headers[i]);
+	for( i = 0; i < tabfun->ncols; i++) {
+		fprintf(fp, " %-14s", tabfun->headers[i]);
 	}
 	fprintf(fp, "\n");
 	fprintf(fp, "\n");
 	int irow;
-	for(irow = 0; irow < ar.nrows; irow++) {
-		for( i = 0; i < ar.ncols; i++) {
-			fprintf(fp, "%- 14.5E", ar.data[i][irow]);
+	for(irow = 0; irow < tabfun->nrows; irow++) {
+		for( i = 0; i < tabfun->ncols; i++) {
+			fprintf(fp, "%- 14.5E", tabfun->data[i][irow]);
 		}
 		fprintf(fp, "\n");
 	}
