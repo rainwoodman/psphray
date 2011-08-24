@@ -5,7 +5,6 @@
 #include <math.h>
 
 #include <messages.h>
-#include <bitmask.h>
 
 #include "config.h"
 #include "reader.h"
@@ -70,44 +69,17 @@ static int intptr_t_compare(const intptr_t * p1, const intptr_t * p2) {
 	if(*p1 == *p2) return 0;
 }
 
-/* Adapted from GSL */
-static void permute (const size_t * p, void * data, const size_t ele_bytes, const size_t stride, const size_t n)
+static void * permute (const size_t * p, void * data, const size_t ele_bytes, const size_t stride, const size_t n)
 {
-	size_t i, k, pk;
-
-	for (i = 0; i < n; i++) {
-		k = p[i];
-
-		while (k > i) 
-			k = p[k];
-
-		if (k < i)
-			continue ;
-
-		/* Now have k == i, i.e the least in its cycle */
-
-		pk = p[k];
-
-		if (pk == i)
-			continue ;
-
-		/* shuffle the elements of the cycle */
-
-		{
-			char t[ele_bytes];
-
-			memcpy(t, (char*)data + i * stride, ele_bytes);
-
-			while (pk != i)
-			{
-				memcpy((char*)data + k * stride, (char*)data + pk * stride, ele_bytes);
-				k = pk;
-				pk = p[k];
-			};
-
-			memcpy((char*)data + k * stride, t, ele_bytes);
-		}
+	void * out = malloc(stride * n);
+	size_t i;
+	#pragma omp parallel for private(i)
+	for(i = 0; i < n; i++) {
+		if(p[i] > n ) ERROR("p[i] out of range check peano key");
+		memcpy((char*) out+ i * stride, (char*) data + p[i] * stride, ele_bytes);
 	}
+	free(data);
+	return out;
 }
 
 static void hilbert_reorder() {
@@ -115,27 +87,28 @@ static void hilbert_reorder() {
 	size_t * perm = malloc(sizeof(size_t) * psys.npar);
 	intptr_t * peanokeys = malloc(sizeof(intptr_t) * psys.npar);
 	intptr_t ipar;
+	float fac = 1 / (psys.boxsize * (1L << 20));
+	#pragma omp parallel for private(ipar)
 	for(ipar = 0; ipar < psys.npar; ipar++) {
 		float * pos = psys.pos[ipar];
 		peanokeys[ipar] = peano_hilbert_key(
-			pos[0] / psys.boxsize * (1L << 20),
-			pos[1] / psys.boxsize * (1L << 20),
-			pos[2] / psys.boxsize * (1L << 20), 20);
+			pos[0] * fac,
+			pos[1] * fac,
+			pos[2] * fac, 20);
 	}
 	gsl_heapsort_index(perm, peanokeys, psys.npar, sizeof(intptr_t), (void*)intptr_t_compare);
 
-	permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar);
-	permute(perm, psys.lambdaHI, sizeof(double), sizeof(double), psys.npar);
-	permute(perm, psys.yeMET, sizeof(double), sizeof(double), psys.npar);
-	permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar);
-	permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar);
-	permute(perm, psys.rho, sizeof(float), sizeof(float), psys.npar);
-	permute(perm, psys.ie, sizeof(float), sizeof(float), psys.npar);
-	//// FIXME: permute bits, not chars !)
-	permute(perm, psys.mask, sizeof(char), sizeof(char), psys.npar);
-	permute(perm, psys.recomb, sizeof(double), sizeof(double), psys.npar);
-	permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
-	permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar);
+	psys.pos = permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar);
+	psys.lambdaHI = permute(perm, psys.lambdaHI, sizeof(double), sizeof(double), psys.npar);
+	psys.yeMET = permute(perm, psys.yeMET, sizeof(double), sizeof(double), psys.npar);
+	psys.mass = permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar);
+	psys.sml = permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar);
+	psys.rho = permute(perm, psys.rho, sizeof(float), sizeof(float), psys.npar);
+	psys.ie = permute(perm, psys.ie, sizeof(float), sizeof(float), psys.npar);
+	psys.flag = permute(perm, psys.flag, sizeof(int8_t), sizeof(int8_t), psys.npar);
+	psys.recomb = permute(perm, psys.recomb, sizeof(double), sizeof(double), psys.npar);
+	psys.lasthit = permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
+	psys.id = permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar);
 
 	free(peanokeys);
 	free(perm);
@@ -197,7 +170,8 @@ void psystem_switch_epoch(int i) {
 	/* free r0 here, because we need c till now*/
 	reader_destroy(r0);
 
-	MESSAGE("EPOCH active gas particles %ld/%ld", bitmask_sum(psys.mask), c->Ntot[0]);
+	/*FIXME: calculate active particles*/
+	MESSAGE("EPOCH active gas particles %ld/%ld", 0, c->Ntot[0]);
 	intptr_t ipar;
 	double mass = 0;
 	for(ipar = 0; ipar < psys.npar; ipar++) {
@@ -208,31 +182,31 @@ void psystem_switch_epoch(int i) {
 	if(psys.epoch->source) {
 		if(psys.srcs) free(psys.srcs);
 		psystem_read_source();
+		intptr_t isrc;
+		double Lmin;
+		double Lmax;
+		intptr_t imin = -1, imax = -1;
+		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
+			if(isrc == 0 || psys.srcs[isrc].Ngamma_sec > Lmax) {
+				Lmax = psys.srcs[isrc].Ngamma_sec;
+				imax = isrc;
+			}
+			if(isrc == 0 || psys.srcs[isrc].Ngamma_sec < Lmin) {
+				Lmin = psys.srcs[isrc].Ngamma_sec;
+				imin = isrc;
+			}
+		}
+		MESSAGE("SOURCES: %lu, max=%g at (%g %g %g), min=%g at (%g %g %g)",
+			psys.nsrcs, Lmax, 
+			psys.srcs[imax].pos[0],
+			psys.srcs[imax].pos[1],
+			psys.srcs[imax].pos[2],
+			Lmin,
+			psys.srcs[imin].pos[0],
+			psys.srcs[imin].pos[1],
+			psys.srcs[imin].pos[2]);
 	}
 
-	intptr_t isrc;
-	double Lmin;
-	double Lmax;
-	intptr_t imin = -1, imax = -1;
-	for(isrc = 0; isrc < psys.nsrcs; isrc++) {
-		if(isrc == 0 || psys.srcs[isrc].Ngamma_sec > Lmax) {
-			Lmax = psys.srcs[isrc].Ngamma_sec;
-			imax = isrc;
-		}
-		if(isrc == 0 || psys.srcs[isrc].Ngamma_sec < Lmin) {
-			Lmin = psys.srcs[isrc].Ngamma_sec;
-			imin = isrc;
-		}
-	}
-	MESSAGE("SOURCES: %lu, max=%g at (%g %g %g), min=%g at (%g %g %g)",
-		psys.nsrcs, Lmax, 
-		psys.srcs[imax].pos[0],
-		psys.srcs[imax].pos[1],
-		psys.srcs[imax].pos[2],
-		Lmin,
-		psys.srcs[imin].pos[0],
-		psys.srcs[imin].pos[1],
-		psys.srcs[imin].pos[2]);
 }
 
 static void psystem_read_epoch(ReaderConstants * c) {
@@ -251,7 +225,7 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	psys.recomb = calloc(sizeof(double), ngas);
 	psys.lasthit = calloc(sizeof(intptr_t), ngas);
 
-	psys.mask = bitmask_alloc(ngas);
+	psys.flag = calloc(sizeof(int8_t), ngas);
 
 	for(fid = 0; fid < c->Nfiles; fid ++) {
 		Reader * r = reader_new(psys.epoch->format);
@@ -295,13 +269,12 @@ static void psystem_read_epoch(ReaderConstants * c) {
 		reader_destroy(r);
 	}
 	idhash_build(psys.id, nread);
-	bitmask_set_all(psys.mask);
 }
 
 static void psystem_match_epoch(ReaderConstants * c) {
 	/* match / read */
 	int fid;
-	bitmask_clear_all(psys.mask);
+	memset(psys.flag, PF_INVALID, psys.npar);
 	double distsum = 0.0;
 	size_t lost = 0;
 	for(fid = 0; fid < c->Nfiles; fid ++) {
@@ -361,7 +334,7 @@ static void psystem_match_epoch(ReaderConstants * c) {
 				psys.rho[best_jpar] = rho[ipar];
 				psys.ie[best_jpar] = ie[ipar];
 				/*FIXME: somehow make use of the ye of the new snapshot*/
-				bitmask_set(psys.mask, best_jpar);
+				psys.flag[best_jpar] = PF_NORMAL;
 			} else {
 				lost++;
 			}

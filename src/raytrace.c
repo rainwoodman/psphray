@@ -168,7 +168,7 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype **
 				for(ipar = rt.pool[icell].head_par;
 					ipar != -1;
 					ipar = rt.next[ipar]) {
-					if(!bitmask_test(psys.mask, ipar)) continue;
+					if(psys.flag[ipar] & PF_INVALID) continue;
 					const float * pos = psys.pos[ipar];
 					const float sml = psys.sml[ipar];
 					int d ;

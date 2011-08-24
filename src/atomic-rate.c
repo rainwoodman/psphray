@@ -23,8 +23,22 @@ int AR_HII_RCC_A = -1;
 int AR_HII_RC_B = -1;
 int AR_HII_RCC_B = -1;
 
-AtomicRate ar = {0};
+static AtomicRate ar = {0};
 
+typedef struct {
+	double ** data;
+	int nrows;
+	int ncols;
+	double freqmin;
+	double freqmax;
+	double step;
+	double step_inv;
+} XSection;
+
+static XSection xs = {0};
+void xs_init() {
+
+}
 
 double ar_verner(double Ry) {
 	extern float verner_hi_photo_cs_(float *);

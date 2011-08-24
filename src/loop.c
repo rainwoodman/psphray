@@ -114,7 +114,7 @@ void run_epoch() {
 					stat.ray.src_length,
 			        stat.tick_ray.recomb / stat.tick, stat.total_ray.recomb,
 					stat.ray.rec_length);
-			MESSAGE("PH %le/%le %le/%le %le/%le", 
+			MESSAGE("PH %le/%le %le/%le %le/%le [leak]", 
 			        stat.tick_photon.src / stat.tick, stat.total_photon.src,
 			        stat.tick_photon.recomb / stat.tick, stat.total_photon.recomb,
 			        stat.tick_photon.lost / stat.tick, stat.total_photon.lost);
@@ -193,31 +193,31 @@ static void emit_rays() {
 		/* src ray */
 		r[i].type = 0;
 	}
-	size_t j = psys.epoch->nray;
-	const double NH_fac = C_HMF / U_MPROTON;
-	double fsum = 0.0;
-	double f[ipars_length];
-    #pragma omp parallel for private(i) reduction(+: fsum)
-	for(i = 0; i < ipars_length; i++) {
-		const intptr_t ipar = ipars[i];
-		const double rec = psys.recomb[ipar];
-		const double NH = psys.mass[ipar] * NH_fac;
-		f[i] = rec / NH;
-		fsum += f[i];
-	}
-	intptr_t k;
-	for(k = 0; k < psys.epoch->nrec; k++) {
-	for(i = 0; i < ipars_length; i++) {
-		double rand;
-		rand = gsl_rng_uniform(RNG);
-		if(rand < f[i] / fsum) {
-	//		if(nray < 1) nray = 1;
+
+	if(ipars_length > 0) {
+		size_t j = psys.epoch->nray;
+		const double NH_fac = C_HMF / U_MPROTON;
+		double fsum = 0.0;
+		double f[ipars_length];
+		#pragma omp parallel for private(i) reduction(+: fsum)
+		for(i = 0; i < ipars_length; i++) {
+			const intptr_t ipar = ipars[i];
+			const double rec = psys.recomb[ipar];
+			const double NH = psys.mass[ipar] * NH_fac;
+			f[i] = rec / NH;
+			fsum += f[i];
+		}
+
+		gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(ipars_length, f);
+
+		intptr_t k;
+		for(k = 0; k < psys.epoch->nrec; k++) {
+			int i = gsl_ran_discrete(RNG, rec_ran);
 			ARRAY_RESIZE(r, struct r_t, j);
 			r[j].type = 1;
 			r[j].ipar = ipars[i];
 			j++;
 		}
-	}
 	}
 
 	/* sort the rays by type and ipar/isrc so that
@@ -313,6 +313,7 @@ static void deposit(){
 	const double NH_fac = C_HMF / U_MPROTON;
 
 	const double scaling_fac2_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1),2):1.0;
+	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	for(i = 0; i < r_length; i++) {
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
@@ -355,18 +356,17 @@ static void deposit(){
 			} else {
 				psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
 			}	
-			Tau += tau;
 			/* cut off at around 10^-10 */
-			if(Tau > 30.0) {
+			if(TM / r[i].Nph < 1e-10) {
 				ARRAY_RESIZE(r[i].x, Xtype, j);
 				break;
 			}
 		}
 		// enlarge the length by a bit 
-		// if we terminated the ray with Tau > 30.0 then it is safe to do this
-		// if the ray terminated before Tau > 30.0 we shall use a longer length
+		// if we terminated the ray sooner then it is safe to do this
+		// if the ray terminated too early we shall use a longer length
 		// next time.
-		r[i].length = r[i].x[j].d * 1.1;
+		r[i].length = fmax(r[i].x[j].d * 2.0,  r[i].x[j].d + C_SPEED_LIGHT * scaling_fac * psys.tick_time);
 		stat.tick_photon.lost += TM;
 	}
 }
@@ -429,7 +429,7 @@ static void update_pars() {
 		if(!step_evolve(&step, time)) {
 			WARNING("evolve failed: time,T,xHI,ye,y,nH,ie=%g %g %g %g %g %g %g",
 				time/U_MYR, step.T, step.xHI, step.ye, step.yeMET, step.nH, step.ie);
-			exit(1);
+			abort();
 			d1++;
 		} else {
 			const double recphotons = step.dyGH * NH;

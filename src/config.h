@@ -62,6 +62,7 @@ extern double C_OMEGA_M;
 extern double C_OMEGA_B;
 extern double C_H;
 extern double C_BOLTZMANN;
+extern double C_SPEED_LIGHT;
 extern double U_MPROTON_OVER_C_BOLTZMANN;
 extern double C_BOLTZMANN_OVER_U_MPROTON;
 

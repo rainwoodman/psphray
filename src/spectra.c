@@ -11,7 +11,6 @@ typedef struct {
 	char * name;
 	char * filename;
 	int type;  /* 0 for multi, 1 for mono */
-	double mono_freq;
 	ARRAY_DEFINE_S(freq, double)
 	ARRAY_DEFINE_S(weight, double)
 	gsl_ran_discrete_t * randist;
@@ -38,7 +37,7 @@ double spec_gen_freq(const int id) {
 	case 0:
 		return specs[id].freq[gsl_ran_discrete(RNG, specs[id].randist)];
 	case 1:
-		return specs[id].mono_freq;
+		return specs[id].freq[0];
 	}
 }
 
@@ -59,7 +58,8 @@ void spec_init() {
 			spec_from_file(&specs[i], config_setting_get_string(ele));
 		} else {
 			specs[i].type = 1;
-			specs[i].mono_freq = config_setting_get_float(ele);
+			ARRAY_RESIZE(specs[i].freq, double, 1);
+			specs[i].freq[0] = config_setting_get_float(ele);
 		}
 	}
 }

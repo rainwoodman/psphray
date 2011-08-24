@@ -23,7 +23,7 @@ reader-massiveblack.c \
 reader-psphray.c
 
 OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
-ALL = psphray sane test-solve
+ALL = psphray sane test-solve test-peano
 
 .SUFFIXES: .inc .F90
 
@@ -43,6 +43,9 @@ psphray: $(OBJS) main.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 sane: $(OBJS) sane.o
+	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
+
+test-peano: $(OBJS) test-peano.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 test-solve: $(OBJS) test-solve.o
