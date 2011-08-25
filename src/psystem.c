@@ -106,7 +106,7 @@ static void hilbert_reorder() {
 	psys.rho = permute(perm, psys.rho, sizeof(float), sizeof(float), psys.npar);
 	psys.ie = permute(perm, psys.ie, sizeof(float), sizeof(float), psys.npar);
 	psys.flag = permute(perm, psys.flag, sizeof(int8_t), sizeof(int8_t), psys.npar);
-	psys.recomb = permute(perm, psys.recomb, sizeof(double), sizeof(double), psys.npar);
+	psys.yGrec = permute(perm, psys.yGrec, sizeof(float), sizeof(float), psys.npar);
 	psys.lasthit = permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
 	psys.id = permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar);
 
@@ -224,7 +224,7 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	psys.rho = calloc(sizeof(float), ngas);
 	psys.lambdaHI = calloc(sizeof(float), ngas);
 	psys.yeMET = calloc(sizeof(float), ngas);
-	psys.recomb = calloc(sizeof(double), ngas);
+	psys.yGrec = calloc(sizeof(float), ngas);
 	psys.lasthit = calloc(sizeof(intptr_t), ngas);
 
 	psys.flag = calloc(sizeof(int8_t), ngas);
@@ -571,8 +571,8 @@ void psystem_stat(const char * component) {
 		psystem_stat_internal(xHI, psys.npar, 0, 1, max, min, mean);
 		free(xHI);
 	}
-	if(!strcmp(component, "recomb")) {
-		psystem_stat_internal(psys.recomb, psys.npar, 1, 1, max, min, mean);
+	if(!strcmp(component, "yGrec")) {
+		psystem_stat_internal(psys.yGrec, psys.npar, 0, 1, max, min, mean);
 	}
 	if(!strcmp(component, "ye")) {
 		float * ye = malloc(sizeof(float) * psys.npar);

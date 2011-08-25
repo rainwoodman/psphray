@@ -100,7 +100,7 @@ void run_epoch() {
 	psystem_stat("yeMET");
 	psystem_stat("ie");
 	psystem_stat("T");
-	psystem_stat("recomb");
+	psystem_stat("yGrec");
 	while(1) {
 		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
 			stat.total_ray.src += stat.tick_ray.src;
@@ -126,7 +126,7 @@ void run_epoch() {
 			psystem_stat("yeMET");
 			psystem_stat("ye");
 			psystem_stat("ie");
-			psystem_stat("recomb");
+			psystem_stat("yGrec");
 
 			psystem_write_output(istep + 1);
 			istep++;
@@ -198,15 +198,13 @@ static void emit_rays() {
 
 	if(ipars_length > 0) {
 		size_t j = psys.epoch->nray;
-		const double NH_fac = C_HMF / U_MPROTON;
 		double fsum = 0.0;
 		double f[ipars_length];
 		#pragma omp parallel for private(i) reduction(+: fsum)
 		for(i = 0; i < ipars_length; i++) {
 			const intptr_t ipar = ipars[i];
-			const double rec = psys.recomb[ipar];
-			const double NH = psys.mass[ipar] * NH_fac;
-			f[i] = rec / NH;
+			const double rec = psys.yGrec[ipar] * psys_NH(ipar);
+			f[i] = psys.yGrec[ipar];
 			fsum += f[i];
 		}
 
@@ -242,13 +240,16 @@ static void emit_rays() {
 			r[i].length = max_src_length;
 			break;
 			case 1: /* from a recombination, aka particle */
+			{
+			const intptr_t ipar = r[i].ipar;
 			for(d = 0; d < 3; d++) {
-				r[i].s[d] = psys.pos[r[i].ipar][d];
+				r[i].s[d] = psys.pos[ipar][d];
 			}
-			r[i].Nph = psys.recomb[r[i].ipar]; 
+			r[i].Nph = psys.yGrec[ipar] * psys_NH(ipar);
 			r[i].freq = 1.0;
 			r[i].length = max_rec_length;
 			break;
+			}
 			default: ERROR("never each here");
 		}
 		gsl_ran_dir_3d(RNG, &dx, &dy, &dz);
@@ -282,13 +283,16 @@ static void emit_rays() {
 				psys.srcs[r[i].isrc].lastemit = psys.tick;
 			break;
 			case 1: /* from a recombination, aka particle */
+			{
+				const intptr_t ipar = r[i].ipar;
 				stat.tick_ray.recomb++;
 				stat.tick_photon.recomb += r[i].Nph;
 				stat.recomb_pool_photon -= r[i].Nph;
-				psys.recomb[r[i].ipar] -= r[i].Nph;
-				if(psys.recomb[r[i].ipar] < 0) {
-					psys.recomb[r[i].ipar] = 0;
+				psys.yGrec[ipar] -= r[i].Nph / psys_NH(ipar);
+				if(psys.yGrec[ipar] < 0) {
+					psys.yGrec[ipar] = 0;
 				}
+			}
 			break;
 			default: ERROR("never each here");
 		}
@@ -313,7 +317,6 @@ static void deposit(){
 	intptr_t i;
 
 	const double U_CM2 = U_CM * U_CM;
-	const double NH_fac = C_HMF / U_MPROTON;
 
 	const double scaling_fac2_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1),2):1.0;
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
@@ -331,7 +334,7 @@ static void deposit(){
 			const double sigma = xs_get(XS_HI, r[i].freq) * U_CM2;
 			const float sml = psys.sml[ipar];
 			const float sml_inv = 1.0 / sml;
-			const double NH = psys.mass[ipar] * NH_fac;
+			const double NH = psys_NH(ipar);
 			const double xHI = psys_xHI(ipar);
 			const double xHII = psys_xHII(ipar);
 
@@ -414,7 +417,6 @@ static void update_pars() {
 	intptr_t j;
 	size_t d1 = 0, d2 = 0;
 	double increase_recomb = 0;
-	const double NH_fac = C_HMF / U_MPROTON;
 	const double nH_fac = C_HMF / (U_MPROTON / (U_CM * U_CM * U_CM));
 	const double scaling_fac3_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1.0), 3):1.0;
 	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
@@ -426,7 +428,7 @@ static void update_pars() {
 			ERROR("particle solved twice at one tick");
 		}
 */
-		const double NH = NH_fac * psys.mass[ipar];
+		const double NH = psys_NH(ipar);
 		/* everything multiplied by nH, saving some calculations */
 		step.lambdaHI = psys.lambdaHI[ipar];
 		step.ye = psys_ye(ipar);
@@ -442,10 +444,9 @@ static void update_pars() {
 			abort();
 			d1++;
 		} else {
-			const double recphotons = step.dyGH * NH;
-			psys.recomb[ipar] += recphotons;
-			if(psys.recomb[ipar] < 0) psys.recomb[ipar] = 0;
-			increase_recomb += recphotons;
+			psys.yGrec[ipar] += step.dyGH;
+			if(psys.yGrec[ipar] < 0) psys.yGrec[ipar] = 0;
+			increase_recomb += step.dyGH * NH;
 
 			psys.lambdaHI[ipar] = step.lambdaHI;
 			psys.ie[ipar] += step.die;

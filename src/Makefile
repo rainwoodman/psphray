@@ -25,13 +25,17 @@ reader-psphray.c
 OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
 ALL = psphray sane test-solve test-peano
 
-.SUFFIXES: .inc .F90
+.SUFFIXES: .inc .F90 .s
 
 all: $(ALL)
+asm: $(SOURCES:.c=.s) pluecker.s verner.s
 
 .c.o:
 	$(CC) $(CFLAGS) $(OPT) -c -o $@ $^
-#	$(CC) $(CFLAGS) $(OPT) -fverbose-asm -S $^
+.c.s:
+	$(CC) $(CFLAGS) $(OPT) -fverbose-asm -S $^
+.F90.s:
+	$(FC) $(F90FLAGS) -fverbose-asm -S $^
 
 sane.o: sane.c
 	$(CC) $(CFLAGS) -c -o $@ $^

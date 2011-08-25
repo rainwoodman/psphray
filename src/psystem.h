@@ -24,7 +24,7 @@ typedef struct {
 	int8_t * flag;
 	size_t npar;
 
-	double * recomb; /* number of photons from recombination */
+	float * yGrec; /* number of recombination photon / NH */
 	intptr_t * lasthit; /* time tick of last update */
 
 	uint64_t * id;
@@ -83,6 +83,9 @@ static inline const double psys_xHI(const intptr_t i) {
   if(fabs(xHI + xHII - 1.0) > 1e-1) abort(); \
 }
 
+static inline const double psys_NH(const intptr_t i) {
+	return psys.mass[i] * C_H_PER_MASS;
+}
 static inline const double psys_xHII(const intptr_t i) {
 	const double r = tan(psys.lambdaHI[i]);
 	const double r_inv = (r!=0.0)?1/r:MAXFLOAT;
@@ -115,7 +118,7 @@ static inline void psys_swap(intptr_t i, intptr_t j) {
 	__psystem_swap__(psys.rho[i], psys.rho[j], float);
 	__psystem_swap__(psys.ie[i], psys.ie[j], float);
 	__psystem_swap__(psys.flag[i], psys.flag[j], uint8_t);
-	__psystem_swap__(psys.recomb[i], psys.recomb[j], double);
+	__psystem_swap__(psys.yGrec[i], psys.yGrec[j], double);
 	__psystem_swap__(psys.lasthit[i], psys.lasthit[j], intptr_t);
 	__psystem_swap__(psys.id[i], psys.id[j], uint64_t);
 }
