@@ -23,12 +23,64 @@ int AR_HII_RCC_A = -1;
 int AR_HII_RC_B = -1;
 int AR_HII_RCC_B = -1;
 
-static TabFun ar = {0};
+int XS_FREQ = -1;
+int XS_HI = -1;
 
-const double ar_verner(const double Ry) {
-	extern float verner_hi_photo_cs_(float *);
-	float ry = Ry;
-	return verner_hi_photo_cs_(&ry);
+static TabFun ar = {0};
+static TabFun xs = {0};
+
+static const double tabfun_get(const TabFun * tabfun, const int id, const double value);
+static int tabfun_col_id(const TabFun * tabfun, const char * col);
+static void tabfun_init(TabFun * tabfun, const char * filename);
+static void tabfun_dump(const TabFun * tabfun, const char * filename);
+
+void ar_init(const char * filename) {
+	tabfun_init(&ar, filename);
+	MESSAGE("AR: %d cols, %d rows", ar.ncols, ar.nrows);
+
+	AR_HI_CI = tabfun_col_id(&ar, "HIci");
+	AR_HII_RC_A = tabfun_col_id(&ar, "HIIrcA");
+	AR_HII_RCC_A = tabfun_col_id(&ar, "HIIrccA");
+	AR_HII_RC_B = tabfun_col_id(&ar, "HIIrcB");
+	AR_HII_RCC_B = tabfun_col_id(&ar, "HIIrccB");
+	AR_LOG_T = 0;
+}
+
+const double ar_get(const int id, const double value) {
+	return tabfun_get(&ar, id, value);
+}
+
+void xs_init(const char * filename) {
+	if(filename != NULL) {
+		tabfun_init(&xs, filename);
+		MESSAGE("XS: %d cols, %d rows", xs.ncols, xs.nrows);
+	} else {
+		xs.ncols = 2;
+		xs.nrows = 1024;
+		xs.min = 1;
+		xs.max = 16;
+		xs.step = (xs.max - xs.min) / (xs.nrows - 1);
+		xs.step_inv = 1.0 / xs.step;
+		xs.data = malloc(sizeof(double*)* xs.ncols);
+		xs.headers = malloc(sizeof(char*)* xs.ncols);
+		xs.headers[0] = "freq";
+		xs.headers[1] = "HI";
+		xs.data[0] = malloc(sizeof(double)* xs.nrows);
+		xs.data[1] = malloc(sizeof(double)* xs.nrows);
+		int i;
+		for(i = 0; i < xs.nrows; i++) {
+			xs.data[0][i] = xs.min + xs.step * i;
+			float ry = xs.data[0][i];
+			xs.data[1][i] = verner_hi_photo_cs_(&ry);
+		}
+	}
+
+	XS_HI = tabfun_col_id(&xs, "HI");
+	XS_FREQ = 0;
+}
+
+const double xs_get(const int id, const double value) {
+	return tabfun_get(&xs, id, value);
 }
 
 static const double tabfun_get(const TabFun * tabfun, const int id, const double value) {
@@ -133,23 +185,8 @@ static void tabfun_init(TabFun * tabfun, const char * filename) {
 	free(line);
 	fclose(fp);
 }
-void ar_init(const char * filename) {
-	tabfun_init(&ar, filename);
-	MESSAGE("TABFUN: %d cols, %d rows", ar.ncols, ar.nrows);
 
-	AR_HI_CI = tabfun_col_id(&ar, "HIci");
-	AR_HII_RC_A = tabfun_col_id(&ar, "HIIrcA");
-	AR_HII_RCC_A = tabfun_col_id(&ar, "HIIrccA");
-	AR_HII_RC_B = tabfun_col_id(&ar, "HIIrcB");
-	AR_HII_RCC_B = tabfun_col_id(&ar, "HIIrccB");
-	AR_LOG_T = 0;
-}
-
-const double ar_get(const int id, const double value) {
-	return tabfun_get(&ar, id, value);
-}
-
-void tabfun_dump(const TabFun * tabfun, const char * filename) {
+static void tabfun_dump(const TabFun * tabfun, const char * filename) {
 	FILE * fp = fopen(filename, "w");
 	fprintf(fp, "%-.5E %-.5E %-d %-.5E\n", tabfun->min, tabfun->max, tabfun->nrows, tabfun->step);
 	int i;

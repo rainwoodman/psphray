@@ -84,9 +84,11 @@ extern int AR_HII_RC_A;
 extern int AR_HII_RCC_A;
 extern int AR_HII_RC_B;
 extern int AR_HII_RCC_B;
+extern int XS_FREQ;
+extern int XS_HI;
 
 const double ar_get(const int id, const double logT);
-const double ar_verner(const double Ry);
+const double xs_get(const int id, const double freq);
 
 const int spec_get(const char * name);
 double spec_gen_freq(const int id);

@@ -36,6 +36,7 @@ void cfg_init(char * filename) {
 	}
 	config_ensure        (CFG, "psphray", CONFIG_TYPE_GROUP);
 	config_ensure_string (CFG, "psphray.atomicRates", "<filename>");
+	config_ensure_string (CFG, "psphray.crossSections", NULL);
 	config_ensure_int64  (CFG, "psphray.seed", 123456);
 	config_ensure_bool   (CFG, "psphray.writeInit", CONFIG_TRUE);
 	config_ensure_bool   (CFG, "psphray.disable2ndGenPhotons", CONFIG_FALSE);
@@ -70,9 +71,12 @@ void cfg_init(char * filename) {
 
 	units_init();
 	const char * arfilename = NULL;
+	const char * xsfilename = NULL;
 	config_lookup_string(CFG, "psphray.atomicRates", &arfilename);
-	ar_init(arfilename);
+	config_lookup_string(CFG, "psphray.xsfilename", &xsfilename);
 
+	ar_init(arfilename);
+	xs_init(xsfilename);
 	spec_init();
 
 	epochs_init();
