@@ -15,8 +15,8 @@ typedef struct {
 
 typedef struct {
 	float (*pos)[3];
-	double *lambdaHI;  /* lambdaHI = arctan(xHI / xHII) */
-	double *yeMET;
+	float *lambdaHI;  /* lambdaHI = arctan(xHI / xHII) */
+	float *yeMET;
 	float *mass;
 	float *sml;
 	float *rho;
