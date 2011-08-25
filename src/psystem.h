@@ -97,7 +97,7 @@ static inline const double psys_T(const intptr_t i) {
 }
 static inline void psys_set_lambdaHI(const intptr_t i, const double xHI, const double xHII) {
 	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaHI[i] = atan(MAXFLOAT);
-	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaHI[i] = 0.0;
+	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaHI[i] = 1/MAXFLOAT;
 	else psys.lambdaHI[i] = atan2(xHI , xHII);
 }
 
