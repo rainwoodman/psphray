@@ -71,6 +71,7 @@ tryagain:
 		/* if par not in the root cell, skip it*/
 		if(icell == -1) {
 			skipped ++;
+			icell = 0;
 			continue;
 		}
 
@@ -239,6 +240,9 @@ static inline void add(const intptr_t ipar, const intptr_t icell) {
 	cell->npar++;
 }
 static inline int full(const intptr_t icell) {
+	if(icell < 0 || icell >= rt.pool_used) {
+		ERROR("icell over range");
+	}
 	return rt.pool[icell].npar >= PPC;
 }
 static inline intptr_t parent(const intptr_t icell) {
@@ -246,11 +250,18 @@ static inline intptr_t parent(const intptr_t icell) {
 }
 static inline intptr_t find(const float pos[3], const intptr_t icell) {
 	Cell * cell = &rt.pool[icell];
+	if(icell < 0 || icell >= rt.pool_used) {
+		ERROR("icell out of range");
+	}
 	if(cell->first_child == -1) return icell;
 	int i;
 	for(i = 0; i < 8; i++) {
 		if(inside(pos, cell->first_child+i)) {
-			return find(pos, cell->first_child + i);
+			intptr_t jcell = find(pos, cell->first_child + i);
+			if(jcell < 0 || jcell >= rt.pool_used) {
+				ERROR("jcell out of range");
+			}
+			return jcell;
 		}
 	}
 	ERROR("never reach here makesure inside() is ensured before find()");
@@ -295,6 +306,9 @@ static inline int split(const intptr_t icell) {
 }
 static inline int inside(const float pos[3], const intptr_t icell) {
 	int d;
+	if (icell >= rt.pool_used || icell < 0) {
+		ERROR("icell over range");
+	}
 	Cell * cell = &rt.pool[icell];
 	for(d = 0; d < 3; d++) {
 		if(pos[d] >= cell->top[d] ||
