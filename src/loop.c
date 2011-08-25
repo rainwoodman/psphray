@@ -97,6 +97,7 @@ void run_epoch() {
 	intptr_t istep = 0;
 	psystem_stat("xHI");
 	psystem_stat("ye");
+	psystem_stat("yeMET");
 	psystem_stat("ie");
 	psystem_stat("T");
 	psystem_stat("recomb");
@@ -122,6 +123,7 @@ void run_epoch() {
 			MESSAGE("EV: %lu/%lu", stat.errors, stat.count);
 			psystem_stat("T");
 			psystem_stat("xHI");
+			psystem_stat("yeMET");
 			psystem_stat("ye");
 			psystem_stat("ie");
 			psystem_stat("recomb");
@@ -213,11 +215,12 @@ static void emit_rays() {
 		intptr_t k;
 		for(k = 0; k < psys.epoch->nrec; k++) {
 			int i = gsl_ran_discrete(RNG, rec_ran);
-			ARRAY_RESIZE(r, struct r_t, j);
+			ARRAY_RESIZE(r, struct r_t, j + 1);
 			r[j].type = 1;
 			r[j].ipar = ipars[i];
 			j++;
 		}
+		gsl_ran_discrete_free(rec_ran);
 	}
 
 	/* sort the rays by type and ipar/isrc so that
@@ -321,7 +324,7 @@ static void deposit(){
 		for(j = 0; j < r[i].x_length; j++) {
 			const intptr_t ipar = r[i].x[j].ipar;
 			const float b = r[i].x[j].b;
-			const double sigma = ar_verner(r[i].freq) * U_CM2;
+			const double sigma = xs_get(XS_HI, r[i].freq) * U_CM2;
 			const float sml = psys.sml[ipar];
 			const float sml_inv = 1.0 / sml;
 			const double NH = psys.mass[ipar] * NH_fac;
@@ -359,6 +362,8 @@ static void deposit(){
 			/* cut off at around 10^-10 */
 			if(TM / r[i].Nph < 1e-10) {
 				ARRAY_RESIZE(r[i].x, Xtype, j);
+				/* point to the next intersection so that a few lines later we can use j - 1*/
+				j++;
 				break;
 			}
 		}
@@ -366,7 +371,7 @@ static void deposit(){
 		// if we terminated the ray sooner then it is safe to do this
 		// if the ray terminated too early we shall use a longer length
 		// next time.
-		r[i].length = fmax(r[i].x[j].d * 2.0,  r[i].x[j].d + C_SPEED_LIGHT * scaling_fac * psys.tick_time);
+		r[i].length = fmax(r[i].x[j - 1].d * 2.0,  r[i].x[j - 1].d + C_SPEED_LIGHT * scaling_fac * psys.tick_time);
 		stat.tick_photon.lost += TM;
 	}
 }
