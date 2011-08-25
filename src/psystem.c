@@ -167,17 +167,19 @@ void psystem_switch_epoch(int i) {
 
 	hilbert_reorder();
 
-	/* free r0 here, because we need c till now*/
-	reader_destroy(r0);
 
 	/*FIXME: calculate active particles*/
 	MESSAGE("EPOCH active gas particles %ld/%ld", 0, c->Ntot[0]);
+
 	intptr_t ipar;
 	double mass = 0;
 	for(ipar = 0; ipar < psys.npar; ipar++) {
 		mass += psys.mass[ipar];
 	}
 	MESSAGE("EPOCH # of protons %g", C_HMF * mass / U_MPROTON);
+
+	/* free r0 here, because we need c till now*/
+	reader_destroy(r0);
 
 	if(psys.epoch->source) {
 		if(psys.srcs) free(psys.srcs);
@@ -582,6 +584,9 @@ void psystem_stat(const char * component) {
 
 		psystem_stat_internal(ye, psys.npar, 0, 1, max, min, mean);
 		free(ye);
+	}
+	if(!strcmp(component, "yeMET")) {
+		psystem_stat_internal(psys.yeMET, psys.npar, 1, 1, max, min, mean);
 	}
 	if(!strcmp(component, "mass")) {
 		psystem_stat_internal(psys.mass, psys.npar, 0, 1, max, min, mean);
