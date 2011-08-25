@@ -56,7 +56,7 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], voi
 
 	if(xHI >= 1.0) {
 		dfdx[0] *= -1;
-		dfdx[1] *= -1;
+		dfdx[2] *= -1;
 	}
 	return GSL_SUCCESS;
 }
