@@ -99,7 +99,7 @@ static void hilbert_reorder() {
 	gsl_heapsort_index(perm, peanokeys, psys.npar, sizeof(intptr_t), (void*)intptr_t_compare);
 
 	psys.pos = permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar);
-	psys.lambdaHI = permute(perm, psys.lambdaHI, sizeof(double), sizeof(double), psys.npar);
+	psys.lambdaHI = permute(perm, psys.lambdaHI, sizeof(float), sizeof(float), psys.npar);
 	psys.yeMET = permute(perm, psys.yeMET, sizeof(float), sizeof(float), psys.npar);
 	psys.mass = permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar);
 	psys.sml = permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar);
