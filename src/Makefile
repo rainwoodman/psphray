@@ -1,9 +1,9 @@
 CC = gcc
 CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -mfpmath=387,sse -ffast-math -fopenmp -I ../support
-OPT=-O3
+OPT=-O0
 F90FLAGS = -mfpmath=387,sse -ffast-math -O3 
 FC = gfortran
-LDFLAGS = -pg -L ../support/libconfig/
+LDFLAGS = -L ../support/libconfig/
 LIBS = -lconfig -lgfortran -lgsl -lgslcblas -lgomp
 
 SOURCES = \

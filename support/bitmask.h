@@ -58,6 +58,14 @@ static inline int bitmask_test_and_clear(void * mask, intptr_t idx) {
 	return __sync_fetch_and_and(&buf[idx >> LOG2_BLOCK], ~bit) & bit;
 }
 
+static inline int bitmask_test_and_set(void * mask, intptr_t idx) {
+	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
+	int offset = idx & BLOCK_1;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
+//	return (buf[idx >> LOG2_BLOCK] & bit) != 0;
+	return __sync_fetch_and_or(&buf[idx >> LOG2_BLOCK], bit) & bit;
+}
+
 static inline int bitmask_test(void * mask, intptr_t idx) {
 	BLOCK_TYPE * buf = (BLOCK_TYPE*)(((size_t *) mask) + 1);
 	int offset = idx & BLOCK_1;

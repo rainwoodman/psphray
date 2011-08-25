@@ -317,12 +317,16 @@ static void deposit(){
 
 	const double scaling_fac2_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1),2):1.0;
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
+	#pragma omp parallel for private(i)
 	for(i = 0; i < r_length; i++) {
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
 		intptr_t j;
 		for(j = 0; j < r[i].x_length; j++) {
 			const intptr_t ipar = r[i].x[j].ipar;
+			while(bitmask_test_and_set(active, r[i].x[j].ipar)) {
+				continue;
+			}
 			const float b = r[i].x[j].b;
 			const double sigma = xs_get(XS_HI, r[i].freq) * U_CM2;
 			const float sml = psys.sml[ipar];
@@ -359,6 +363,7 @@ static void deposit(){
 			} else {
 				psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
 			}	
+			bitmask_clear(active, r[i].x[j].ipar);
 			/* cut off at around 10^-10 */
 			if(TM / r[i].Nph < 1e-10) {
 				ARRAY_RESIZE(r[i].x, Xtype, j);
