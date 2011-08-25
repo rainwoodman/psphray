@@ -29,6 +29,7 @@ int XS_HI = -1;
 static TabFun ar = {0};
 static TabFun xs = {0};
 
+extern float verner_hi_photo_cs_(float *);
 static const double tabfun_get(const TabFun * tabfun, const int id, const double value);
 static int tabfun_col_id(const TabFun * tabfun, const char * col);
 static void tabfun_init(TabFun * tabfun, const char * filename);
