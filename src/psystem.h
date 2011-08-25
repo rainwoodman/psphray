@@ -80,6 +80,7 @@ static inline const double psys_xHI(const intptr_t i) {
   const double r_inv = (r!=0.0)?1.0/r:MAXFLOAT ; \
   xHI = r / ( 1. + r); \
   xHII = r_inv / (1. + r_inv); \
+  if(fabs(xHI + xHII - 1.0) > 1e-1) abort(); \
 }
 
 static inline const double psys_xHII(const intptr_t i) {
@@ -95,7 +96,7 @@ static inline const double psys_T(const intptr_t i) {
 	return ieye2T(psys.ie[i], psys_ye(i));
 }
 static inline void psys_set_lambdaHI(const intptr_t i, const double xHI, const double xHII) {
-	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaHI[i] = MAXFLOAT;
+	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaHI[i] = atan(MAXFLOAT);
 	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaHI[i] = 0.0;
 	else psys.lambdaHI[i] = atan2(xHI , xHII);
 }
