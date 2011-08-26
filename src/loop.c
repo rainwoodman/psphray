@@ -420,14 +420,6 @@ static void update_pars() {
 		const double delta = psys.yGdep[ipar];
 		const double xHI = psys_xHI(ipar);
 		const double xHII = psys_xHII(ipar);
-		if(CFG_ISOTHERMAL) {
-			const double T = psys_T(ipar);
-			psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
-			psys.ie[ipar] = Tye2ie(T, psys_ye(ipar));
-		} else {
-			psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
-		}
-		psys.yGdep[ipar] = 0.0;
 		Step step = {0};
 /*
 		if(psys.tick == psys.lasthit[ipar]) {
@@ -460,6 +452,7 @@ static void update_pars() {
 			if(CFG_ISOTHERMAL) {
 				psys.ie[ipar] = Tye2ie(step.T, psys_ye(ipar));
 			}
+			psys.yGdep[ipar] = 0.0;
 		}
 		d2++;
 	}

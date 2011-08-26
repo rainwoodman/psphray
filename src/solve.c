@@ -72,7 +72,8 @@ int step_evolve(Step * step, double time) {
 	const double alpha_HII1 = alpha_HII - ar_get(AR_HII_RC_B, logT) * step->nH;
 	if(alpha_HII1 < 0) abort();
 	const double Gamma_HI = 0;
-
+	/* so that the integration of Gamma_HI_mean = yGdep, conserving photons */
+	const double Gamma_HI_mean = step->yGdep / seconds;
 	double x[2];
 	x[0] = step->lambdaHI;
 	x[1] = 0;
@@ -82,7 +83,7 @@ int step_evolve(Step * step, double time) {
 
 	const double R = (gamma_HI + alpha_HII);
 	const double Q = -(Gamma_HI + (gamma_HI + 2 * alpha_HII) + (gamma_HI + alpha_HII) * yeMET);
-	const double P = alpha_HII * (1. + yeMET);
+	const double P = alpha_HII * (1. + yeMET) - Gamma_HI_mean;
 	const double Y = alpha_HII1 * yeMET;
 	const double Z = alpha_HII1;
 
