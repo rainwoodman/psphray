@@ -448,6 +448,7 @@ void psystem_write_output(int outputnum) {
 		intptr_t bh_start = psys.nsrcs * fid / nfiles;
 		intptr_t bh_end = psys.nsrcs * (fid + 1)/ nfiles;
 		intptr_t bh_size = bh_end - bh_start;
+		intptr_t i;
 		Reader * r = reader_new("psphray");
 		reader_create(r, filename);
 		ReaderConstants * c = reader_constants(r);
@@ -470,14 +471,21 @@ void psystem_write_output(int outputnum) {
 		reader_write(r, "sml", 0, &psys.sml[gas_start]);
 		reader_write(r, "rho", 0, &psys.rho[gas_start]);
 		reader_write(r, "mass", 0, &psys.mass[gas_start]);
-		reader_write(r, "lambdaHI", 0, &psys.lambdaHI[gas_start]);
-		reader_write(r, "yeMET", 0, &psys.yeMET[gas_start]);
+		float * xHI = reader_alloc(r, "xHI", 0);
+		float * ye = reader_alloc(r, "ye", 0);
+		for(i = 0; i < gas_size; i++) {
+			xHI[i] = psys_xHI(i);
+			ye[i] = psys_ye(i);
+		}
+		reader_write(r, "xHI", 0, xHI);
+		reader_write(r, "ye", 0, ye);
+		free(xHI);
+		free(ye);
 		reader_write(r, "ie", 0, &psys.ie[gas_start]);
 		reader_write(r, "lasthit", 0, &psys.lasthit[gas_start]);
 		reader_write(r, "id", 0, &psys.id[gas_start]);
 		/* write the bh */
 		float (*pos)[3] = reader_alloc(r, "pos", 5);
-		intptr_t i;
 		for(i = 0; i < bh_size; i++) {
 			pos[i][0] = psys.srcs[i+bh_start].pos[0];
 			pos[i][1] = psys.srcs[i+bh_start].pos[1];
