@@ -359,13 +359,8 @@ static void deposit(){
 			
 			const double delta = absorb / NH;
 
-			if(CFG_ISOTHERMAL) {
-				const double T = psys_T(ipar);
-				psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
-				psys.ie[ipar] = Tye2ie(T, psys_ye(ipar));
-			} else {
-				psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
-			}	
+			psys.yGdep[ipar] += delta;
+
 			bitmask_clear(active, r[i].x[j].ipar);
 			/* cut off at around 10^-10 */
 			if(TM / r[i].Nph < 1e-10) {
@@ -422,6 +417,17 @@ static void update_pars() {
 	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
 	for(j = 0; j < ipars_length; j++) {
 		const intptr_t ipar = ipars[j];
+		const double delta = psys.yGdep[ipar];
+		const double xHI = psys_xHI(ipar);
+		const double xHII = psys_xHII(ipar);
+		if(CFG_ISOTHERMAL) {
+			const double T = psys_T(ipar);
+			psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
+			psys.ie[ipar] = Tye2ie(T, psys_ye(ipar));
+		} else {
+			psys_set_lambdaHI(ipar, xHI - delta, xHII + delta);
+		}
+		psys.yGdep[ipar] = 0.0;
 		Step step = {0};
 /*
 		if(psys.tick == psys.lasthit[ipar]) {
@@ -429,9 +435,8 @@ static void update_pars() {
 		}
 */
 		const double NH = psys_NH(ipar);
-		/* everything multiplied by nH, saving some calculations */
+		step.yGdep = psys.yGdep[ipar];
 		step.lambdaHI = psys.lambdaHI[ipar];
-		step.ye = psys_ye(ipar);
 		step.yeMET = psys.yeMET[ipar];
 		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
@@ -439,17 +444,17 @@ static void update_pars() {
 
 		const double time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		if(!step_evolve(&step, time)) {
-			WARNING("evolve failed: time,T,xHI,ye,y,nH,ie=%g %g %g %g %g %g %g",
-				time/U_MYR, step.T, step.xHI, step.ye, step.yeMET, step.nH, step.ie);
+			WARNING("evolve failed: time,T,lambdaHI,y,nH,ie=%g %g %g %g %g %g %g",
+				time/U_MYR, step.T, step.lambdaHI, step.yeMET, step.nH, step.ie);
 			abort();
 			d1++;
 		} else {
-			psys.yGrec[ipar] += step.dyGH;
+			psys.yGrec[ipar] += step.dyGrec;
 			if(psys.yGrec[ipar] < 0) psys.yGrec[ipar] = 0;
-			increase_recomb += step.dyGH * NH;
+			increase_recomb += step.dyGrec * NH;
 
 			psys.lambdaHI[ipar] = step.lambdaHI;
-			psys.ie[ipar] += step.die;
+			psys.ie[ipar] += step.ie;
 			psys.lasthit[ipar] = psys.tick;
 
 			if(CFG_ISOTHERMAL) {

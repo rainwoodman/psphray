@@ -115,7 +115,7 @@ int step_evolve(Step * step, double time) {
 
 	if(x[0] < 0) x[0] = 0;
 
-	step->dyGH = x[1];
+	step->dyGrec = x[1];
 	step->lambdaHI = x[0];
 
 	return 1;

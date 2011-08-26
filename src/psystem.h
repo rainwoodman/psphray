@@ -25,6 +25,7 @@ typedef struct {
 	size_t npar;
 
 	float * yGrec; /* number of recombination photon / NH */
+	float * yGdep; /* number of ionizating photon / NH */
 	intptr_t * lasthit; /* time tick of last update */
 
 	uint64_t * id;
@@ -47,20 +48,16 @@ void psystem_stat(const char * component);
 
 typedef struct _Step {
 	double lambdaHI;
-	double xHI;
-	double xHII;
-	double ye;
 	double ie;
 	double yeMET;
+	double yGdep;
 
 	double nH;
 	double T;
 
-	double dxHI;
-	double dye;
-	double die;
-	double dyGH;
+	double dyGrec;
 } Step;
+
 
 typedef struct x_t {
 	intptr_t ipar;
