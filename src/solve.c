@@ -11,113 +11,129 @@
 
 int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, double x[], double dx[], double seconds);
 
-static int function(double t, const double x[], double dxdt[], void * params){
-	double * p = params;
-	const double R = p[0];
-	const double Q = p[1];
-	const double P = p[2];
-	const double Y = p[3];
-	const double Z = p[4];
+/* ******************
+ * Equations:
+ * ==============
+ *
+ * for x[0]:
+ * d lambda   1
+ * ------ = ---- R x_I ** 2 + Q * x_I + P  [fac = x_I **2 + x_II **2]
+ * d t       fac
+ *
+ * for x[1]:
+ * d yGrec
+ * ------- = Z x_II ** 2 + Z * x_II
+ * d t
+ *
+ * for x[2]:
+ * d u         1
+ * ---   =    --- (H - L)
+ * d t        rho
+ */
 
-	double xHII, xHI;
-	lambdaHI_to_xHI_xHII(x[0], xHI, xHII);
+/*  
+ * factor all coefficients by corresponding (nH) powers
+ * ==============
+ * gamma_HI alpha_HII shall take (nH) ** 2, but one of the powers
+ * is cancelled with the nH on the left-hand-side of the equation
+ *
+ * eta is nH ** 2, psi_HI is nH **2, psi_HeI is nH ** 3 etc 
+ * */
+#define FETCH_VARS \
+	const double seconds = step->time / U_SEC; \
+	const double T = step->T; \
+	const double logT = log10(T); \
+	const double gamma = seconds * ar_get(AR_HI_CI, logT) * step->nH; \
+	const double alpha_A = seconds * ar_get(AR_HII_RC_A, logT) * step->nH; \
+	const double alpha_AB = alpha_A - seconds * ar_get(AR_HII_RC_B, logT) * step->nH; \
+	const double nH2 = step->nH * step->nH; \
+	const double nH3 = nH2 * step->nH; \
+	const double eta_HII = seconds * ar_get(AR_HII_RCC_A, logT) * nH2; \
+	const double psi_HI = seconds * ar_get(AR_HI_CEC_A, logT) * nH2; \
+	const double zeta_HI = seconds * ar_get(AR_HI_CIC_A, logT) * nH2; \
+\
+	const double yGdep_mean = step->yGdep; \
+	const double yeMET = step->yeMET; \
+\
+	double xHII, xHI; \
+	lambdaHI_to_xHI_xHII(x[0], xHI, xHII); \
+	const double fac = xHI * xHI + xHII * xHII; \
+	const double ye = xHII + step->yeMET; \
+	const int sign = xHI >= 1.0? -1: 1;
+
+static int function(double t, const double x[], double dxdt[], Step * step){
+
+	FETCH_VARS;
 
 /* from GABE's notes  */
-	const double fac = xHI * xHI + xHII * xHII;
-	dxdt[0] = (R * xHI * xHI + Q * xHI + P) / fac;
-	dxdt[1] = (Z * xHII * xHII + Y * xHII);
-	if(xHI >= 1.0) {
-		dxdt[0] *= -1;
-		dxdt[1] *= -1;
-	}
+	dxdt[0] = sign * (-yGdep_mean - gamma * ye * xHI + alpha_A* ye * xHII) / fac;
+	dxdt[1] = sign * alpha_AB * ye * xHII;
+	dxdt[2] = 0.0;
+
 	return GSL_SUCCESS;
 }
 
-static int jacobian(double t, const double x[], double *dfdx, double dfdt[], void * params) {
-	double * p = params;
-	const double R = p[0];
-	const double Q = p[1];
-	const double P = p[2];
-	const double Y = p[3];
-	const double Z = p[4];
+static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Step * step) {
 
-	double xHI, xHII;
-	lambdaHI_to_xHI_xHII(x[0], xHI, xHII);
+	const int D = 3;
+	FETCH_VARS;
 
-	const double fac = xHI * xHI + xHII * xHII;
+	const double dxdt0 = (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII) / fac;
+	dfdx[0 * D + 0] = sign * (-2 * (xHI - xHII) * dxdt0 + gamma * xHI - (gamma * ye + alpha_A * ye + alpha_A * xHII));
 
-	dfdx[0] = 2 * R * xHI + Q + (R * xHI * xHI + Q * xHI + P) * (2 * xHII - 2 * xHI) / fac;
+	dfdx[0 * D + 1] = 0;
+	dfdx[0 * D + 2] = 0;
+	dfdx[1 * D + 0] = sign * (-fac * alpha_AB * (ye + xHII));
+	dfdx[1 * D + 1] = 0;
+	dfdx[1 * D + 2] = 0;
+	dfdx[2 * D + 0] = 0;
+	dfdx[2 * D + 1] = 0;
+	dfdx[2 * D + 2] = 0;
 
-	dfdx[1] = 0;
-	dfdx[2] = - fac * (2 * Z * xHII + Y);
-	dfdx[3] = 0;
 	dfdt[0] = 0;
 	dfdt[1] = 0;
-
-	if(xHI >= 1.0) {
-		dfdx[0] *= -1;
-		dfdx[2] *= -1;
-	}
+	dfdt[2] = 0;
 	return GSL_SUCCESS;
 }
 
 
-int step_evolve(Step * step, double time) {
-	const double seconds = time / U_SEC;
-
-	const double T = step->T;
-	const double logT = log10(T);
-	const double gamma_HI = ar_get(AR_HI_CI, logT) * step->nH;
-	const double alpha_HII = ar_get(AR_HII_RC_A, logT) * step->nH;
-	const double alpha_HII1 = alpha_HII - ar_get(AR_HII_RC_B, logT) * step->nH;
-	if(alpha_HII1 < 0) abort();
-	const double Gamma_HI = 0;
-	/* so that the integration of Gamma_HI_mean = yGdep, conserving photons */
-	const double Gamma_HI_mean = step->yGdep / seconds;
-	double x[2];
-	x[0] = step->lambdaHI;
-	x[1] = 0;
-	const double yeMET = step->yeMET;
-	
-	double dx[1] = {0};
-
-	const double R = (gamma_HI + alpha_HII);
-	const double Q = -(Gamma_HI + (gamma_HI + 2 * alpha_HII) + (gamma_HI + alpha_HII) * yeMET);
-	const double P = alpha_HII * (1. + yeMET) - Gamma_HI_mean;
-	const double Y = alpha_HII1 * yeMET;
-	const double Z = alpha_HII1;
+int step_evolve(Step * step) {
 
 //	MESSAGE("x1 = %le , x2 = %le x[0] - B %g", x1, x2, x[0] - B);
 
 	gsl_odeiv2_system sys;
 	gsl_odeiv2_driver * driver;
 
-	double param[5] = {R * seconds, Q * seconds, P * seconds, Y * seconds, Z * seconds};
 	sys.function = function;
 	sys.jacobian = jacobian;
-	sys.dimension = 2;
-	sys.params = param;
+	sys.dimension = 3;
+	sys.params = step;
 
 	double t = 0;
 
+	double x[3];
+	x[0] = step->lambdaHI;
+	x[1] = 0;
+	x[2] = step->ie;
+
 	driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_msbdf,
-			1.0 / 10000., 1e-6, 1e-6);
+			1.0 / 100., 1e-6, 1e-6);
 //	gsl_odeiv2_driver_reset(driver);
-	//gsl_odeiv2_driver_set_hmin(driver, seconds/ 100000.);
+	gsl_odeiv2_driver_set_nmax(driver, 100000);
 	int code = gsl_odeiv2_driver_apply(driver, &t, 1.0, x);
 
 	gsl_odeiv2_driver_free(driver);
 
 	if(GSL_SUCCESS != code ) {
-		WARNING("gsl failed: %s: T=%g, Gamma=%g gamma=%g alpha=%g yeMET =%g xHI=%g, seconds=%g", 
-			gsl_strerror(code), T, Gamma_HI, gamma_HI, alpha_HII,  yeMET, x[0], seconds);
+		WARNING("gsl failed: %s", gsl_strerror(code));
 		return 0;
 	}
 
 	if(x[0] < 0) x[0] = 0;
 
-	step->dyGrec = x[1];
 	step->lambdaHI = x[0];
+	step->dyGrec = x[1];
+	step->ie = x[2];
 
 	return 1;
 }

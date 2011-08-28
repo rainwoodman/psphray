@@ -81,6 +81,8 @@ static inline float Tye2ie(const float T, const float ye) {
 
 extern int AR_LOG_T;
 extern int AR_HI_CI;
+extern int AR_HI_CEC_A;
+extern int AR_HI_CIC_A;
 extern int AR_HII_RC_A;
 extern int AR_HII_RCC_A;
 extern int AR_HII_RC_B;

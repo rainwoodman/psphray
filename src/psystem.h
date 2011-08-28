@@ -51,6 +51,7 @@ typedef struct _Step {
 	double ie;
 	double yeMET;
 	double yGdep;
+	double time;
 
 	double nH;
 	double T;

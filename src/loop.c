@@ -35,7 +35,7 @@ struct r_t {
 extern PSystem psys;
 
 extern float sph_depth(const float r_h);
-extern int step_evolve(Step * step, double time);
+extern int step_evolve(Step * step);
 
 size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype ** pars, size_t * size);
 
@@ -434,10 +434,12 @@ static void update_pars() {
 		step.ie = psys.ie[ipar];
 		step.T = psys_T(ipar);
 
-		const double time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
-		if(!step_evolve(&step, time)) {
-			WARNING("evolve failed: time,T,lambdaHI,y,nH,ie=%g %g %g %g %g %g %g",
-				time/U_MYR, step.T, step.lambdaHI, step.yeMET, step.nH, step.ie);
+		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
+		if(!step_evolve(&step)) {
+			double xHI, xHII;
+			lambdaHI_to_xHI_xHII(step.lambdaHI, xHI, xHII);
+			WARNING("evolve failed: time,T,lambdaHI,y,nH,ie=%g %g %g %g %g %g %g (xHI=%g xHII=%g)",
+				step.time/U_MYR, step.T, step.lambdaHI, step.yeMET, step.nH, step.ie, xHI, xHII);
 			abort();
 			d1++;
 		} else {

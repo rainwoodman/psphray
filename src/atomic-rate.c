@@ -22,6 +22,8 @@ int AR_HII_RC_A = -1;
 int AR_HII_RCC_A = -1;
 int AR_HII_RC_B = -1;
 int AR_HII_RCC_B = -1;
+int AR_HI_CIC_A = -1;
+int AR_HI_CEC_A = -1;
 
 int XS_FREQ = -1;
 int XS_HI = -1;
@@ -44,6 +46,9 @@ void ar_init(const char * filename) {
 	AR_HII_RCC_A = tabfun_col_id(&ar, "HIIrccA");
 	AR_HII_RC_B = tabfun_col_id(&ar, "HIIrcB");
 	AR_HII_RCC_B = tabfun_col_id(&ar, "HIIrccB");
+	AR_HI_CIC_A = tabfun_col_id(&ar, "HIcic");
+	AR_HI_CEC_A = tabfun_col_id(&ar, "HIcec");
+
 	AR_LOG_T = 0;
 }
 
