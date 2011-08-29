@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "config.h"
+#include <math.h>
 #include <array.h>
 
 #include <gsl/gsl_randist.h>
@@ -19,6 +20,10 @@ typedef struct {
 Spec * specs = NULL;
 
 int N_SPECS = 0;
+
+static double blackbody(double T, double freq) {
+	return freq * freq * freq / (expm1(freq * U_RY_ENG / (C_BOLTZMANN * T * U_KELVIN)));
+}
 
 const int spec_get(const char * name) {
 	int i;
@@ -41,7 +46,14 @@ double spec_gen_freq(const int id) {
 	}
 }
 
+void spec_dump(int spec) {
+	int i;
+	for(i = 0; i < specs[spec].freq_length; i++) {
+		printf("%lg %lg\n", specs[spec].freq[i], specs[spec].weight[i]);
+	}
+}
 static void spec_from_file(Spec * newitem, const char * filename);
+static void spec_from_config_setting(Spec * newitem, config_setting_t * setting);
 void spec_init() {
 	config_setting_t * list = config_lookup(CFG, "specs");
 	if(list == NULL) {
@@ -56,12 +68,50 @@ void spec_init() {
 		if(config_setting_type(ele) == CONFIG_TYPE_STRING) {
 			specs[i].type = 0;
 			spec_from_file(&specs[i], config_setting_get_string(ele));
+		} else if(config_setting_type(ele) == CONFIG_TYPE_GROUP) {
+			specs[i].type = 0;
+			spec_from_config_setting(&specs[i], ele);
 		} else {
 			specs[i].type = 1;
 			ARRAY_RESIZE(specs[i].freq, double, 1);
 			specs[i].freq[0] = config_setting_get_float(ele);
 		}
 	}
+	
+	for(i = 0; i < N_SPECS; i++) {
+		if(specs[i].type == 0) {
+			specs[i].randist = gsl_ran_discrete_preproc(specs[i].weight_length, specs[i].weight);
+		}
+	}
+}
+static void spec_from_config_setting(Spec * newitem, config_setting_t * setting) {
+	const char * type = NULL;
+	if(!config_setting_lookup_string(setting, "type", &type)) {
+		ERROR("can't parse spectra type in configfile");
+	}
+	newitem->type = 1;
+	const int nbins = 1024;
+	ARRAY_RESIZE(newitem->freq, double, nbins);
+	ARRAY_RESIZE(newitem->weight, double, nbins);
+	int i;
+	double freqmin = 1;
+	double freqmax = 16;
+	double step = (freqmax - freqmin) / (nbins - 1);
+	for(i = 0; i < nbins; i++) {
+		newitem->freq[i] = freqmin + i * step;
+	}
+	if(!strcmp(type, "blackbody")) {
+		double T;
+		if(!config_setting_lookup_float(setting, "temperature", & T)
+		&& !config_setting_lookup_float(setting, "T", &T)
+		&& !config_setting_lookup_float(setting, "temp", &T)) {
+			ERROR("specify temperature in blackbody spectrum");
+		}
+		for(i = 0; i < nbins; i++) {
+			newitem->weight[i] = blackbody(T, newitem->freq[i]);
+		}
+	}
+
 }
 static void spec_from_file(Spec * newitem, const char * filename) {
 	FILE * fp = fopen(filename, "r");
@@ -97,6 +147,4 @@ static void spec_from_file(Spec * newitem, const char * filename) {
 	}
 	free(line);
 	fclose(fp);
-	
-	newitem->randist = gsl_ran_discrete_preproc(newitem->weight_length, newitem->weight);
 }

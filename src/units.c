@@ -16,6 +16,10 @@ double U_MSUN = 0.0;
 double U_MPROTON = 0.0;
 double U_KELVIN = 0.0;
 
+double U_J = 0.0;
+double U_EV = 0.0;
+double U_RY_ENG = 0.0;
+
 double C_OMEGA_L = 0.0;
 double C_OMEGA_M = 0.0;
 double C_OMEGA_B = 0.0;
@@ -45,6 +49,7 @@ double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
 		{"msun", &U_MSUN},
 		{"mproton", &U_MPROTON},
 		{"kelvin", &U_KELVIN},
+		{"ev", &U_EV},
 		{NULL, NULL},
 	};
 double units_simple(char * simple);
@@ -75,6 +80,9 @@ double units_init() {
 	U_KELVIN = 1.0;
 	C_BOLTZMANN = 1.3806503e-23 * U_M * U_M * U_KG / U_SEC / U_SEC;
 
+	U_J = U_KG * U_M * U_M / (U_SEC * U_SEC);
+	U_EV = 1.602176487e-19 * U_J;
+	U_RY_ENG = 13.60569253 * U_EV;
 	C_H_PER_MASS = C_HMF / U_MPROTON;
 	C_SPEED_LIGHT = 3e8 * U_M / U_SEC;
 

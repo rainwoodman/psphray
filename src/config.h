@@ -56,6 +56,11 @@ extern double U_KG;
 extern double U_MSUN;
 extern double U_MPROTON;
 
+extern double U_KELVIN;
+extern double U_J;
+extern double U_EV;
+extern double U_RY_ENG;
+
 extern double C_HMF;
 extern double C_OMEGA_L;
 extern double C_OMEGA_M;
