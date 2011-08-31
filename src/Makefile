@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -mfpmath=387,sse -ffast-math -I ../support 
-OPT=-O3 -fopenmp
+OPT=-O0 -fopenmp
 F90FLAGS = -mfpmath=387,sse -ffast-math -O3 
 FC = gfortran
 LDFLAGS = -L ../support/libconfig/

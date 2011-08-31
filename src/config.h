@@ -57,6 +57,7 @@ extern double U_MSUN;
 extern double U_MPROTON;
 
 extern double U_KELVIN;
+extern double U_ERG;
 extern double U_J;
 extern double U_EV;
 extern double U_RY_ENG;
@@ -92,6 +93,8 @@ extern int AR_HII_RC_A;
 extern int AR_HII_RCC_A;
 extern int AR_HII_RC_B;
 extern int AR_HII_RCC_B;
+extern int AR_E_BREMC;
+extern int AR_E_COMPC;
 extern int XS_FREQ;
 extern int XS_HI;
 

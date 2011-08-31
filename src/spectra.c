@@ -89,7 +89,6 @@ static void spec_from_config_setting(Spec * newitem, config_setting_t * setting)
 	if(!config_setting_lookup_string(setting, "type", &type)) {
 		ERROR("can't parse spectra type in configfile");
 	}
-	newitem->type = 1;
 	const int nbins = 1024;
 	ARRAY_RESIZE(newitem->freq, double, nbins);
 	ARRAY_RESIZE(newitem->weight, double, nbins);

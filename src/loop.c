@@ -97,7 +97,7 @@ void run_epoch() {
 	intptr_t istep = 0;
 	psystem_stat("xHI");
 	psystem_stat("ye");
-	psystem_stat("yeMET");
+	psystem_stat("heat");
 	psystem_stat("ie");
 	psystem_stat("T");
 	psystem_stat("yGrec");
@@ -123,7 +123,7 @@ void run_epoch() {
 			MESSAGE("EV: %lu/%lu", stat.errors, stat.count);
 			psystem_stat("T");
 			psystem_stat("xHI");
-			psystem_stat("yeMET");
+			psystem_stat("heat");
 			psystem_stat("ye");
 			psystem_stat("ie");
 			psystem_stat("yGrec");
@@ -167,7 +167,12 @@ static void emit_rays() {
 	double weights[psys.nsrcs];
 	intptr_t i;
 	for(i = 0; i < psys.nsrcs; i++) {
-		weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
+		/* treat two types the same essentially because they are both Ngamma_sec*/
+		if(psys.srcs[i].type == PSYS_SRC_POINT) {
+			weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
+		} else if(psys.srcs[i].type == PSYS_SRC_PLANE) {
+			weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
+		}
 	}
 
 	double max_src_length = -1.0;
@@ -232,12 +237,31 @@ static void emit_rays() {
 		double dx, dy, dz;
 		switch(r[i].type) {
 			case 0: /* from a src */
-			for(d = 0; d < 3; d++) {
-				r[i].s[d] = psys.srcs[r[i].isrc].pos[d];
+			{
+			const intptr_t isrc = r[i].isrc;
+			if(psys.srcs[isrc].type == PSYS_SRC_POINT) {
+				for(d = 0; d < 3; d++) {
+					r[i].s[d] = psys.srcs[isrc].pos[d];
+				}
+				gsl_ran_dir_3d(RNG, &dx, &dy, &dz);
+				r[i].dir[0] = dx;
+				r[i].dir[1] = dy;
+				r[i].dir[2] = dz;
+			} else if(psys.srcs[isrc].type == PSYS_SRC_PLANE) {
+				const double u = gsl_ran_flat(RNG, -1, 1);
+				const double v = gsl_ran_flat(RNG, -1, 1);
+				for(d = 0; d < 3; d++) {
+					r[i].dir[d] = psys.srcs[isrc].dir[d];
+					r[i].s[d] = psys.srcs[isrc].pos[d] + 
+						u * psys.srcs[isrc].a[d] * psys.srcs[isrc].radius + 
+						v * psys.srcs[isrc].b[d] * psys.srcs[isrc].radius;
+				}
+				
 			}
-			r[i].Nph = weights[r[i].isrc];
-			r[i].freq = spec_gen_freq(psys.srcs[r[i].isrc].specid);
+			r[i].Nph = weights[isrc];
+			r[i].freq = spec_gen_freq(psys.srcs[isrc].specid);
 			r[i].length = max_src_length;
+			}
 			break;
 			case 1: /* from a recombination, aka particle */
 			{
@@ -248,14 +272,14 @@ static void emit_rays() {
 			r[i].Nph = psys.yGrec[ipar] * psys_NH(ipar);
 			r[i].freq = 1.0;
 			r[i].length = max_rec_length;
+			gsl_ran_dir_3d(RNG, &dx, &dy, &dz);
+			r[i].dir[0] = dx;
+			r[i].dir[1] = dy;
+			r[i].dir[2] = dz;
 			break;
 			}
 			default: ERROR("never each here");
 		}
-		gsl_ran_dir_3d(RNG, &dx, &dy, &dz);
-		r[i].dir[0] = dx;
-		r[i].dir[1] = dy;
-		r[i].dir[2] = dz;
 	}
 	for(i = 0; i <= r_length; i++) {
 		if(i == 0) {
@@ -310,7 +334,6 @@ static void trace() {
 
 		qsort(r[i].x, r[i].x_length, sizeof(Xtype), x_t_compare);
 	}
-
 }
 
 static void deposit(){
@@ -335,6 +358,7 @@ static void deposit(){
 			const float sml = psys.sml[ipar];
 			const float sml_inv = 1.0 / sml;
 			const double NH = psys_NH(ipar);
+			const double nH = psys_nH(ipar);
 			const double xHI = psys_xHI(ipar);
 			const double xHII = psys_xHII(ipar);
 
@@ -360,6 +384,7 @@ static void deposit(){
 			const double delta = absorb / NH;
 
 			psys.yGdep[ipar] += delta;
+			psys.heat[ipar] += C_H_PER_MASS * delta * (r[i].freq - 1) * U_RY_ENG;
 
 			bitmask_clear(active, r[i].x[j].ipar);
 			/* cut off at around 10^-10 */
@@ -433,13 +458,31 @@ static void update_pars() {
 		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
 		step.T = psys_T(ipar);
+		step.heat = psys.heat[ipar];
+		step.rho = psys.rho[ipar];
 
 		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
+
 		if(!step_evolve(&step)) {
 			double xHI, xHII;
 			lambdaHI_to_xHI_xHII(step.lambdaHI, xHI, xHII);
-			WARNING("evolve failed: time,T,lambdaHI,y,nH,ie=%g %g %g %g %g %g %g (xHI=%g xHII=%g)",
-				step.time/U_MYR, step.T, step.lambdaHI, step.yeMET, step.nH, step.ie, xHI, xHII);
+			WARNING("evolve failed: "
+				"time = %g\n"
+				"step.time = %g; \n"
+				"step.T = %g; \n"
+				"step.lambdaHI=%g; \n"
+				"step.yeMET=%g;\n"
+				"step.nH=%g;\n"
+				"step.yGdep=%g;\n"
+				"step.ie=%g;\n"
+				"step.heat=%g;\n"
+				"xHI=%g\n"
+				"xHII=%g\n",
+				step.time/U_MYR, step.time, step.T, 
+				step.lambdaHI, 
+				step.yeMET, step.nH, step.yGdep, step.ie, step.heat,
+				xHI, xHII
+				);
 			abort();
 			d1++;
 		} else {
@@ -448,13 +491,16 @@ static void update_pars() {
 			increase_recomb += step.dyGrec * NH;
 
 			psys.lambdaHI[ipar] = step.lambdaHI;
-			psys.ie[ipar] += step.ie;
+			if(!CFG_ADIABATIC)
+				psys.ie[ipar] = step.ie;
+
 			psys.lasthit[ipar] = psys.tick;
 
 			if(CFG_ISOTHERMAL) {
 				psys.ie[ipar] = Tye2ie(step.T, psys_ye(ipar));
 			}
 			psys.yGdep[ipar] = 0.0;
+			psys.heat[ipar] = 0.0;
 		}
 		d2++;
 	}

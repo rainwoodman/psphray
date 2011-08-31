@@ -4,10 +4,11 @@
 #include <stdint.h>
 
 #include <messages.h>
+#include <array.h>
 
 typedef struct {
-	double ** data;
-	char ** headers;
+	ARRAY_DEFINE_S(data, double *);
+	ARRAY_DEFINE_S(headers, char *);
 	int nrows;
 	int ncols;
 	double min; 
@@ -24,7 +25,8 @@ int AR_HII_RC_B = -1;
 int AR_HII_RCC_B = -1;
 int AR_HI_CIC_A = -1;
 int AR_HI_CEC_A = -1;
-
+int AR_E_BREMC = -1;
+int AR_E_COMPC = -1;
 int XS_FREQ = -1;
 int XS_HI = -1;
 
@@ -36,18 +38,34 @@ static const double tabfun_get(const TabFun * tabfun, const int id, const double
 static int tabfun_col_id(const TabFun * tabfun, const char * col);
 static void tabfun_init(TabFun * tabfun, const char * filename);
 static void tabfun_dump(const TabFun * tabfun, const char * filename);
+static int tabfun_ensure_col(TabFun * tabfun, char * col, double (*func)(double));
+
+/* analytical forms */
+static double verner(double freq) {
+	float ryd = freq;
+	return verner_hi_photo_cs_(&ryd);
+}
+static double bremsstrahlung_cen_1992(double T) {
+	return 1.42e-27 * 1.5 * sqrt(T);
+}
+/* not there yet, need to find a way to deal with the backgroun temperature */
+static double compton_haiman_1996(double T) {
+	return 0.0;
+}
 
 void ar_init(const char * filename) {
 	tabfun_init(&ar, filename);
 	MESSAGE("AR: %d cols, %d rows", ar.ncols, ar.nrows);
 
-	AR_HI_CI = tabfun_col_id(&ar, "HIci");
-	AR_HII_RC_A = tabfun_col_id(&ar, "HIIrcA");
-	AR_HII_RCC_A = tabfun_col_id(&ar, "HIIrccA");
-	AR_HII_RC_B = tabfun_col_id(&ar, "HIIrcB");
-	AR_HII_RCC_B = tabfun_col_id(&ar, "HIIrccB");
-	AR_HI_CIC_A = tabfun_col_id(&ar, "HIcic");
-	AR_HI_CEC_A = tabfun_col_id(&ar, "HIcec");
+	AR_HI_CI = tabfun_ensure_col(&ar, "HIci", NULL);
+	AR_HII_RC_A = tabfun_ensure_col(&ar, "HIIrcA", NULL);
+	AR_HII_RCC_A = tabfun_ensure_col(&ar, "HIIrccA", NULL);
+	AR_HII_RC_B = tabfun_ensure_col(&ar, "HIIrcB", NULL);
+	AR_HII_RCC_B = tabfun_ensure_col(&ar, "HIIrccB", NULL);
+	AR_HI_CIC_A = tabfun_ensure_col(&ar, "HIcic", NULL);
+	AR_HI_CEC_A = tabfun_ensure_col(&ar, "HIcec", NULL);
+	AR_E_BREMC = tabfun_ensure_col(&ar, "Brem", bremsstrahlung_cen_1992);
+	AR_E_COMPC = tabfun_ensure_col(&ar, "Compton", compton_haiman_1996);
 
 	AR_LOG_T = 0;
 }
@@ -61,32 +79,49 @@ void xs_init(const char * filename) {
 		tabfun_init(&xs, filename);
 		MESSAGE("XS: %d cols, %d rows", xs.ncols, xs.nrows);
 	} else {
-		xs.ncols = 2;
+		xs.ncols = 1;
 		xs.nrows = 1024;
 		xs.min = 1;
 		xs.max = 16;
 		xs.step = (xs.max - xs.min) / (xs.nrows - 1);
 		xs.step_inv = 1.0 / xs.step;
-		xs.data = malloc(sizeof(double*)* xs.ncols);
-		xs.headers = malloc(sizeof(char*)* xs.ncols);
+		ARRAY_RESIZE(xs.data, double * , xs.ncols);
+		ARRAY_RESIZE(xs.headers, char * , xs.ncols);
 		xs.headers[0] = "freq";
-		xs.headers[1] = "HI";
 		xs.data[0] = malloc(sizeof(double)* xs.nrows);
-		xs.data[1] = malloc(sizeof(double)* xs.nrows);
 		int i;
 		for(i = 0; i < xs.nrows; i++) {
 			xs.data[0][i] = xs.min + xs.step * i;
-			float ry = xs.data[0][i];
-			xs.data[1][i] = verner_hi_photo_cs_(&ry);
 		}
 	}
 
-	XS_HI = tabfun_col_id(&xs, "HI");
+	XS_HI = tabfun_ensure_col(&xs, "HI", verner);
 	XS_FREQ = 0;
 }
 
 const double xs_get(const int id, const double value) {
 	return tabfun_get(&xs, id, value);
+}
+
+static int tabfun_ensure_col(TabFun * tabfun, char * col, double (*func)(double)) {
+	int i;
+	for(i = 0; i < tabfun->headers_length; i++) {
+		if(!strcasecmp(col, tabfun->headers[i])) {
+			return i;
+		}
+	}
+	if(func == NULL) {
+		ERROR("column %s unknown and no hard coded analytical form", col);
+	} else {
+		MESSAGE("using analytical form of column %s", col);
+	}
+	*ARRAY_APPEND(tabfun->headers, char*) = strdup(col);
+	*ARRAY_APPEND(tabfun->data, double *) = malloc(sizeof(double) * tabfun->nrows);
+	int j;
+	for(j =0; j < tabfun->nrows; j++) {
+		tabfun->data[i][j] = func(tabfun->data[0][j]);
+	}
+	return i;
 }
 
 static const double tabfun_get(const TabFun * tabfun, const int id, const double value) {
@@ -109,16 +144,6 @@ static const double tabfun_get(const TabFun * tabfun, const int id, const double
 	float leftwt = (right - value);
 	float rightwt = (value- left);
 	return (leftwt * tabfun->data[id][index] + rightwt * tabfun->data[id][index+1]) * tabfun->step_inv;
-}
-
-static int tabfun_col_id(const TabFun * tabfun, const char * col) {
-	int i;
-	for(i = 0; i < tabfun->ncols; i++) {
-		if(!strcasecmp(col, tabfun->headers[i])) {
-			return i;
-		}
-	}
-	ERROR("column %s unknown", col);
 }
 
 static void tabfun_init(TabFun * tabfun, const char * filename) {
@@ -151,8 +176,8 @@ static void tabfun_init(TabFun * tabfun, const char * filename) {
 		case 1:
 			p = line;
 			tabfun->ncols = len / 14;
-			tabfun->headers = malloc(sizeof(char*) * tabfun->ncols);
-			tabfun->data = malloc(sizeof(double*) * tabfun->ncols);
+			ARRAY_RESIZE(tabfun->data, double * , tabfun->ncols);
+			ARRAY_RESIZE(tabfun->headers, char * , tabfun->ncols);
 			for(i = 0; i < tabfun->ncols; i++) {
 				p = line + i * 14;
 				tabfun->data[i] = malloc(sizeof(double) * tabfun->nrows);
@@ -196,14 +221,14 @@ static void tabfun_dump(const TabFun * tabfun, const char * filename) {
 	FILE * fp = fopen(filename, "w");
 	fprintf(fp, "%-.5E %-.5E %-d %-.5E\n", tabfun->min, tabfun->max, tabfun->nrows, tabfun->step);
 	int i;
-	for( i = 0; i < tabfun->ncols; i++) {
+	for( i = 0; i < tabfun->headers_length; i++) {
 		fprintf(fp, " %-14s", tabfun->headers[i]);
 	}
 	fprintf(fp, "\n");
 	fprintf(fp, "\n");
 	int irow;
 	for(irow = 0; irow < tabfun->nrows; irow++) {
-		for( i = 0; i < tabfun->ncols; i++) {
+		for( i = 0; i < tabfun->headers_length; i++) {
 			fprintf(fp, "%- 14.5E", tabfun->data[i][irow]);
 		}
 		fprintf(fp, "\n");

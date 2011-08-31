@@ -11,11 +11,9 @@
 #include "psystem.h"
 
 #include <gsl/gsl_permutation.h>
-#include <gsl/gsl_permute_double.h>
-#include <gsl/gsl_permute_float.h>
-#include <gsl/gsl_permute_ulong.h>
-#include <gsl/gsl_permute_uchar.h>
 #include <gsl/gsl_heapsort.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
 
 #define IDHASHBITS 24
 #define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
@@ -108,6 +106,7 @@ static void hilbert_reorder() {
 	psys.flag = permute(perm, psys.flag, sizeof(int8_t), sizeof(int8_t), psys.npar);
 	psys.yGrec = permute(perm, psys.yGrec, sizeof(float), sizeof(float), psys.npar);
 	psys.yGdep = permute(perm, psys.yGdep, sizeof(float), sizeof(float), psys.npar);
+	psys.heat = permute(perm, psys.heat, sizeof(float), sizeof(float), psys.npar);
 	psys.lasthit = permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
 	psys.id = permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar);
 
@@ -227,6 +226,7 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	psys.yeMET = calloc(sizeof(float), ngas);
 	psys.yGrec = calloc(sizeof(float), ngas);
 	psys.yGdep = calloc(sizeof(float), ngas);
+	psys.heat = calloc(sizeof(float), ngas);
 	psys.lasthit = calloc(sizeof(intptr_t), ngas);
 
 	psys.flag = calloc(sizeof(int8_t), ngas);
@@ -358,19 +358,44 @@ static void psystem_match_epoch(ReaderConstants * c) {
 		distsum/ c->Ntot[0]);
 }
 
+void solve_u_v(double d[3], double u[3], double v[3]) {
+	double data[9] = {
+		d[0] * d[0], d[1] * d[0], d[2] * d[0],
+		d[0] * d[1], d[1] * d[1], d[2] * d[1],
+		d[0] * d[2], d[1] * d[2], d[2] * d[2],
+	};
+	gsl_matrix_view m = gsl_matrix_view_array(data, 3, 3);
+	gsl_vector * eval = gsl_vector_alloc(3);
+	gsl_matrix * evac = gsl_matrix_alloc(3, 3);
+	gsl_eigen_symmv_workspace * work = gsl_eigen_symmv_alloc(3);
+	gsl_eigen_symmv(&m.matrix, eval, evac, work);
+	gsl_eigen_symmv_sort(eval, evac, GSL_EIGEN_SORT_ABS_ASC);
+	gsl_vector_view u_view = gsl_matrix_column(evac, 0);
+	gsl_vector_view v_view = gsl_matrix_column(evac, 1);
+	int i;
+	for(i = 0; i < 3; i++) {
+		u[i] = gsl_vector_get(&u_view.vector, i);
+		v[i] = gsl_vector_get(&v_view.vector, i);
+	}
+	gsl_matrix_free(evac);
+	gsl_vector_free(eval);
+	gsl_eigen_symmv_free(work);
+}
+
 static void psystem_read_source() {
 	FILE * f = fopen(psys.epoch->source, "r");
 	if(f == NULL) {
 		ERROR("failed to open %s", psys.epoch->source);
 	}
 	int NR = 0;
+	int NF = 0;
 	char * line = NULL;
 	size_t len = 0;
 	intptr_t isrc = 0;
 	int stage = 0;
-	double x, y, z, dummy, L;
+	double x, y, z, dx, dy, dz, radius, L;
+	char spec[128];
 	char type[128];
-	char garbage[128];
 
 	while(0 <= getline(&line, &len, f)) {
 		if(line[0] == '#') {
@@ -388,16 +413,31 @@ static void psystem_read_source() {
 			}
 			break;
 		case 1:
-			if(9 != sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %80s %80s",
-				&x, &y, &z, &dummy, &dummy, &dummy, 
-				&L, type, garbage)) {
+			NF = sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %80s %80s %lf",
+				&x, &y, &z, &dx, &dy, &dz, 
+				&L, spec, type, &radius); 
+			if(NF != 9 && NF != 10) {
 				ERROR("%s format error at %d", psys.epoch->source, NR);
 			}
 			psys.srcs[isrc].pos[0] = x;
 			psys.srcs[isrc].pos[1] = y;
 			psys.srcs[isrc].pos[2] = z;
-			psys.srcs[isrc].Ngamma_sec = L * 1e50;
-			psys.srcs[isrc].specid = spec_get(type);
+			psys.srcs[isrc].dir[0] = dx;
+			psys.srcs[isrc].dir[1] = dy;
+			psys.srcs[isrc].dir[2] = dz;
+			psys.srcs[isrc].specid = spec_get(spec);
+			if(!strcmp(type, "plane")) {
+				if(NF != 10) {
+					ERROR("%s format error at %d, needs 10 fields", psys.epoch->source, NR);
+				}
+				psys.srcs[isrc].type = PSYS_SRC_PLANE;
+				psys.srcs[isrc].radius = radius;
+				psys.srcs[isrc].Ngamma_sec = L * M_PI * radius * radius / (U_CM * U_CM);
+				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
+			} else {
+				psys.srcs[isrc].type = PSYS_SRC_POINT;
+				psys.srcs[isrc].Ngamma_sec = L * 1e50;
+			}
 			isrc ++;
 			if(isrc == psys.nsrcs) {
 				stage ++;
@@ -586,6 +626,9 @@ void psystem_stat(const char * component) {
 	}
 	if(!strcmp(component, "yGdep")) {
 		psystem_stat_internal(psys.yGdep, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "heat")) {
+		psystem_stat_internal(psys.heat, psys.npar, 0, 1, max, min, mean);
 	}
 	if(!strcmp(component, "ye")) {
 		float * ye = malloc(sizeof(float) * psys.npar);

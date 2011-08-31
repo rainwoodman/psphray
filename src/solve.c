@@ -41,24 +41,28 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
  * */
 #define FETCH_VARS \
 	const double seconds = step->time / U_SEC; \
-	const double T = step->T; \
-	const double logT = log10(T); \
-	const double gamma = seconds * ar_get(AR_HI_CI, logT) * step->nH; \
-	const double alpha_A = seconds * ar_get(AR_HII_RC_A, logT) * step->nH; \
-	const double alpha_AB = alpha_A - seconds * ar_get(AR_HII_RC_B, logT) * step->nH; \
-	const double nH2 = step->nH * step->nH; \
-	const double nH3 = nH2 * step->nH; \
-	const double eta_HII = seconds * ar_get(AR_HII_RCC_A, logT) * nH2; \
-	const double psi_HI = seconds * ar_get(AR_HI_CEC_A, logT) * nH2; \
-	const double zeta_HI = seconds * ar_get(AR_HI_CIC_A, logT) * nH2; \
-\
-	const double yGdep_mean = step->yGdep; \
-	const double yeMET = step->yeMET; \
-\
 	double xHII, xHI; \
 	lambdaHI_to_xHI_xHII(x[0], xHI, xHII); \
 	const double fac = xHI * xHI + xHII * xHII; \
 	const double ye = xHII + step->yeMET; \
+	const double nH2 = step->nH * step->nH; \
+	const double nH3 = nH2 * step->nH; \
+	const double nH = step->nH; \
+	const double yGdep_mean = step->yGdep / seconds; \
+	const double heat_mean = step->heat / seconds; \
+	const double yeMET = step->yeMET; \
+	const double T = CFG_ISOTHERMAL?step->T:ieye2T(x[2], ye); \
+	const double logT = log10(T); \
+	const double gamma = ar_get(AR_HI_CI, logT) * nH; \
+	const double alpha_A = ar_get(AR_HII_RC_A, logT) * nH; \
+	const double alpha_AB = alpha_A - ar_get(AR_HII_RC_B, logT) * nH; \
+	const double eta_HII = ar_get(AR_HII_RCC_A, logT) * nH; \
+	const double psi_HI = ar_get(AR_HI_CEC_A, logT) * nH; \
+	const double zeta_HI = ar_get(AR_HI_CIC_A, logT) * nH; \
+	const double beta = ar_get(AR_E_BREMC, logT) * nH; \
+	const double chi = ar_get(AR_E_COMPC, logT) ; \
+\
+\
 	const int sign = xHI >= 1.0? -1: 1;
 
 static int function(double t, const double x[], double dxdt[], Step * step){
@@ -66,9 +70,18 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 	FETCH_VARS;
 
 /* from GABE's notes  */
-	dxdt[0] = sign * (-yGdep_mean - gamma * ye * xHI + alpha_A* ye * xHII) / fac;
-	dxdt[1] = sign * alpha_AB * ye * xHII;
-	dxdt[2] = 0.0;
+	dxdt[0] = sign * seconds * (-yGdep_mean - gamma * ye * xHI + alpha_A* ye * xHII) / fac;
+	dxdt[1] = sign * seconds * alpha_AB * ye * xHII;
+	if(CFG_ADIABATIC) {
+		dxdt[2] = 0.0;
+	} else {
+		const double L = U_ERG * C_H_PER_MASS * (
+			(zeta_HI + psi_HI) * ye * xHI + 
+			 (eta_HII * ye * xHII) +
+			 beta * ye * xHII + chi * ye);
+	//	MESSAGE("T = %g H=%g L=%g eta=%g psi=%g zeta=%g beta=%g xHI=%g\n", T, heat_mean, L, eta_HII, psi_HI, zeta_HI, beta, xHI);
+		dxdt[2] = sign * seconds * (heat_mean   - L);
+	}
 
 	return GSL_SUCCESS;
 }
@@ -79,14 +92,26 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Ste
 	FETCH_VARS;
 
 	const double dxdt0 = (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII) / fac;
-	dfdx[0 * D + 0] = sign * (-2 * (xHI - xHII) * dxdt0 + gamma * xHI - (gamma * ye + alpha_A * ye + alpha_A * xHII));
+	dfdx[0 * D + 0] = sign * seconds * (
+		- 2 * (xHI - xHII) * dxdt0 
+		+ gamma * xHI 
+		- ((gamma + alpha_A) * ye + alpha_A * xHII)
+		);
 
 	dfdx[0 * D + 1] = 0;
 	dfdx[0 * D + 2] = 0;
-	dfdx[1 * D + 0] = sign * (-fac * alpha_AB * (ye + xHII));
+	dfdx[1 * D + 0] = sign * seconds * (-fac * alpha_AB * (ye + xHII));
 	dfdx[1 * D + 1] = 0;
 	dfdx[1 * D + 2] = 0;
-	dfdx[2 * D + 0] = 0;
+	if(CFG_ADIABATIC) {
+		dfdx[2 * D + 0] = 0;
+	} else {
+		dfdx[2 * D + 0] = sign * seconds * U_ERG * C_H_PER_MASS * fac * (
+			+ (eta_HII + beta) * (ye  + xHII)
+			+ (zeta_HI + psi_HI) * (xHI - ye)
+			+ chi
+			);
+	}
 	dfdx[2 * D + 1] = 0;
 	dfdx[2 * D + 2] = 0;
 

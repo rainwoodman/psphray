@@ -3,11 +3,20 @@
 #include <float.h>
 #define MAXFLOAT FLT_MAX
 #endif
+#define PSYS_SRC_PLANE (0)
+#define PSYS_SRC_POINT (1)
+
 typedef struct {
-	float pos[3];
+	double pos[3];
+	double dir[3];
 	double Ngamma_sec;
 	intptr_t lastemit;
 	int specid;
+	int type;
+	/* below for type = SRC_PLANE only*/
+	double radius;
+	double a[3];
+	double b[3];
 } Source;
 
 #define PF_NORMAL (0)
@@ -26,6 +35,7 @@ typedef struct {
 
 	float * yGrec; /* number of recombination photon / NH */
 	float * yGdep; /* number of ionizating photon / NH */
+	float * heat;  /* total heat deposition per mass in a step*/
 	intptr_t * lasthit; /* time tick of last update */
 
 	uint64_t * id;
@@ -51,9 +61,10 @@ typedef struct _Step {
 	double ie;
 	double yeMET;
 	double yGdep;
+	double heat;
 	double time;
-
 	double nH;
+	double rho;
 	double T;
 
 	double dyGrec;
@@ -84,6 +95,10 @@ static inline const double psys_xHI(const intptr_t i) {
 static inline const double psys_NH(const intptr_t i) {
 	return psys.mass[i] * C_H_PER_MASS;
 }
+static inline const double psys_nH(const intptr_t i) {
+	return psys.rho[i] * C_H_PER_MASS;
+}
+
 static inline const double psys_xHII(const intptr_t i) {
 	const double r = tan(psys.lambdaHI[i]);
 	const double r_inv = (r!=0.0)?1/r:MAXFLOAT;
@@ -100,23 +115,4 @@ static inline void psys_set_lambdaHI(const intptr_t i, const double xHI, const d
 	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaHI[i] = atan(MAXFLOAT);
 	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaHI[i] = 1/MAXFLOAT;
 	else psys.lambdaHI[i] = atan2(xHI , xHII);
-}
-
-#define __psystem_swap__(a, b, type) {const type __tmp__ = a; a = b; b = __tmp__;}
-/* swapping two particles note that IDHash will be corrupted after this call */
-static inline void psys_swap(intptr_t i, intptr_t j) {
-	int d;
-	for (d = 0; d < 3; d++) {
-		__psystem_swap__(psys.pos[i][d], psys.pos[j][d], float);
-	}
-	__psystem_swap__(psys.lambdaHI[i], psys.lambdaHI[j], double);
-	__psystem_swap__(psys.yeMET[i], psys.yeMET[j], double);
-	__psystem_swap__(psys.mass[i], psys.mass[j], float);
-	__psystem_swap__(psys.sml[i], psys.sml[j], float);
-	__psystem_swap__(psys.rho[i], psys.rho[j], float);
-	__psystem_swap__(psys.ie[i], psys.ie[j], float);
-	__psystem_swap__(psys.flag[i], psys.flag[j], uint8_t);
-	__psystem_swap__(psys.yGrec[i], psys.yGrec[j], double);
-	__psystem_swap__(psys.lasthit[i], psys.lasthit[j], intptr_t);
-	__psystem_swap__(psys.id[i], psys.id[j], uint64_t);
 }

@@ -6,6 +6,8 @@
 #include "psystem.h"
 
 extern void spec_dump(int spec);
+extern void solve_u_v(double * d, double * u, double * v);
+
 int main(int argc, char* argv[]) {
 	intptr_t i;
 	cfg_init(argv[1]);
@@ -28,7 +30,19 @@ int main(int argc, char* argv[]) {
 	MESSAGE("density 1 = %f proton / cm^3", 1 / units_parse(" mproton / cm cm cm"));
 	MESSAGE("--------unit sanity check------");
 
+	double d[] = {1.0, 0.0, 0.0};
+	double u[3];
+	double v[3];
+	solve_u_v(d, u, v);
+	MESSAGE("d = (%g %g %g), u=(%g %g %g), v=(%g %g %g)",
+		d[0],d[1],d[2],
+		u[0],u[1],u[2],
+		v[0],v[1],v[2]);
+
 	const int spec = spec_get("sun");
-	spec_dump(spec);
+//	spec_dump(spec);
+	for(i = 0; i < 100; i++) {
+//		printf("%lg\n", spec_gen_freq(spec));
+	}
 	return 0;
 }
