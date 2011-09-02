@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <gsl/gsl_errno.h>
 #include "config.h"
 #include "psystem.h"
 
@@ -12,6 +13,7 @@ int main(int argc, char* argv[]) {
 	cfg_init(argv[1]);
 	cfg_dump_stream(stdout);
 
+	gsl_set_error_handler_off();
 	init();
 	int i;
 	for(i = 0; i < N_EPOCHS; i++) {
