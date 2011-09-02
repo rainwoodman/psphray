@@ -3,8 +3,8 @@ CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -mfpmath=387,sse -ffast-math -I ../support
 OPT=-O3 -fopenmp
 F90FLAGS = -mfpmath=387,sse -ffast-math -O3 
 FC = gfortran
-LDFLAGS = -L ../support/libconfig/
-LIBS = -lconfig -lgfortran -lgsl -lgslcblas -lgomp
+LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc
+LIBS = -lconfig -lgfortran -lgsl -lgslcblas -ljemalloc -lgomp -lpthread
 
 SOURCES = \
 config.c \
