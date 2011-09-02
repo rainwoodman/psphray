@@ -371,12 +371,13 @@ static void deposit(){
 			else if(tau > 100) absorb = TM;
 			else absorb = TM * (1. - exp(-tau));
 
+			const double remaining = NHI - psys.yGdep[ipar] * NH;
 		//	MESSAGE("b = %g transimt = %g absorb = %g Tau=%g", b, TM,absorb, Tau);
 			/* make this atomic */
-			if(absorb > NHI) {
+			if(absorb > remaining) {
 				stat.destruct++;
-				absorb = NHI;
-				TM -= NHI;
+				absorb = remaining;
+				TM -= remaining;
 			} else {
 				TM *= exp(-tau);
 			}
@@ -389,7 +390,6 @@ static void deposit(){
 			bitmask_clear(active, r[i].x[j].ipar);
 			/* cut off at around 10^-10 */
 			if(TM / r[i].Nph < 1e-10) {
-				ARRAY_RESIZE(r[i].x, Xtype, j);
 				/* point to the next intersection so that a few lines later we can use j - 1*/
 				j++;
 				break;
@@ -399,6 +399,7 @@ static void deposit(){
 		// if we terminated the ray sooner then it is safe to do this
 		// if the ray terminated too early we shall use a longer length
 		// next time.
+		ARRAY_RESIZE(r[i].x, Xtype, j);
 		r[i].length = fmax(r[i].x[j - 1].d * 2.0,  r[i].x[j - 1].d + C_SPEED_LIGHT * scaling_fac * psys.tick_time);
 		stat.tick_photon.lost += TM;
 	}
@@ -452,8 +453,13 @@ static void update_pars() {
 		}
 */
 		const double NH = psys_NH(ipar);
+#if 1
 		step.yGdep = psys.yGdep[ipar];
 		step.lambdaHI = psys.lambdaHI[ipar];
+#else
+		step.lambdaHI = lambdaHI_from_xHI_xHII(xHI - psys.yGdep[ipar], xHII + psys.yGdep[ipar]);
+		step.yGdep = 0;
+#endif
 		step.yeMET = psys.yeMET[ipar];
 		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];

@@ -88,6 +88,11 @@ static inline const double psys_xHI(const intptr_t i) {
   xHII = r_inv / (1. + r_inv); \
   if(fabs(xHI + xHII - 1.0) > 1e-1) abort(); \
 }
+static inline const double lambdaHI_from_xHI_xHII(const double xHI, const double xHII) {
+	if(xHI >= 1.0 || xHII <= 0.0) return atan(HUGENUMBER);
+	else if(xHI <= 0.0 || xHII >=1.0) return atan(1/HUGENUMBER);
+	else return atan2f(xHI , xHII);
+}
 
 static inline const double psys_NH(const intptr_t i) {
 	return psys.mass[i] * C_H_PER_MASS;
@@ -109,7 +114,5 @@ static inline const double psys_T(const intptr_t i) {
 	return ieye2T(psys.ie[i], psys_ye(i));
 }
 static inline void psys_set_lambdaHI(const intptr_t i, const double xHI, const double xHII) {
-	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaHI[i] = atan(HUGENUMBER);
-	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaHI[i] = atan(1/HUGENUMBER);
-	else psys.lambdaHI[i] = atan2f(xHI , xHII);
+	psys.lambdaHI[i] = lambdaHI_from_xHI_xHII(xHI, xHII);
 }
