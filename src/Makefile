@@ -55,6 +55,9 @@ test-peano: $(OBJS) test-peano.o
 test-solve: $(OBJS) test-solve.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
+test-bitmask: $(OBJS) test-bitmask.o
+	$(CC) -O0 $(LDFLAGS) -o $@  $^ $(LIBS)
+
 clean:
 	rm $(ALL) *.o
 
