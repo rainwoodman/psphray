@@ -97,7 +97,7 @@ static void hilbert_reorder() {
 	gsl_heapsort_index(perm, peanokeys, psys.npar, sizeof(intptr_t), (void*)intptr_t_compare);
 
 	psys.pos = permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar);
-	psys.lambdaHI = permute(perm, psys.lambdaHI, sizeof(float), sizeof(float), psys.npar);
+	psys.lambdaHI = permute(perm, psys.lambdaHI, sizeof(double), sizeof(double), psys.npar);
 	psys.yeMET = permute(perm, psys.yeMET, sizeof(float), sizeof(float), psys.npar);
 	psys.mass = permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar);
 	psys.sml = permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar);
@@ -222,7 +222,7 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	psys.ie = calloc(sizeof(float), ngas);
 	psys.sml = calloc(sizeof(float), ngas);
 	psys.rho = calloc(sizeof(float), ngas);
-	psys.lambdaHI = calloc(sizeof(float), ngas);
+	psys.lambdaHI = calloc(sizeof(double), ngas);
 	psys.yeMET = calloc(sizeof(float), ngas);
 	psys.yGrec = calloc(sizeof(float), ngas);
 	psys.yGdep = calloc(sizeof(float), ngas);
@@ -243,20 +243,21 @@ static void psystem_read_epoch(ReaderConstants * c) {
 		reader_read(r, "ie", 0, &psys.ie[nread]);
 
 		reader_read(r, "ye", 0, &psys.yeMET[nread]);
-		reader_read(r, "xHI", 0, &psys.lambdaHI[nread]);
+		float * xHI = reader_alloc(r, "xHI", 0);
+		reader_read(r, "xHI", 0, xHI);
 
 		intptr_t ipar;
 		size_t npar_file = reader_npar(r, 0);
 
 		for(ipar = 0; ipar < npar_file; ipar++) {
-			const double xHI = psys.lambdaHI[nread + ipar];
-			const double xHII = 1.0 - psys.lambdaHI[nread + ipar];
-			psys_set_lambdaHI(nread + ipar, xHI, xHII);
+			const double xHII = 1.0 - xHI[ipar];
+			psys_set_lambdaHI(nread + ipar, xHI[ipar], xHII);
 
 			const double yeMET = psys.yeMET[nread + ipar] - xHII;
 			psys.yeMET[nread + ipar] = (yeMET < 0.0)?0.0:yeMET;
 		}
 
+		free(xHI);
 		if(reader_itemsize(r, "id") == 4) {
 			unsigned int * id = reader_alloc(r, "id", 0);
 			reader_read(r, "id", 0, id);
@@ -609,7 +610,7 @@ static void psystem_stat_internal(void * field, size_t npar, int type, int dim, 
 void psystem_stat(const char * component) {
 	double min[3], max[3], mean[3];
 	if(!strcmp(component, "lambdaHI")) {
-		psystem_stat_internal(psys.lambdaHI, psys.npar, 0, 1, max, min, mean);
+		psystem_stat_internal(psys.lambdaHI, psys.npar, 1, 1, max, min, mean);
 	}
 	if(!strcmp(component, "xHI")) {
 		float * xHI = malloc(sizeof(float) * psys.npar);
