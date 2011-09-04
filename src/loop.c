@@ -51,7 +51,7 @@ static void update_pars();
 ARRAY_DEFINE(r, struct r_t);
 ARRAY_DEFINE(ipars, intptr_t);
 
-char * active = NULL;
+bitmask_t * active = NULL;
 static struct {
 	struct {
 		double recomb;
