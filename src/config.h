@@ -25,7 +25,7 @@ extern config_t CFG[];
 extern int CFG_WRITE_INIT;
 extern int CFG_ADIABATIC;
 extern int CFG_ISOTHERMAL;
-extern int CFG_DISABLE_2ND_GEN_PHOTONS;
+extern int CFG_ON_THE_SPOT;
 extern int CFG_COMOVING;
 
 extern gsl_rng * RNG;
@@ -87,8 +87,8 @@ static inline float Tye2ie(const float T, const float ye) {
 
 extern int AR_LOG_T;
 extern int AR_HI_CI;
-extern int AR_HI_CEC_A;
-extern int AR_HI_CIC_A;
+extern int AR_HI_CEC;
+extern int AR_HI_CIC;
 extern int AR_HII_RC_A;
 extern int AR_HII_RCC_A;
 extern int AR_HII_RC_B;

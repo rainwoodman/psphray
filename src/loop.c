@@ -201,7 +201,7 @@ static void emit_rays() {
 		r[i].type = 0;
 	}
 
-	if(ipars_length > 0) {
+	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && ipars_length > 0) {
 		size_t j = psys.epoch->nray;
 		double fsum = 0.0;
 		double f[ipars_length];

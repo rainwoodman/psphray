@@ -18,7 +18,7 @@ gsl_rng * RNG = NULL;
 int CFG_WRITE_INIT = 0;
 int CFG_ISOTHERMAL = 0;
 int CFG_ADIABATIC = 0;
-int CFG_DISABLE_2ND_GEN_PHOTONS = 0;
+int CFG_ON_THE_SPOT = 0;
 int CFG_COMOVING = 1;
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
@@ -39,7 +39,7 @@ void cfg_init(char * filename) {
 	config_ensure_string (CFG, "psphray.crossSections", NULL);
 	config_ensure_int64  (CFG, "psphray.seed", 123456);
 	config_ensure_bool   (CFG, "psphray.writeInit", CONFIG_TRUE);
-	config_ensure_bool   (CFG, "psphray.disable2ndGenPhotons", CONFIG_FALSE);
+	config_ensure_bool   (CFG, "psphray.onTheSpot", CONFIG_FALSE);
 	config_ensure_bool   (CFG, "psphray.isothermal", CONFIG_TRUE);
 	config_ensure_bool   (CFG, "psphray.adiabatic", CONFIG_FALSE);
 
@@ -59,7 +59,7 @@ void cfg_init(char * filename) {
 	config_ensure_float  (CFG, "units.timeSh", 3.08568025e+16);
 
 	config_lookup_bool(CFG, "psphray.writeInit", &CFG_WRITE_INIT);
-	config_lookup_bool(CFG, "psphray.disable2ndGenPhotons", &CFG_DISABLE_2ND_GEN_PHOTONS);
+	config_lookup_bool(CFG, "psphray.onTheSpot", &CFG_ON_THE_SPOT);
 	config_lookup_bool(CFG, "psphray.isothermal", &CFG_ISOTHERMAL);
 	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
 	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);

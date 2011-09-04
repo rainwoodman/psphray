@@ -54,11 +54,11 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
 	const double T = CFG_ISOTHERMAL?step->T:ieye2T(x[2], ye); \
 	const double logT = log10(T); \
 	const double gamma = ar_get(AR_HI_CI, logT) * nH; \
-	const double alpha_A = ar_get(AR_HII_RC_A, logT) * nH; \
-	const double alpha_AB = alpha_A - ar_get(AR_HII_RC_B, logT) * nH; \
-	const double eta_HII = ar_get(AR_HII_RCC_A, logT) * nH; \
-	const double psi_HI = ar_get(AR_HI_CEC_A, logT) * nH; \
-	const double zeta_HI = ar_get(AR_HI_CIC_A, logT) * nH; \
+	const double alpha_A = (CFG_ON_THE_SPOT?ar_get(AR_HII_RC_A, logT):ar_get(AR_HII_RC_A, logT)) * nH; \
+	const double alpha_AB = (CFG_ON_THE_SPOT?0:alpha_A - ar_get(AR_HII_RC_B, logT) * nH); \
+	const double eta_HII = (CFG_ON_THE_SPOT?ar_get(AR_HII_RCC_B, logT):ar_get(AR_HII_RCC_A, logT)) * nH; \
+	const double psi_HI = ar_get(AR_HI_CEC, logT) * nH; \
+	const double zeta_HI = ar_get(AR_HI_CIC, logT) * nH; \
 	const double beta = ar_get(AR_E_BREMC, logT) * nH; \
 	const double chi = ar_get(AR_E_COMPC, logT) ; \
 \
@@ -71,7 +71,11 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 
 /* from GABE's notes  */
 	dxdt[0] = sign * seconds * (-yGdep_mean - gamma * ye * xHI + alpha_A* ye * xHII) / fac;
-	dxdt[1] = sign * seconds * alpha_AB * ye * xHII;
+	if(!CFG_ON_THE_SPOT) {
+		dxdt[1] = sign * seconds * alpha_AB * ye * xHII;
+	} else {
+		dxdt[1] = 0;
+	}
 	if(CFG_ADIABATIC) {
 		dxdt[2] = 0.0;
 	} else {
@@ -100,7 +104,11 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Ste
 
 	dfdx[0 * D + 1] = 0;
 	dfdx[0 * D + 2] = 0;
-	dfdx[1 * D + 0] = sign * seconds * (-fac * alpha_AB * (ye + xHII));
+	if(!CFG_ON_THE_SPOT) {
+		dfdx[1 * D + 0] = 0;
+	} else {
+		dfdx[1 * D + 0] = sign * seconds * (-fac * alpha_AB * (ye + xHII));
+	}
 	dfdx[1 * D + 1] = 0;
 	dfdx[1 * D + 2] = 0;
 	if(CFG_ADIABATIC) {

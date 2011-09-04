@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-
+#include <math.h>
 #include <messages.h>
 #include <array.h>
 
@@ -23,8 +23,8 @@ int AR_HII_RC_A = -1;
 int AR_HII_RCC_A = -1;
 int AR_HII_RC_B = -1;
 int AR_HII_RCC_B = -1;
-int AR_HI_CIC_A = -1;
-int AR_HI_CEC_A = -1;
+int AR_HI_CIC = -1;
+int AR_HI_CEC = -1;
 int AR_E_BREMC = -1;
 int AR_E_COMPC = -1;
 int XS_FREQ = -1;
@@ -62,8 +62,8 @@ void ar_init(const char * filename) {
 	AR_HII_RCC_A = tabfun_ensure_col(&ar, "HIIrccA", NULL);
 	AR_HII_RC_B = tabfun_ensure_col(&ar, "HIIrcB", NULL);
 	AR_HII_RCC_B = tabfun_ensure_col(&ar, "HIIrccB", NULL);
-	AR_HI_CIC_A = tabfun_ensure_col(&ar, "HIcic", NULL);
-	AR_HI_CEC_A = tabfun_ensure_col(&ar, "HIcec", NULL);
+	AR_HI_CIC = tabfun_ensure_col(&ar, "HIcic", NULL);
+	AR_HI_CEC = tabfun_ensure_col(&ar, "HIcec", NULL);
 	AR_E_BREMC = tabfun_ensure_col(&ar, "Brem", bremsstrahlung_cen_1992);
 	AR_E_COMPC = tabfun_ensure_col(&ar, "Compton", compton_haiman_1996);
 
