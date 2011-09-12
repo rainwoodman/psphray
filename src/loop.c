@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <math.h>
 #include <string.h>
+#define BITMASK_SHUFFLE
 #include <bitmask.h>
 #include <array.h>
 #include <messages.h>
