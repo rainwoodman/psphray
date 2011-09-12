@@ -576,7 +576,7 @@ static void update_pars() {
 static int x_t_compare(const void * p1, const void * p2) {
 	const double d1 = ((const Xtype * )p1)->d;
 	const double d2 = ((const Xtype * )p2)->d;
-    return (d2 > d1) - (d1 > d2);
+    return (d1 > d2) - (d2 > d1);
 }
 static int r_t_compare(const void * p1, const void * p2) {
 	const int t1 = ((const struct r_t * )p1)->type;
@@ -584,5 +584,5 @@ static int r_t_compare(const void * p1, const void * p2) {
 	const intptr_t i1 = ((const struct r_t * )p1)->ipar;
 	const intptr_t i2 = ((const struct r_t * )p2)->ipar;
 	/* note that intptr_t is longer than int, truncating may make errors*/
-	return (((t2 > t1) - (t1 > t2)) << 3) + (i2 > i1) - (i1 > i2);
+	return (((signed int)((t1 > t2) - (t2 > t1))) * 8 ) + ((i1 > i2) - (i2 > i1));
 }
