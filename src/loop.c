@@ -44,6 +44,17 @@ static inline FILE * fopen_printf(const char * fmt, char * mode, ...) {
 	va_end(va);
 	return rt;
 }
+static void maybe_write_particle(const intptr_t ipar, FILE * fp, const char * fmt, ...) {
+	if(CFG_DUMP_HOTSPOTS) {
+		va_list va;
+		va_start(va, fmt);
+		intptr_t i;
+		if(psys.flag[ipar] & PF_HOTSPOT) {
+				vfprintf(fp, fmt, va);
+		}
+		va_end(va);
+	}
+}
 extern PSystem psys;
 
 extern float sph_depth(const float r_h);
@@ -113,8 +124,11 @@ void run_epoch() {
 
 	intptr_t istep = 0;
 
-	stat.parlogfile = fopen_printf("parlogfile-%03d", "w", istep);
-	stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", istep);
+	if(CFG_DUMP_HOTSPOTS) {
+		stat.parlogfile = fopen_printf("parlogfile-%03d", "w", psys.epoch - EPOCHS);
+		stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", psys.epoch - EPOCHS);
+	}
+
 	psystem_stat("xHI");
 	psystem_stat("ye");
 	psystem_stat("heat");
@@ -154,10 +168,6 @@ void run_epoch() {
 			memset(stat.hits, 0, sizeof(int) * psys.npar);
 			fclose(fp);
 			istep++;
-			fclose(stat.parlogfile);
-			fclose(stat.hitlogfile);
-			stat.parlogfile = fopen_printf("parlogfile-%03d", "w", istep);
-			stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", istep);
 			memset(&stat.tick_ray, 0, sizeof(stat.tick_ray));
 			memset(&stat.tick_photon, 0, sizeof(stat.tick_photon));
 			stat.tick = 0;
@@ -189,6 +199,10 @@ void run_epoch() {
 
 	free(active);
 	free(stat.hits);
+	if(CFG_DUMP_HOTSPOTS) {
+		fclose(stat.parlogfile);
+		fclose(stat.hitlogfile);
+	}
 }
 
 
@@ -372,7 +386,7 @@ static void deposit(){
 
 	const double scaling_fac2_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1),2):1.0;
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
-	#pragma omp parallel for private(i)
+//	#pragma omp parallel for private(i)
 	for(i = 0; i < r_length; i++) {
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
@@ -424,6 +438,10 @@ static void deposit(){
 			psys.heat[ipar] += C_H_PER_MASS * delta * (r[i].freq - 1) * U_RY_ENG;
 
 			stat.hits[ipar]++;
+
+			maybe_write_particle(ipar, stat.hitlogfile, 
+						"%lu %ld %g %g %g %g %g %g %g %g %g\n",
+						psys.tick, ipar, xHI, b, sml, Ncd, sph_depth(b / sml), sigma, NHI, absorb, delta);
 			bitmask_clear(active, ipar);
 
 			/* cut off at around 10^-10 */
@@ -431,10 +449,6 @@ static void deposit(){
 				/* point to the next intersection so that a few lines later we can use j - 1*/
 				j++;
 				break;
-			}
-			if(psys.id[ipar] == 133133) {
-				fprintf(stat.hitlogfile, "%lu %g %g %g %g %g %g %g\n",
-					psys.tick, xHI, b, Ncd, sigma, NHI, absorb, delta);
 			}
 		}
 		// enlarge the length by a bit 
@@ -510,10 +524,8 @@ static void update_pars() {
 		step.rho = psys.rho[ipar];
 
 		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
-		if(psys.id[ipar] == 133133) {
-			fprintf(stat.parlogfile, "%lu %g %g %g %g %g %g %g\n",
-				psys.tick, step.time, step.T, step.lambdaHI, step.nH, step.yGdep, step.ie, step.heat);
-		}
+		maybe_write_particle(ipar, stat.parlogfile, "%lu %lu %g %g %g %g %g %g %g\n",
+				psys.tick, ipar, step.time, step.T, step.lambdaHI, step.nH, step.yGdep, step.ie, step.heat);
 
 		if(!step_evolve(&step)) {
 			double xHI, xHII;
