@@ -21,11 +21,6 @@ double U_ERG = 0.0;
 double U_EV = 0.0;
 double U_RY_ENG = 0.0;
 
-double C_OMEGA_L = 0.0;
-double C_OMEGA_M = 0.0;
-double C_OMEGA_B = 0.0;
-double C_H = 0.0;
-double C_HMF = 0.0;
 double C_BOLTZMANN = 0.0;
 double C_SPEED_LIGHT = 0.0;
 
@@ -55,20 +50,12 @@ double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
 	};
 double units_simple(char * simple);
 double units_init() {
-	config_lookup_float(CFG, "cosmology.h", &C_H);
-	config_lookup_float(CFG, "cosmology.hmf", &C_HMF);
-	config_lookup_float(CFG, "cosmology.omegaL", &C_OMEGA_L);
-	config_lookup_float(CFG, "cosmology.omegaM", &C_OMEGA_M);
-	config_lookup_float(CFG, "cosmology.omegaB", &C_OMEGA_B);
-	
-	config_lookup_float(CFG, "units.lengthCMh", &U_CM);
-	U_CM = C_H / U_CM;
 
-	config_lookup_float(CFG, "units.massGramh", &U_GRAM);
-	U_GRAM = C_H / U_GRAM;
+	U_CM = C_H / C_1_CMH;
 
-	config_lookup_float(CFG, "units.timeSh", &U_SEC);
-	U_SEC = C_H / U_SEC;
+	U_GRAM = C_H / C_1_GRAMH;
+
+	U_SEC = C_H / C_1_SECH;
 
 	U_M = U_CM * 100;
 	U_KM = U_M * 1000;

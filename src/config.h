@@ -62,6 +62,9 @@ extern double U_J;
 extern double U_EV;
 extern double U_RY_ENG;
 
+extern double C_1_CMH;
+extern double C_1_GRAMH;
+extern double C_1_SECH;
 extern double C_HMF;
 extern double C_OMEGA_L;
 extern double C_OMEGA_M;

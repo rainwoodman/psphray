@@ -16,10 +16,19 @@ config_t CFG[] = {{0}};
 gsl_rng * RNG = NULL;
 
 int CFG_WRITE_INIT = 0;
-int CFG_ISOTHERMAL = 0;
+int CFG_ISOTHERMAL = CONFIG_TRUE;
 int CFG_ADIABATIC = 0;
 int CFG_ON_THE_SPOT = 0;
-int CFG_COMOVING = 1;
+int CFG_COMOVING = CONFIG_TRUE;
+int64_t CFG_SEED = 123456;
+double C_1_CMH = 3.0835455558318480e+21;
+double C_1_GRAMH = 1.9847005219450705e+43;
+double C_1_SECH = 3.08568025e+16;
+double C_OMEGA_L = 0.74;
+double C_OMEGA_M = 0.26;
+double C_OMEGA_B = 0.044;
+double C_H = 0.72;
+double C_HMF = 0.76;
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 #define config_ensure_int(c, p, v)  if(!config_lookup(c, p)) config_setting_set_int(config_ensure(c, p, CONFIG_TYPE_INT), v)
@@ -37,26 +46,26 @@ void cfg_init(char * filename) {
 	config_ensure        (CFG, "psphray", CONFIG_TYPE_GROUP);
 	config_ensure_string (CFG, "psphray.atomicRates", "<filename>");
 	config_ensure_string (CFG, "psphray.crossSections", NULL);
-	config_ensure_int64  (CFG, "psphray.seed", 123456);
-	config_ensure_bool   (CFG, "psphray.writeInit", CONFIG_TRUE);
-	config_ensure_bool   (CFG, "psphray.onTheSpot", CONFIG_FALSE);
-	config_ensure_bool   (CFG, "psphray.isothermal", CONFIG_TRUE);
-	config_ensure_bool   (CFG, "psphray.adiabatic", CONFIG_FALSE);
+	config_ensure_int64  (CFG, "psphray.seed", CFG_SEED);
+	config_ensure_bool   (CFG, "psphray.writeInit", CFG_WRITE_INIT);
+	config_ensure_bool   (CFG, "psphray.onTheSpot", CFG_ON_THE_SPOT);
+	config_ensure_bool   (CFG, "psphray.isothermal", CFG_ISOTHERMAL);
+	config_ensure_bool   (CFG, "psphray.adiabatic", CFG_ADIABATIC);
 
 	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
-	config_ensure_bool   (CFG, "cosmology.comoving", CONFIG_TRUE);
-	config_ensure_float  (CFG, "cosmology.omegaL", 0.74);
-	config_ensure_float  (CFG, "cosmology.omegaM", 0.26);
-	config_ensure_float  (CFG, "cosmology.omegaB", 0.044);
-	config_ensure_float  (CFG, "cosmology.h", 0.72);
-	config_ensure_float  (CFG, "cosmology.hmf", 0.76);
+	config_ensure_bool   (CFG, "cosmology.comoving", CFG_COMOVING);
+	config_ensure_float  (CFG, "cosmology.omegaL", C_OMEGA_L);
+	config_ensure_float  (CFG, "cosmology.omegaM", C_OMEGA_M);
+	config_ensure_float  (CFG, "cosmology.omegaB", C_OMEGA_B);
+	config_ensure_float  (CFG, "cosmology.h", C_H);
+	config_ensure_float  (CFG, "cosmology.hmf", C_HMF);
 	config_ensure        (CFG, "box", CONFIG_TYPE_GROUP);
 	config_ensure_float  (CFG, "box.boxsize", -1.0);
 	config_ensure_string (CFG, "box.boundary", "vaccum");
 	config_ensure        (CFG, "units", CONFIG_TYPE_GROUP);
-	config_ensure_float  (CFG, "units.massGramh", 1.9847005219450705e+43);
-	config_ensure_float  (CFG, "units.lengthCMh", 3.0835455558318480e+21);
-	config_ensure_float  (CFG, "units.timeSh", 3.08568025e+16);
+	config_ensure_float  (CFG, "units.massGramh", C_1_GRAMH);
+	config_ensure_float  (CFG, "units.lengthCMh", C_1_CMH);
+	config_ensure_float  (CFG, "units.timeSh", C_1_SECH);
 
 	config_lookup_bool(CFG, "psphray.writeInit", &CFG_WRITE_INIT);
 	config_lookup_bool(CFG, "psphray.onTheSpot", &CFG_ON_THE_SPOT);
@@ -64,12 +73,22 @@ void cfg_init(char * filename) {
 	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
 	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
 
-	int64_t seed = 123456;
-	config_lookup_int64(CFG, "psphray.seed", &seed);
+	config_lookup_int64(CFG, "psphray.seed", &CFG_SEED);
 	RNG = gsl_rng_alloc(gsl_rng_mt19937);
-	gsl_rng_set(RNG, seed);
+	gsl_rng_set(RNG, CFG_SEED);
+
+	config_lookup_float(CFG, "cosmology.h", &C_H);
+	config_lookup_float(CFG, "cosmology.hmf", &C_HMF);
+	config_lookup_float(CFG, "cosmology.omegaL", &C_OMEGA_L);
+	config_lookup_float(CFG, "cosmology.omegaM", &C_OMEGA_M);
+	config_lookup_float(CFG, "cosmology.omegaB", &C_OMEGA_B);
+	
+	config_lookup_float(CFG, "units.lengthCMh", &C_1_CMH);
+	config_lookup_float(CFG, "units.massGramh", &C_1_GRAMH);
+	config_lookup_float(CFG, "units.timeSh", &C_1_SECH);
 
 	units_init();
+
 	const char * arfilename = NULL;
 	const char * xsfilename = NULL;
 	config_lookup_string(CFG, "psphray.atomicRates", &arfilename);
