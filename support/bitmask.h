@@ -22,9 +22,9 @@ static inline bitmask_t * bitmask_alloc(size_t bits) {
 	/* ensure the last 2 bytes so that we can shuffle around the bits for
        cacheline optimization of continueous access */
 	size_t bits_alloc = bits;
-	if(bits_alloc < 0x10000) bits_alloc = 0x10000;
-	size_t length = (bits_alloc + sizeof(BLOCK_TYPE) - 1) >> LOG2_BLOCK;
-	bits_alloc = length * sizeof(BLOCK_TYPE) * 8;
+	if(bits_alloc & 0xFFFF) bits_alloc = (bits_alloc + 0x10000) & ~ ((size_t) 0xFFFF);
+	size_t length = (bits_alloc + BLOCK_1) >> LOG2_BLOCK;
+	bits_alloc = length * BLOCK;
 	bitmask_t * rt = malloc(length * sizeof(BLOCK_TYPE) + sizeof(bitmask_t));
 	rt->bits = bits;
 	rt->bits_alloc = bits_alloc;
@@ -40,7 +40,8 @@ static inline void bitmask_clear_all(bitmask_t * mask) {
 	memset(mask->data, 0x00, mask->bytes);
 }
 
-static inline intptr_t bitmask_shuffle(intptr_t idx) {
+static const inline intptr_t bitmask_shuffle(const intptr_t idx) {
+#ifdef BITMASK_SHUFFLE
 	uint16_t v = idx;
 	v = ((v >> 1) & 0x5555) | ((v & 0x5555) << 1);
 	v = ((v >> 2) & 0x3333) | ((v & 0x3333) << 2);
@@ -48,7 +49,11 @@ static inline intptr_t bitmask_shuffle(intptr_t idx) {
 	v = ((v >> 8) & 0x00FF) | ((v & 0x00FF) << 8);
 	
 	return (idx & ~0xffff) | v;
+#else
+	return idx;
+#endif
 }
+
 static inline void bitmask_set(bitmask_t * mask, intptr_t idx) {
 	idx = bitmask_shuffle(idx);
 	int offset = idx & BLOCK_1;
