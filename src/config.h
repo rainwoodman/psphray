@@ -27,17 +27,18 @@ extern int CFG_ADIABATIC;
 extern int CFG_ISOTHERMAL;
 extern int CFG_ON_THE_SPOT;
 extern int CFG_COMOVING;
+extern int CFG_DUMP_HOTSPOTS;
 
 extern gsl_rng * RNG;
 extern Epoch * EPOCHS;
 extern int N_EPOCHS;
-
 
 void cfg_init(char * filename);
 void cfg_dump(char * filename);
 void cfg_dump_stream(FILE * file);
 
 double config_setting_parse_units(config_setting_t * e);
+double config_setting_parse_units_elem(config_setting_t * e, int elem);
 config_setting_t * config_setting_ensure_member(config_setting_t * e, char * member, int type);
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 

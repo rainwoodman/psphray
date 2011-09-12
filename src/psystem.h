@@ -18,6 +18,7 @@ typedef struct {
 
 #define PF_NORMAL (0)
 #define PF_INVALID (1)
+#define PF_HOTSPOT (8)
 
 typedef struct {
 	float (*pos)[3];
@@ -91,7 +92,7 @@ static inline const double psys_xHI(const intptr_t i) {
 static inline const double lambdaHI_from_xHI_xHII(const double xHI, const double xHII) {
 	if(xHI >= 1.0 || xHII <= 0.0) return atan(HUGENUMBER);
 	else if(xHI <= 0.0 || xHII >=1.0) return atan(1/HUGENUMBER);
-	else return atan2f(xHI , xHII);
+	else return atan2(xHI , xHII);
 }
 
 static inline const double psys_NH(const intptr_t i) {

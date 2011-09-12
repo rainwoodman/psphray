@@ -119,6 +119,42 @@ static void psystem_read_source();
 static void psystem_read_epoch(ReaderConstants * c);
 static void psystem_match_epoch(ReaderConstants * c);
 
+static void setup_hotspots() {
+	intptr_t ipar;
+	#pragma omp parallel for private(ipar)
+	for(ipar = 0; ipar < psys.npar; ipar++) {
+		psys.flag[ipar] &= ~PF_HOTSPOT;
+	}
+	config_setting_t * hotspots = config_lookup(CFG, "psphray.hotspots");
+	if(hotspots) {
+		size_t n = config_setting_length(hotspots);
+		intptr_t i;
+		for(i = 0; i < n; i++) {
+			config_setting_t * hotspot = config_setting_get_elem(hotspots, i);
+			config_setting_t * center = config_setting_get_elem(hotspot, 0);
+			config_setting_t * radius = config_setting_get_elem(hotspot, 1);
+			int d;
+			double c[3], r;
+			for(d = 0; d < 3; d++) {
+				c[d] = config_setting_parse_units_elem(center, d);
+			}
+			r = config_setting_parse_units(radius);
+			intptr_t ipar;
+			#pragma omp parallel for private(ipar)
+			for(ipar = 0; ipar < psys.npar; ipar++) {
+				double dist = 0;
+				int d;
+				for(d = 0; d < 3; d++) {
+					const double dx = (psys.pos[ipar][d] - c[d]);
+					dist += dx * dx;
+				}
+				if(dist < r * r) {
+					psys.flag[ipar] |= PF_HOTSPOT;
+				}
+			}
+		}
+	}
+}
 void psystem_switch_epoch(int i) {
 
 	psys.epoch = &EPOCHS[i];
@@ -165,8 +201,9 @@ void psystem_switch_epoch(int i) {
 		psystem_match_epoch(c);
 	}
 
-	hilbert_reorder();
+	setup_hotspots();
 
+	hilbert_reorder();
 
 	/*FIXME: calculate active particles*/
 	MESSAGE("EPOCH active gas particles %ld/%ld", 0, c->Ntot[0]);
@@ -279,7 +316,11 @@ static void psystem_read_epoch(ReaderConstants * c) {
 static void psystem_match_epoch(ReaderConstants * c) {
 	/* match / read */
 	int fid;
-	memset(psys.flag, PF_INVALID, psys.npar);
+	intptr_t ipar;
+	#pragma omp parallel for private(ipar)
+	for(ipar = 0; ipar < psys.npar; ipar++) {
+		psys.flag[ipar] |= PF_INVALID;
+	}
 	double distsum = 0.0;
 	size_t lost = 0;
 	for(fid = 0; fid < c->Nfiles; fid ++) {
@@ -339,7 +380,7 @@ static void psystem_match_epoch(ReaderConstants * c) {
 				psys.rho[best_jpar] = rho[ipar];
 				psys.ie[best_jpar] = ie[ipar];
 				/*FIXME: somehow make use of the ye of the new snapshot*/
-				psys.flag[best_jpar] = PF_NORMAL;
+				psys.flag[best_jpar] &= ~PF_INVALID;
 			} else {
 				lost++;
 			}
