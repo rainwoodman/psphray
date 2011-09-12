@@ -34,6 +34,16 @@ struct r_t {
 	ARRAY_DEFINE_S(x, Xtype)
 };
 
+static inline FILE * fopen_printf(const char * fmt, char * mode, ...) {
+	va_list va;
+	va_start(va, mode);
+	char * str = NULL;
+	vasprintf(&str, fmt, va);
+	FILE * rt = fopen(str, mode);
+	free(str);
+	va_end(va);
+	return rt;
+}
 extern PSystem psys;
 
 extern float sph_depth(const float r_h);
@@ -84,6 +94,9 @@ static struct {
 	size_t count;
 	double recomb_pool_photon;
 	size_t tick;
+	int * hits;
+	FILE * parlogfile;
+	FILE * hitlogfile;
 } stat;
 
 void init() {
@@ -96,7 +109,12 @@ void run_epoch() {
 
 	memset(&stat, 0, sizeof(stat));
 
+	stat.hits = calloc(psys.npar, sizeof(int));
+
 	intptr_t istep = 0;
+
+	stat.parlogfile = fopen_printf("parlogfile-%03d", "w", istep);
+	stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", istep);
 	psystem_stat("xHI");
 	psystem_stat("ye");
 	psystem_stat("heat");
@@ -131,7 +149,15 @@ void run_epoch() {
 			psystem_stat("yGrec");
 
 			psystem_write_output(istep + 1);
+			FILE * fp = fopen_printf("hits-%03d", "w", istep);
+			fwrite(stat.hits, sizeof(int), psys.npar, fp);
+			memset(stat.hits, 0, sizeof(int) * psys.npar);
+			fclose(fp);
 			istep++;
+			fclose(stat.parlogfile);
+			fclose(stat.hitlogfile);
+			stat.parlogfile = fopen_printf("parlogfile-%03d", "w", istep);
+			stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", istep);
 			memset(&stat.tick_ray, 0, sizeof(stat.tick_ray));
 			memset(&stat.tick_photon, 0, sizeof(stat.tick_photon));
 			stat.tick = 0;
@@ -162,6 +188,7 @@ void run_epoch() {
 	ARRAY_FREE(r);
 
 	free(active);
+	free(stat.hits);
 }
 
 
@@ -396,12 +423,18 @@ static void deposit(){
 			psys.yGdep[ipar] += delta;
 			psys.heat[ipar] += C_H_PER_MASS * delta * (r[i].freq - 1) * U_RY_ENG;
 
-			bitmask_clear(active, r[i].x[j].ipar);
+			stat.hits[ipar]++;
+			bitmask_clear(active, ipar);
+
 			/* cut off at around 10^-10 */
 			if(TM / r[i].Nph < 1e-10) {
 				/* point to the next intersection so that a few lines later we can use j - 1*/
 				j++;
 				break;
+			}
+			if(psys.id[ipar] == 133133) {
+				fprintf(stat.hitlogfile, "%lu %g %g %g %g %g %g %g\n",
+					psys.tick, xHI, b, Ncd, sigma, NHI, absorb, delta);
 			}
 		}
 		// enlarge the length by a bit 
@@ -477,6 +510,10 @@ static void update_pars() {
 		step.rho = psys.rho[ipar];
 
 		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
+		if(psys.id[ipar] == 133133) {
+			fprintf(stat.parlogfile, "%lu %g %g %g %g %g %g %g\n",
+				psys.tick, step.time, step.T, step.lambdaHI, step.nH, step.yGdep, step.ie, step.heat);
+		}
 
 		if(!step_evolve(&step)) {
 			double xHI, xHII;
