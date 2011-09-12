@@ -54,8 +54,9 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
 	const double T = CFG_ISOTHERMAL?step->T:ieye2T(x[2], ye); \
 	const double logT = log10(T); \
 	const double gamma = ar_get(AR_HI_CI, logT) * nH; \
-	const double alpha_A = (CFG_ON_THE_SPOT?ar_get(AR_HII_RC_A, logT):ar_get(AR_HII_RC_A, logT)) * nH; \
-	const double alpha_AB = (CFG_ON_THE_SPOT?0:alpha_A - ar_get(AR_HII_RC_B, logT) * nH); \
+	const double alpha_A = ar_get(AR_HII_RC_A, logT) * nH; \
+	const double alpha_B = ar_get(AR_HII_RC_B, logT) * nH; \
+	const double alpha_AB = alpha_A - alpha_B; \
 	const double eta_HII = (CFG_ON_THE_SPOT?ar_get(AR_HII_RCC_B, logT):ar_get(AR_HII_RCC_A, logT)) * nH; \
 	const double psi_HI = ar_get(AR_HI_CEC, logT) * nH; \
 	const double zeta_HI = ar_get(AR_HI_CIC, logT) * nH; \
@@ -70,13 +71,14 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 	FETCH_VARS;
 
 /* from GABE's notes  */
-	dxdt[0] = sign * seconds * (-yGdep_mean - gamma * ye * xHI + alpha_A* ye * xHII) / fac;
 	if(!CFG_ON_THE_SPOT) {
 		dxdt[1] = sign * seconds * alpha_AB * ye * xHII;
+		dxdt[0] = sign * seconds * (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII) / fac;
 	} else {
 		dxdt[1] = 0;
+		dxdt[0] = sign * seconds * (-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII) / fac;
 	}
-	if(CFG_ADIABATIC) {
+	if(CFG_ADIABATIC | CFG_ISOTHERMAL) {
 		dxdt[2] = 0.0;
 	} else {
 		const double L = U_ERG * C_H_PER_MASS * (
@@ -95,13 +97,22 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Ste
 	const int D = 3;
 	FETCH_VARS;
 
-	const double dxdt0 = (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII) / fac;
-	dfdx[0 * D + 0] = sign * seconds * (
-		- 2 * (xHI - xHII) * dxdt0 
-		+ gamma * xHI 
-		- ((gamma + alpha_A) * ye + alpha_A * xHII)
-		);
+	if(!CFG_ON_THE_SPOT) {
+		const double dxdt0 = (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII) / fac;
+		dfdx[0 * D + 0] = sign * seconds * (
+			- 2 * (xHI - xHII) * dxdt0 
+			+ gamma * xHI 
+			- ((gamma + alpha_A) * ye + alpha_A * xHII)
+			);
+	} else {
+		const double dxdt0 = (-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII) / fac;
+		dfdx[0 * D + 0] = sign * seconds * (
+			- 2 * (xHI - xHII) * dxdt0 
+			+ gamma * xHI 
+			- ((gamma + alpha_B) * ye + alpha_B * xHII)
+			);
 
+	}
 	dfdx[0 * D + 1] = 0;
 	dfdx[0 * D + 2] = 0;
 	if(!CFG_ON_THE_SPOT) {
@@ -111,7 +122,7 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Ste
 	}
 	dfdx[1 * D + 1] = 0;
 	dfdx[1 * D + 2] = 0;
-	if(CFG_ADIABATIC) {
+	if(CFG_ADIABATIC | CFG_ISOTHERMAL) {
 		dfdx[2 * D + 0] = 0;
 	} else {
 		dfdx[2 * D + 0] = sign * seconds * U_ERG * C_H_PER_MASS * fac * (
@@ -150,7 +161,7 @@ int step_evolve(Step * step) {
 	x[2] = step->ie;
 
 	driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_msbdf,
-			1.0 / 100., 1e-6, 1e-6);
+			1.0 / 100., 1e-7, 1e-7);
 //	gsl_odeiv2_driver_reset(driver);
 	gsl_odeiv2_driver_set_nmax(driver, 100000);
 	int code = gsl_odeiv2_driver_apply(driver, &t, 1.0, x);
