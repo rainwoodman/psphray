@@ -352,7 +352,14 @@ static void deposit(){
 		intptr_t j;
 		for(j = 0; j < r[i].x_length; j++) {
 			const intptr_t ipar = r[i].x[j].ipar;
-			while(bitmask_test_and_set(active, r[i].x[j].ipar)) {
+			int c = 0;
+			while(bitmask_test_and_set(active, ipar)) {
+				c++;
+				if( c > 1000000) {
+					WARNING("Dead lock on particle %ld", ipar);
+					c = 0;
+					continue;
+				}
 				continue;
 			}
 			const float b = r[i].x[j].b;
