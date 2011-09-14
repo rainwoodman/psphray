@@ -115,21 +115,23 @@ void cfg_dump_stream(FILE * file) {
 
 config_setting_t * config_ensure(config_t * config, char * path, int type) {
 	config_setting_t * st = config_lookup(config, path);
-	if(st == NULL) {
-		char * pntpath = strdup(path);
-		char * dot = rindex(pntpath, '.');
-		config_setting_t * pnt = config_root_setting(config);
-		if(dot != NULL) {
-			*dot = 0;
-			char * name = dot + 1;
-			pnt = config_lookup(CFG, pntpath);
-			if(pnt == NULL) {
-				ERROR("RUNTIME: %s not found", pntpath);
-			}
-			st = config_setting_add(pnt, name, type);
+	if(st != NULL) return st;
+
+	char * pntpath = strdup(path);
+	char * dot = rindex(pntpath, '.');
+	config_setting_t * pnt = config_root_setting(config);
+	char * name = path;
+	if(dot != NULL) {
+		*dot = 0;
+ 		name = dot + 1;
+		pnt = config_lookup(CFG, pntpath);
+		if(pnt == NULL) {
+			ERROR("RUNTIME: %s not found", pntpath);
 		}
-		free(pntpath);
 	}
+	st = config_setting_add(pnt, name, type);
+	free(pntpath);
+
 	return st;
 }
 
