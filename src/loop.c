@@ -58,6 +58,8 @@ static void maybe_write_particle(const intptr_t ipar, FILE * fp, const char * fm
 extern PSystem psys;
 
 extern double sph_depth(const double r_h);
+extern double sph_Wh3(const double r_h);
+
 extern int step_evolve(Step * step);
 
 size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype ** pars, size_t * size);
@@ -502,12 +504,11 @@ static void update_pars() {
 		const double delta = psys.yGdep[ipar];
 		const double xHI = psys_xHI(ipar);
 		const double xHII = psys_xHII(ipar);
+		const double sml_inv = 1.0 / psys.sml[ipar];
+		const double rho = psys.rho[ipar];
+		
 		Step step = {0};
-/*
-		if(psys.tick == psys.lasthit[ipar]) {
-			ERROR("particle solved twice at one tick");
-		}
-*/
+
 		const double NH = psys_NH(ipar);
 #if 1
 		step.yGdep = psys.yGdep[ipar];
@@ -517,7 +518,7 @@ static void update_pars() {
 		step.yGdep = 0;
 #endif
 		step.yeMET = psys.yeMET[ipar];
-		step.nH = nH_fac * psys.rho[ipar] * scaling_fac3_inv;
+		step.nH = nH_fac * rho * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
 		step.T = psys_T(ipar);
 		step.heat = psys.heat[ipar];
@@ -546,7 +547,6 @@ static void update_pars() {
 				step.yeMET, step.nH, step.yGdep, step.ie, step.heat,
 				xHI, xHII
 				);
-			abort();
 			d1++;
 		} else {
 			psys.yGrec[ipar] += step.dyGrec;
