@@ -431,11 +431,14 @@ static void deposit(){
 			const double delta = absorb / NH;
 
 			psys.yGdep[ipar] += delta;
+			bitmask_clear(active, ipar);
+
+			#pragma omp atomic
 			psys.heat[ipar] += C_H_PER_MASS * delta * (r[i].freq - 1) * U_RY_ENG;
 
+			#pragma omp atomic
 			stat.hits[ipar]++;
 
-			bitmask_clear(active, ipar);
 			maybe_write_particle(ipar, stat.hitlogfile, 
 						"%lu %ld %g %g %g %g %g %g %g %g %g\n",
 						psys.tick, ipar, xHI, b, sml, Ncd, sph_depth(b / sml), sigma, NHI, absorb, delta);
