@@ -62,7 +62,6 @@ typedef struct _Step {
 	double heat;
 	double time;
 	double nH;
-	double rho;
 	double T;
 
 	double dyGrec;

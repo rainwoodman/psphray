@@ -522,7 +522,6 @@ static void update_pars() {
 		step.ie = psys.ie[ipar];
 		step.T = psys_T(ipar);
 		step.heat = psys.heat[ipar];
-		step.rho = psys.rho[ipar];
 
 		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		maybe_write_particle(ipar, stat.parlogfile, "%lu %lu %g %g %g %g %g %g %g\n",
