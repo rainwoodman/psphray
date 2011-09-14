@@ -384,9 +384,9 @@ static void deposit(){
 
 	const double U_CM2 = U_CM * U_CM;
 
-	const double scaling_fac2_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1),2):1.0;
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
-//	#pragma omp parallel for private(i)
+	const double scaling_fac2_inv = 1.0 / (scaling_fac * scaling_fac);
+	#pragma omp parallel for private(i)
 	for(i = 0; i < r_length; i++) {
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
@@ -456,7 +456,7 @@ static void deposit(){
 		// if the ray terminated too early we shall use a longer length
 		// next time.
 		ARRAY_RESIZE(r[i].x, Xtype, j);
-		r[i].length = fmax(r[i].x[j - 1].d * 2.0,  r[i].x[j - 1].d + C_SPEED_LIGHT * scaling_fac * psys.tick_time);
+		r[i].length = fmax(r[i].x[j - 1].d * 2.0,  r[i].x[j - 1].d + C_SPEED_LIGHT / scaling_fac * psys.tick_time);
 		stat.tick_photon.lost += TM;
 	}
 }
@@ -495,7 +495,8 @@ static void update_pars() {
 	size_t d1 = 0, d2 = 0;
 	double increase_recomb = 0;
 	const double nH_fac = C_HMF / (U_MPROTON / (U_CM * U_CM * U_CM));
-	const double scaling_fac3_inv = CFG_COMOVING?pow((psys.epoch->redshift + 1.0), 3):1.0;
+	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1.0):1.0;
+	const double scaling_fac3_inv = 1.0/(scaling_fac * scaling_fac * scaling_fac);
 	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
 	for(j = 0; j < ipars_length; j++) {
 		const intptr_t ipar = ipars[j];
