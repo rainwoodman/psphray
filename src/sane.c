@@ -7,11 +7,11 @@
 
 extern void spec_dump(int spec);
 extern void solve_u_v(double * d, double * u, double * v);
-
+extern double sph_depth(const double r_h);
 int main(int argc, char* argv[]) {
 	intptr_t i;
 	cfg_init(argv[1]);
-//	cfg_dump_stream(stdout);
+	cfg_dump_stream(stdout);
 
 	MESSAGE("HMF = %g", C_HMF);
 	MESSAGE("1 ryd verner cross section is %e", xs_get(XS_HI, 1.0));
@@ -23,6 +23,8 @@ int main(int argc, char* argv[]) {
 			ar_get(AR_HII_RCC_A, 5)
 		);
 
+	MESSAGE("sph depth %g", sph_depth(0.4));
+	MESSAGE("10 < 1 = %d", (1. > 10.) - (10. > 1.));
 	MESSAGE("--------unit sanity check------");
 	MESSAGE("kpc /h = %f", units_parse("kpc / h"));
 	MESSAGE("10^10 msun /h = %f", 1e10 * units_parse("msun / h"));
@@ -40,9 +42,9 @@ int main(int argc, char* argv[]) {
 		v[0],v[1],v[2]);
 
 	const int spec = spec_get("sun");
-//	spec_dump(spec);
+	spec_dump(spec);
 	for(i = 0; i < 100; i++) {
-//		printf("%lg\n", spec_gen_freq(spec));
+		printf("%lg\n", spec_gen_freq(spec));
 	}
 	return 0;
 }

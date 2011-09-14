@@ -7,15 +7,15 @@ static double _kernel_depth[] = {
 
 
 /* returns the sph kernel W * h**3 */ 
-float sph_Wh3(const float r_h) {
-	static const float norm = 8.0 / M_PI;
-	const float r_h2 = r_h * r_h;
+double sph_Wh3(const double r_h) {
+	static const double norm = 8.0 / M_PI;
+	const double r_h2 = r_h * r_h;
 
 	if(r_h <= 0.5) {
 		return norm * (1.0 - 6.0 * r_h2+ 6.0 * r_h2 * r_h);
 	}
 	if(r_h <= 1.0) {
-		const float dd = 1.0 - r_h;
+		const double dd = 1.0 - r_h;
 		return norm * 2.0 * dd * dd * dd;
 	}
 	return 0.0;
@@ -23,7 +23,7 @@ float sph_Wh3(const float r_h) {
 }
 
 /* */
-float sph_depth(const float r_h) {
+double sph_depth(const double r_h) {
 	static const int N = sizeof(_kernel_depth) / sizeof(double);
 
 	int n = N * r_h;

@@ -57,7 +57,7 @@ static void maybe_write_particle(const intptr_t ipar, FILE * fp, const char * fm
 }
 extern PSystem psys;
 
-extern float sph_depth(const float r_h);
+extern double sph_depth(const double r_h);
 extern int step_evolve(Step * step);
 
 size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype ** pars, size_t * size);
@@ -67,7 +67,7 @@ static int r_t_compare(const void * p1, const void * p2);
 
 static void trace();
 static void emit_rays();
-static void merge_ipars();
+static void merge_pars();
 static void deposit();
 static void update_pars();
 
@@ -185,7 +185,7 @@ void run_epoch() {
 		/* deposit photons */
 		deposit();
 
-		merge_ipars();
+		merge_pars();
 
 		update_pars();
 	}
@@ -391,8 +391,13 @@ static void deposit(){
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
 		intptr_t j;
+		const double sigma = xs_get(XS_HI, r[i].freq) * U_CM2;
 		for(j = 0; j < r[i].x_length; j++) {
 			const intptr_t ipar = r[i].x[j].ipar;
+			const float b = r[i].x[j].b;
+			const float sml = psys.sml[ipar];
+			const float sml_inv = 1.0 / sml;
+
 			int c = 0;
 			while(bitmask_test_and_set(active, ipar)) {
 				c++;
@@ -403,33 +408,24 @@ static void deposit(){
 				}
 				continue;
 			}
-			const float b = r[i].x[j].b;
-			const double sigma = xs_get(XS_HI, r[i].freq) * U_CM2;
-			const float sml = psys.sml[ipar];
-			const float sml_inv = 1.0 / sml;
+
 			const double NH = psys_NH(ipar);
-			const double nH = psys_nH(ipar);
 			const double xHI = psys_xHI(ipar);
-			const double xHII = psys_xHII(ipar);
 
-			const double NHI = xHI * NH;
+			const double NHI = (xHI - psys.yGdep[ipar]) * NH;
 			const double Ncd = sph_depth(b * sml_inv) * (sml_inv * sml_inv) * NHI * scaling_fac2_inv;
-			const double tau = sigma * Ncd;
-
-			double absorb = 0.0;
-			if(tau < 0.001) absorb = TM * tau;
-			else if(tau > 100) absorb = TM;
-			else absorb = TM * (1. - exp(-tau));
-
-			const double remaining = NHI - psys.yGdep[ipar] * NH;
+			double tau = sigma * Ncd;
+			if(tau < 0.0) tau = 0.0;
 		//	MESSAGE("b = %g transimt = %g absorb = %g Tau=%g", b, TM,absorb, Tau);
-			/* make this atomic */
-			if(absorb > remaining) {
+
+			double absorb = - TM * (expm1(-tau));
+			if(absorb > NHI) {
 				stat.destruct++;
-				absorb = remaining;
-				TM -= remaining;
+				absorb = NHI;
+				TM -= absorb;
 			} else {
 				TM *= exp(-tau);
+
 			}
 			
 			const double delta = absorb / NH;
@@ -439,10 +435,10 @@ static void deposit(){
 
 			stat.hits[ipar]++;
 
+			bitmask_clear(active, ipar);
 			maybe_write_particle(ipar, stat.hitlogfile, 
 						"%lu %ld %g %g %g %g %g %g %g %g %g\n",
 						psys.tick, ipar, xHI, b, sml, Ncd, sph_depth(b / sml), sigma, NHI, absorb, delta);
-			bitmask_clear(active, ipar);
 
 			/* cut off at around 10^-10 */
 			if(TM / r[i].Nph < 1e-10) {
@@ -461,7 +457,7 @@ static void deposit(){
 	}
 }
 
-static void merge_ipars() {
+static void merge_pars() {
 	intptr_t i;
 	/* now merge the list */
 	size_t ipars_length_est = 0;
