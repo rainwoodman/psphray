@@ -76,37 +76,38 @@ static void update_pars();
 ARRAY_DEFINE(r, struct r_t);
 ARRAY_DEFINE(x, Xtype);
 
+static double MAX_SRC_RAY_LENGTH;
+static double MAX_REC_RAY_LENGTH;
+
 bitmask_t * active = NULL;
 static struct {
 	struct {
-		double recomb;
-		double src;
-		double lost;
-	} tick_photon;
+		size_t total;
+		size_t subtotal;
+	} src_ray_count;
 	struct {
-		double recomb;
-		double src;
-		double lost;
-	} total_photon;
+		size_t total;
+		size_t subtotal;
+	} rec_ray_count;
 	struct {
-		size_t recomb;
-		size_t src;
-	} total_ray;
+		double total;
+		double subtotal;
+	} src_photon_count;
 	struct {
-		size_t recomb;
-		size_t src;
-	} tick_ray;
+		double total;
+		double subtotal;
+	} rec_photon_count;
 
-	struct {
-		double src_length;
-		double rec_length;
-	} ray;
+/* total number of photon travel out of box/ remain in pretruncated ray*/
+	double lost_photon_count_sum;
+/* total number of recombination photons */
+	double rec_photon_count_sum;
 
-	size_t destruct;
-	size_t errors;
-	size_t count;
-	double recomb_pool_photon;
-	size_t tick;
+	size_t saturated_deposit_count;
+	size_t gsl_error_count;
+	size_t evolve_count;
+	size_t tick_subtotal;
+
 	int * hits;
 	FILE * parlogfile;
 	FILE * hitlogfile;
@@ -139,24 +140,28 @@ void run_epoch() {
 	psystem_stat("yGrec");
 	while(1) {
 		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
-			stat.total_ray.src += stat.tick_ray.src;
-			stat.total_ray.recomb += stat.tick_ray.recomb;
-			stat.total_photon.src += stat.tick_photon.src;
-			stat.total_photon.lost += stat.tick_photon.lost;
-			stat.total_photon.recomb += stat.tick_photon.recomb;
+			stat.src_ray_count.total += stat.src_ray_count.subtotal;
+			stat.rec_ray_count.total += stat.rec_ray_count.subtotal;
+			stat.src_photon_count.total += stat.src_photon_count.subtotal;
+			stat.rec_photon_count.total += stat.rec_photon_count.subtotal;
 
-			MESSAGE("-----tick: %lu ---[SRC REC]----", psys.tick);
-			MESSAGE("RY %lu/%lu(%g) %lu/%lu(%g)", 
-			        stat.tick_ray.src / stat.tick, stat.total_ray.src, 
-					stat.ray.src_length,
-			        stat.tick_ray.recomb / stat.tick, stat.total_ray.recomb,
-					stat.ray.rec_length);
-			MESSAGE("PH %le/%le %le/%le %le/%le [leak]", 
-			        stat.tick_photon.src / stat.tick, stat.total_photon.src,
-			        stat.tick_photon.recomb / stat.tick, stat.total_photon.recomb,
-			        stat.tick_photon.lost / stat.tick, stat.total_photon.lost);
-			MESSAGE("RP: %le, NRAY_MAX %ld", stat.recomb_pool_photon, r_size);
-			MESSAGE("EV: %lu/%lu", stat.errors, stat.count);
+			MESSAGE("-----tick: %lu -------", psys.tick);
+			MESSAGE("SRC(subtot): Ray %lu Photon %g Length %g", 
+				stat.src_photon_count.subtotal, stat.src_ray_count.subtotal, MAX_SRC_RAY_LENGTH);
+			MESSAGE("REC(subtot): Ray %lu Photon %g Length %g", 
+				stat.rec_photon_count.subtotal, stat.rec_ray_count.subtotal, MAX_REC_RAY_LENGTH);
+			MESSAGE("PH EMISSION: Src %g Rec %g",
+				stat.src_photon_count.total, stat.rec_photon_count.total);
+			MESSAGE("PH STORAGE : Lost %g Rec %g ", 
+				stat.lost_photon_count_sum, stat.rec_photon_count_sum);
+			MESSAGE("Evolve     : Error %lu Total %lu", 
+				stat.gsl_error_count, stat.evolve_count);
+
+			stat.src_ray_count.subtotal = 0;
+			stat.rec_ray_count.subtotal = 0;
+			stat.src_photon_count.subtotal = 0;
+			stat.rec_photon_count.subtotal = 0;
+
 			psystem_stat("T");
 			psystem_stat("xHI");
 			psystem_stat("heat");
@@ -170,13 +175,11 @@ void run_epoch() {
 			memset(stat.hits, 0, sizeof(int) * psys.npar);
 			fclose(fp);
 			istep++;
-			memset(&stat.tick_ray, 0, sizeof(stat.tick_ray));
-			memset(&stat.tick_photon, 0, sizeof(stat.tick_photon));
-			stat.tick = 0;
+			stat.tick_subtotal = 0;
 		}
 		if(psys.tick == psys.epoch->nticks) break;
 
-		stat.tick++;
+		stat.tick_subtotal++;
 		psys.tick++;
 
 		emit_rays();
@@ -233,8 +236,8 @@ static void emit_rays() {
 		max_rec_length = 2.0 * psys.boxsize;
 	}
 
-	stat.ray.src_length = max_src_length;
-	stat.ray.rec_length = max_rec_length;
+	MAX_SRC_RAY_LENGTH = max_src_length;
+	MAX_REC_RAY_LENGTH = max_rec_length;
 
 	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray);
 
@@ -347,16 +350,17 @@ static void emit_rays() {
 	for(i = 0; i < r_length; i++) {
 		switch(r[i].type) {
 			case 0: /* from a src */
-				stat.tick_ray.src++;
-				stat.tick_photon.src += r[i].Nph;
+				stat.src_ray_count.subtotal++;
+				stat.src_photon_count.subtotal += r[i].Nph;
 				psys.srcs[r[i].isrc].lastemit = psys.tick;
 			break;
 			case 1: /* from a recombination, aka particle */
 			{
 				const intptr_t ipar = r[i].ipar;
-				stat.tick_ray.recomb++;
-				stat.tick_photon.recomb += r[i].Nph;
-				stat.recomb_pool_photon -= r[i].Nph;
+				stat.rec_ray_count.subtotal++;
+				stat.rec_photon_count.subtotal += r[i].Nph;
+
+				stat.rec_photon_count_sum -= r[i].Nph;
 				psys.yGrec[ipar] -= r[i].Nph / psys_NH(ipar);
 				if(psys.yGrec[ipar] < 0) {
 					psys.yGrec[ipar] = 0;
@@ -422,7 +426,7 @@ static void deposit(){
 
 			double absorb = - TM * (expm1(-tau));
 			if(absorb > NHI) {
-				stat.destruct++;
+				stat.saturated_deposit_count ++;
 				absorb = NHI;
 				TM -= absorb;
 			} else {
@@ -458,7 +462,7 @@ static void deposit(){
 		// next time.
 		ARRAY_RESIZE(r[i].x, Xtype, j);
 		r[i].length = fmax(r[i].x[j - 1].d * 2.0,  r[i].x[j - 1].d + C_SPEED_LIGHT / scaling_fac * psys.tick_time);
-		stat.tick_photon.lost += TM;
+		stat.lost_photon_count_sum += TM;
 	}
 }
 
@@ -567,9 +571,9 @@ static void update_pars() {
 		}
 		d2++;
 	}
-	stat.errors += d1;
-	stat.count += d2;
-	stat.recomb_pool_photon += increase_recomb;
+	stat.gsl_error_count += d1;
+	stat.evolve_count += d2;
+	stat.rec_photon_count_sum += increase_recomb;
 }
 
 static int x_t_compare(const void * p1, const void * p2) {
