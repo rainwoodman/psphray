@@ -70,8 +70,8 @@ typedef struct _Step {
 
 typedef struct x_t {
 	intptr_t ipar;
-	float d;
-	float b;
+	double d;
+	double b;
 } Xtype;
 
 extern PSystem psys;
