@@ -72,7 +72,7 @@ static void deposit();
 static void update_pars();
 
 ARRAY_DEFINE(r, struct r_t);
-ARRAY_DEFINE(ipars, intptr_t);
+ARRAY_DEFINE(x, Xtype);
 
 bitmask_t * active = NULL;
 static struct {
@@ -190,7 +190,7 @@ void run_epoch() {
 		update_pars();
 	}
 
-	ARRAY_FREE(ipars);
+	ARRAY_FREE(x);
 	intptr_t i;
 	for(i = 0 ;i < r_length; i++) {
 		ARRAY_FREE(r[i].x);
@@ -244,26 +244,26 @@ static void emit_rays() {
 		r[i].type = 0;
 	}
 
-	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && ipars_length > 0) {
+	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && x_length > 0) {
 		size_t j = psys.epoch->nray;
 		double fsum = 0.0;
-		double f[ipars_length];
+		double f[x_length];
 		#pragma omp parallel for private(i) reduction(+: fsum)
-		for(i = 0; i < ipars_length; i++) {
-			const intptr_t ipar = ipars[i];
+		for(i = 0; i < x_length; i++) {
+			const intptr_t ipar = x[i].ipar;
 			const double rec = psys.yGrec[ipar] * psys_NH(ipar);
 			f[i] = psys.yGrec[ipar];
 			fsum += f[i];
 		}
 
-		gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(ipars_length, f);
+		gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(x_length, f);
 
 		intptr_t k;
 		for(k = 0; k < psys.epoch->nrec; k++) {
 			int i = gsl_ran_discrete(RNG, rec_ran);
 			ARRAY_RESIZE(r, struct r_t, j + 1);
 			r[j].type = 1;
-			r[j].ipar = ipars[i];
+			r[j].ipar = x[i].ipar;
 			j++;
 		}
 		gsl_ran_discrete_free(rec_ran);
@@ -394,9 +394,9 @@ static void deposit(){
 		const double sigma = xs_get(XS_HI, r[i].freq) * U_CM2;
 		for(j = 0; j < r[i].x_length; j++) {
 			const intptr_t ipar = r[i].x[j].ipar;
-			const float b = r[i].x[j].b;
-			const float sml = psys.sml[ipar];
-			const float sml_inv = 1.0 / sml;
+			const double b = r[i].x[j].b;
+			const double sml = psys.sml[ipar];
+			const double sml_inv = 1.0 / sml;
 
 			int c = 0;
 			while(bitmask_test_and_set(active, ipar)) {
@@ -460,13 +460,13 @@ static void deposit(){
 static void merge_pars() {
 	intptr_t i;
 	/* now merge the list */
-	size_t ipars_length_est = 0;
+	size_t x_length_est = 0;
 	for(i = 0; i < r_length; i++) {
-		ipars_length_est += r[i].x_length;
+		x_length_est += r[i].x_length;
 	}
 
-	ARRAY_ENSURE(ipars, intptr_t, ipars_length_est);
-	ARRAY_CLEAR(ipars);
+	ARRAY_ENSURE(x, Xtype, x_length_est);
+	ARRAY_CLEAR(x);
 
 	for(i = 0; i < r_length; i++) {
 		intptr_t j;
@@ -480,7 +480,7 @@ static void merge_pars() {
 		for(j = 0; j < r[i].x_length; j++) {
 			intptr_t ipar = r[i].x[j].ipar;
 			if(bitmask_test_and_clear(active, ipar)) {
-				* (ARRAY_APPEND(ipars, intptr_t)) = ipar;
+				* (ARRAY_APPEND(x, Xtype)) = r[i].x[j];
 			}
 		}
 	}
@@ -494,8 +494,8 @@ static void update_pars() {
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1.0):1.0;
 	const double scaling_fac3_inv = 1.0/(scaling_fac * scaling_fac * scaling_fac);
 	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
-	for(j = 0; j < ipars_length; j++) {
-		const intptr_t ipar = ipars[j];
+	for(j = 0; j < x_length; j++) {
+		const intptr_t ipar = x[j].ipar;
 		const double delta = psys.yGdep[ipar];
 		const double xHI = psys_xHI(ipar);
 		const double xHII = psys_xHII(ipar);
