@@ -405,7 +405,7 @@ static void deposit(){
 			while(bitmask_test_and_set(active, ipar)) {
 				c++;
 				if( c > 1000000) {
-					WARNING("Dead lock on particle %ld", ipar);
+					WARNING("Dead lock on particle %ld, thread %d", ipar, omp_get_thread_num());
 					c = 0;
 					continue;
 				}
