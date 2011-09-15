@@ -250,14 +250,12 @@ static void emit_rays() {
 
 	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && x_length > 0) {
 		size_t j = psys.epoch->nray;
-		double fsum = 0.0;
 		double f[x_length];
-		#pragma omp parallel for private(i) reduction(+: fsum)
+		#pragma omp parallel for private(i)
 		for(i = 0; i < x_length; i++) {
 			const intptr_t ipar = x[i].ipar;
 			const double rec = psys.yGrec[ipar] * psys_NH(ipar);
 			f[i] = psys.yGrec[ipar];
-			fsum += f[i];
 		}
 
 		gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(x_length, f);
