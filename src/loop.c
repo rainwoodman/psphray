@@ -502,7 +502,6 @@ static void update_pars() {
 	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
 	for(j = 0; j < x_length; j++) {
 		const intptr_t ipar = x[j].ipar;
-		const double delta = psys.yGdep[ipar];
 		const double xHI = psys_xHI(ipar);
 		const double xHII = psys_xHII(ipar);
 		const double sml_inv = 1.0 / psys.sml[ipar];
