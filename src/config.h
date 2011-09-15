@@ -79,12 +79,12 @@ extern double C_H_PER_MASS;
 
 double z2t(double z);
 double t2z(double z);
-static inline float ieye2T(const float ie, const float ye) {
+static inline double ieye2T(const double ie, const double ye) {
 	return U_MPROTON_OVER_C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
 			C_HMF + C_HMF * ye) * 2.0 / 3.0 ;
 
 }
-static inline float Tye2ie(const float T, const float ye) {
+static inline double Tye2ie(const double T, const double ye) {
 	return T * C_BOLTZMANN_OVER_U_MPROTON * ( (1.0 - C_HMF) * 0.25 + 
 			C_HMF + C_HMF * ye) / 2.0 * 3.0 ;
 }
