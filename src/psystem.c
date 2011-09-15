@@ -219,9 +219,13 @@ void psystem_switch_epoch(int i) {
 	reader_destroy(r0);
 
 	if(psys.epoch->source) {
+		const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 		if(psys.srcs) free(psys.srcs);
 		psystem_read_source();
 		intptr_t isrc;
+		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
+			psys.srcs[isrc].ray_length_hint = C_SPEED_LIGHT / scaling_fac * psys.tick_time;
+		}
 		double Lmin;
 		double Lmax;
 		intptr_t imin = -1, imax = -1;

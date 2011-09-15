@@ -76,8 +76,8 @@ static void update_pars();
 ARRAY_DEFINE(r, struct r_t);
 ARRAY_DEFINE(x, Xtype);
 
-static double MAX_SRC_RAY_LENGTH;
-static double MAX_REC_RAY_LENGTH;
+static double MAX_SRC_RAY_LENGTH = 0.0;
+static double MAX_REC_RAY_LENGTH = 0.0;
 
 bitmask_t * active = NULL;
 static struct {
@@ -212,8 +212,23 @@ void run_epoch() {
 
 
 static void emit_rays() {
+	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	double weights[psys.nsrcs];
 	intptr_t i;
+	double max_rec_length = 0.0;
+	for(i = 0; i < r_length; i++) {
+		double length = r[i].length + C_SPEED_LIGHT / scaling_fac * psys.tick_time;
+		if(r[i].type == 0) {
+			psys.srcs[r[i].isrc].ray_length_hint = fmax(length, psys.srcs[r[i].isrc].ray_length_hint);
+			MAX_SRC_RAY_LENGTH = fmax(MAX_SRC_RAY_LENGTH, length);
+		}
+		if(r[i].type == 1) {
+			max_rec_length = fmax(max_rec_length, length);
+		}
+
+	}
+	MAX_REC_RAY_LENGTH = max_rec_length;
+
 	for(i = 0; i < psys.nsrcs; i++) {
 		/* treat two types the same essentially because they are both Ngamma_sec*/
 		if(psys.srcs[i].type == PSYS_SRC_POINT) {
@@ -222,22 +237,6 @@ static void emit_rays() {
 			weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
 		}
 	}
-
-	double max_src_length = -1.0;
-	double max_rec_length = -1.0;
-	for(i = 0; i < r_length; i++) {
-		if(r[i].type == 0 && max_src_length < r[i].length) max_src_length = r[i].length;
-		if(r[i].type == 1 && max_rec_length < r[i].length) max_rec_length = r[i].length;
-	}
-	if(max_src_length < 0 || max_src_length > 2.0 * psys.boxsize) {
-		max_src_length = 2.0 * psys.boxsize;
-	}
-	if(max_rec_length < 0 || max_rec_length > 2.0 * psys.boxsize) {
-		max_rec_length = 2.0 * psys.boxsize;
-	}
-
-	MAX_SRC_RAY_LENGTH = max_src_length;
-	MAX_REC_RAY_LENGTH = max_rec_length;
 
 	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray);
 
@@ -308,7 +307,7 @@ static void emit_rays() {
 			}
 			r[i].Nph = weights[isrc];
 			r[i].freq = spec_gen_freq(psys.srcs[isrc].specid);
-			r[i].length = max_src_length;
+			r[i].length = psys.srcs[isrc].ray_length_hint;
 			}
 			break;
 			case 1: /* from a recombination, aka particle */
@@ -461,7 +460,7 @@ static void deposit(){
 		// if the ray terminated too early we shall use a longer length
 		// next time.
 		ARRAY_RESIZE(r[i].x, Xtype, j);
-		r[i].length = fmax(r[i].x[j - 1].d * 2.0,  r[i].x[j - 1].d + C_SPEED_LIGHT / scaling_fac * psys.tick_time);
+		r[i].length = r[i].x[j - 1].d;
 		stat.lost_photon_count_sum += TM;
 	}
 }

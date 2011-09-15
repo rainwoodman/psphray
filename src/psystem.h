@@ -10,6 +10,9 @@ typedef struct {
 	intptr_t lastemit;
 	int specid;
 	int type;
+
+	double ray_length_hint;
+
 	/* below for type = SRC_PLANE only*/
 	double radius;
 	double a[3];
