@@ -108,7 +108,6 @@ static struct {
 	size_t evolve_count;
 	size_t tick_subtotal;
 
-	int * hits;
 	FILE * parlogfile;
 	FILE * hitlogfile;
 } stat;
@@ -122,8 +121,6 @@ void run_epoch() {
 	bitmask_clear_all(active);
 
 	memset(&stat, 0, sizeof(stat));
-
-	stat.hits = calloc(psys.npar, sizeof(int));
 
 	intptr_t istep = 0;
 
@@ -170,10 +167,6 @@ void run_epoch() {
 			psystem_stat("yGrec");
 
 			psystem_write_output(istep + 1);
-			FILE * fp = fopen_printf("hits-%03d", "w", istep);
-			fwrite(stat.hits, sizeof(int), psys.npar, fp);
-			memset(stat.hits, 0, sizeof(int) * psys.npar);
-			fclose(fp);
 			istep++;
 			stat.tick_subtotal = 0;
 		}
@@ -205,7 +198,6 @@ void run_epoch() {
 	ARRAY_FREE(r);
 
 	free(active);
-	free(stat.hits);
 	if(CFG_DUMP_HOTSPOTS) {
 		fclose(stat.parlogfile);
 		fclose(stat.hitlogfile);
@@ -435,7 +427,7 @@ static void deposit(){
 			psys.heat[ipar] += C_H_PER_MASS * delta * (r[i].freq - 1) * U_RY_ENG;
 
 			#pragma omp atomic
-			stat.hits[ipar]++;
+			psys.hits[ipar]++;
 
 			maybe_write_particle(ipar, stat.hitlogfile, 
 						"%lu %ld %g %g %g %g %g %g %g %g %g\n",

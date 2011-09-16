@@ -38,6 +38,7 @@ typedef struct {
 	float * yGdep; /* number of ionizating photon / NH */
 	float * heat;  /* total heat deposition per mass in a step*/
 	intptr_t * lasthit; /* time tick of last update */
+	int * hits;   /* total number of hits, subtotaled between snapshots*/
 
 	uint64_t * id;
 	struct {

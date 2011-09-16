@@ -108,6 +108,7 @@ static void hilbert_reorder() {
 	psys.yGdep = permute(perm, psys.yGdep, sizeof(float), sizeof(float), psys.npar);
 	psys.heat = permute(perm, psys.heat, sizeof(float), sizeof(float), psys.npar);
 	psys.lasthit = permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
+	psys.hits = permute(perm, psys.hits, sizeof(int), sizeof(int), psys.npar);
 	psys.id = permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar);
 
 	free(peanokeys);
@@ -269,6 +270,7 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	psys.yGdep = calloc(sizeof(float), ngas);
 	psys.heat = calloc(sizeof(float), ngas);
 	psys.lasthit = calloc(sizeof(intptr_t), ngas);
+	psys.hits = calloc(sizeof(int), ngas);
 
 	psys.flag = calloc(sizeof(int8_t), ngas);
 
@@ -569,6 +571,7 @@ void psystem_write_output(int outputnum) {
 		free(ye);
 		reader_write(r, "ie", 0, &psys.ie[gas_start]);
 		reader_write(r, "lasthit", 0, &psys.lasthit[gas_start]);
+		reader_write(r, "hits", 0, &psys.hits[gas_start]);
 		reader_write(r, "id", 0, &psys.id[gas_start]);
 		/* write the bh */
 		float (*pos)[3] = reader_alloc(r, "pos", 5);
