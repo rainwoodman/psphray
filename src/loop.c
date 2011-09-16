@@ -385,6 +385,7 @@ static void deposit(){
 	const double scaling_fac2_inv = 1.0 / (scaling_fac * scaling_fac);
 	#pragma omp parallel for private(i)
 	for(i = 0; i < r_length; i++) {
+	if(r[i].x_length != 0) {
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
 		intptr_t j;
@@ -447,6 +448,7 @@ static void deposit(){
 		ARRAY_RESIZE(r[i].x, Xtype, j);
 		r[i].length = r[i].x[j - 1].d;
 		stat.lost_photon_count_sum += TM;
+	}
 	}
 }
 
