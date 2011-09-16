@@ -44,16 +44,17 @@ static int _blockid(const char * blk, char ** error) {
 	if(!strcmp(blk, "HIa_cloudy")) return 14 ;
 	if(!strcmp(blk, "eos")) return 15 ;
 	if(!strcmp(blk, "lasthit")) return 16 ;
-	if(!strcmp(blk, "sft")) return 17 ;
-	if(!strcmp(blk, "ngammas")) return 18 ;
-	if(!strcmp(blk, "spec")) return 19 ;
+	if(!strcmp(blk, "hits")) return 17 ;
+	if(!strcmp(blk, "sft")) return 18 ;
+	if(!strcmp(blk, "ngammas")) return 19 ;
+	if(!strcmp(blk, "spec")) return 20 ;
 	if(!strcmp(blk, "header")) return 0;
 	asprintf(error, "block %s is unknown", blk);
 	return -1;}
 
 static const char * _blockname(const int blockid, char ** error) {
 	static char * names[] = {"header", 
-"pos","id","mass","ie","rho","ye","xHI","sml","Hmf","Hemf","HeIa","HeIIa","gammaHI","HIa_cloudy","eos","lasthit","sft","ngammas","spec"
+"pos","id","mass","ie","rho","ye","xHI","sml","Hmf","Hemf","HeIa","HeIIa","gammaHI","HIa_cloudy","eos","lasthit","hits","sft","ngammas","spec"
 };
 
 	if(blockid < 0 || blockid >= sizeof(names) / sizeof(char*)) {
@@ -80,7 +81,8 @@ static size_t _itemsize(const char * blk, char ** error) {
 	if(!strcmp(blk, "gammaHI")) return 4 ;
 	if(!strcmp(blk, "HIa_cloudy")) return 4 ;
 	if(!strcmp(blk, "eos")) return 4 ;
-	if(!strcmp(blk, "lasthit")) return 4 ;
+	if(!strcmp(blk, "lasthit")) return 8 ;
+	if(!strcmp(blk, "hits")) return 4 ;
 	if(!strcmp(blk, "sft")) return 4 ;
 	if(!strcmp(blk, "ngammas")) return 8 ;
 	if(!strcmp(blk, "spec")) return 8 ;
@@ -105,6 +107,7 @@ static size_t _pstart(const struct header_t * h, const char * blk, int ptype, ch
 	if(!strcmp(blk, "HIa_cloudy")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "eos")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "lasthit")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "hits")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "sft")) return (4 < ptype)?(size_t)(h->N[4]): 0 ;
 	if(!strcmp(blk, "ngammas")) return (5 < ptype)?(size_t)(h->N[5]): 0 ;
 	if(!strcmp(blk, "spec")) return (5 < ptype)?(size_t)(h->N[5]): 0 ;
@@ -341,6 +344,21 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 
 
 	if(!strcmp(blk, "lasthit")) {
+
+
+		if(1) {
+
+
+			return (size_t)(h->N[0]);
+
+
+		} else {
+			return 0;
+		}
+	}
+
+
+	if(!strcmp(blk, "hits")) {
 
 
 		if(1) {
