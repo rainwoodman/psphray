@@ -28,6 +28,7 @@ extern int CFG_ISOTHERMAL;
 extern int CFG_ON_THE_SPOT;
 extern int CFG_COMOVING;
 extern int CFG_DUMP_HOTSPOTS;
+extern int CFG_TRACE_ONLY;
 
 extern gsl_rng * RNG;
 extern Epoch * EPOCHS;

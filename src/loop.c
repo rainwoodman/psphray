@@ -139,7 +139,7 @@ void run_epoch() {
 	psystem_stat("T");
 	psystem_stat("yGrec");
 	while(1) {
-		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
+		if(!CFG_TRACE_ONLY && istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
 			stat.src_ray_count.total += stat.src_ray_count.subtotal;
 			stat.rec_ray_count.total += stat.rec_ray_count.subtotal;
 			stat.src_photon_count.total += stat.src_photon_count.subtotal;
@@ -188,11 +188,13 @@ void run_epoch() {
 		trace();
 
 		/* deposit photons */
-		deposit();
+		if(!CFG_TRACE_ONLY)
+		deposit(); 
 
 		merge_pars();
 
-		update_pars();
+		if(!CFG_TRACE_ONLY)
+		update_pars(); 
 	}
 
 	ARRAY_FREE(x);

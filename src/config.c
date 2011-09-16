@@ -21,6 +21,7 @@ int CFG_ADIABATIC = CONFIG_FALSE;
 int CFG_ON_THE_SPOT = CONFIG_FALSE;
 int CFG_COMOVING = CONFIG_TRUE;
 int CFG_DUMP_HOTSPOTS = CONFIG_FALSE;
+int CFG_TRACE_ONLY = CONFIG_FALSE;
 
 int64_t CFG_SEED = 123456;
 double C_1_CMH = 3.0835455558318480e+21;
@@ -54,6 +55,7 @@ void cfg_init(char * filename) {
 	config_ensure_bool   (CFG, "psphray.isothermal", CFG_ISOTHERMAL);
 	config_ensure_bool   (CFG, "psphray.adiabatic", CFG_ADIABATIC);
 	config_ensure_bool   (CFG, "psphray.dumpHotspots", CFG_DUMP_HOTSPOTS);
+	config_ensure_bool   (CFG, "psphray.traceOnly", CFG_TRACE_ONLY);
 
 	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
 	config_ensure_bool   (CFG, "cosmology.comoving", CFG_COMOVING);
@@ -75,6 +77,7 @@ void cfg_init(char * filename) {
 	config_lookup_bool(CFG, "psphray.isothermal", &CFG_ISOTHERMAL);
 	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
 	config_lookup_bool(CFG, "psphray.dumpHotspots", &CFG_DUMP_HOTSPOTS);
+	config_lookup_bool(CFG, "psphray.traceOnly", &CFG_TRACE_ONLY);
 	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
 
 	config_lookup_int64(CFG, "psphray.seed", &CFG_SEED);
