@@ -22,13 +22,13 @@ sph-depth.c \
 reader-massiveblack.c \
 reader-psphray.c
 
-OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
+OBJS = $(SOURCES:.c=.o) pluecker-sse.o verner.o
 ALL = psphray sane test-solve test-peano
 
 .SUFFIXES: .inc .F90 .s
 
 all: $(ALL)
-asm: $(SOURCES:.c=.s) pluecker.s verner.s
+asm: $(SOURCES:.c=.s) pluecker.s pluecker-sse.s verner.s
 
 .c.o:
 	$(CC) $(CFLAGS) $(OPT) -c -o $@ $^
@@ -56,7 +56,7 @@ test-solve: $(OBJS) test-solve.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 test-bitmask: $(OBJS) test-bitmask.o
-	$(CC) -O0 $(LDFLAGS) -o $@  $^ $(LIBS)
+	$(CC) -g -fopenmp -O0 $(LDFLAGS) -o $@  $^ $(LIBS)
 
 clean:
 	rm $(ALL) *.o
