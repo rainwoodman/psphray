@@ -1,10 +1,10 @@
 CC = gcc
-CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -mfpmath=387,sse -ffast-math -I ../support 
+CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support 
 OPT=-O3 -fopenmp
-F90FLAGS = -mfpmath=387,sse -ffast-math -O3 
-FC = gfortran
-LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc
-LIBS = -lconfig -lgfortran -lgsl -lgslcblas -ljemalloc -lgomp -lpthread
+F90FLAGS = -ffast-math -O3 
+FC = ifort
+LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc 
+LIBS = -lconfig -lgfortran -lgsl -lgslcblas -ljemalloc -lguide -liomp5 -limf -lpthread
 
 SOURCES = \
 config.c \
@@ -22,7 +22,7 @@ sph-depth.c \
 reader-massiveblack.c \
 reader-psphray.c
 
-OBJS = $(SOURCES:.c=.o) pluecker-sse.o verner.o
+OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
 ALL = psphray sane test-solve test-peano
 
 .SUFFIXES: .inc .F90 .s
@@ -56,7 +56,7 @@ test-solve: $(OBJS) test-solve.o
 	$(CC) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 test-bitmask: $(OBJS) test-bitmask.o
-	$(CC) -g -fopenmp -O0 $(LDFLAGS) -o $@  $^ $(LIBS)
+	$(CC) -g -fopenmp -O3 $(LDFLAGS) -o $@  $^ $(LIBS)
 
 clean:
 	rm $(ALL) *.o
