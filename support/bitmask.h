@@ -82,6 +82,25 @@ static inline int bitmask_test_and_set(bitmask_t * mask, intptr_t idx) {
 	return __sync_fetch_and_or(&mask->data[idx >> LOG2_BLOCK], bit) & bit;
 }
 
+static inline int bitmask_aquire(bitmask_t * mask, intptr_t idx, intptr_t timeout) {
+	idx = bitmask_shuffle(idx);
+	int offset = idx & BLOCK_1;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
+	intptr_t c = 0;
+	volatile BLOCK_TYPE * p = mask->data + (idx >> LOG2_BLOCK);
+
+	while( *p & bit) {
+		c++;
+		if(c >= timeout) return 0;
+	}
+
+	while(__sync_fetch_and_or(p, bit) & bit) {
+		c++;
+		if(c >= timeout) return 0;
+	}
+	return 1;
+}
+
 static inline int bitmask_test(bitmask_t * mask, intptr_t idx) {
 	idx = bitmask_shuffle(idx);
 	int offset = idx & BLOCK_1;
