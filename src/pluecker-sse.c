@@ -60,8 +60,8 @@ int pluecker_(const float dir[3], const float * dist, const float const s2b[3], 
 
 		break;
 		case 1:
-			if(s2b[0] < 0 || s2b[1] > 0 || s2b[2] > 0) return 0;
-			if(e2t[0] > 0 || e2t[1] < 0 || e2t[2] < 0) return 0;
+			if(s2t[0] < 0 || s2b[1] > 0 || s2b[2] > 0) return 0;
+			if(e2b[0] > 0 || e2t[1] < 0 || e2t[2] < 0) return 0;
 
 			r = prodsub(
 				dir[0], dir[1], dir[0], dir[1],
@@ -79,8 +79,8 @@ int pluecker_(const float dir[3], const float * dist, const float const s2b[3], 
 			if(r.a[0] < r.a[1] || r.a[2] > r.a[3]) return 0;
 		break;
 		case 2:
-			if(s2b[0] < 0 || s2t[1] < 0 || s2b[2] > 0) return 0;
-			if(e2t[0] > 0 || e2b[1] > 0 || e2t[2] < 0) return 0;
+			if(s2b[0] > 0 || s2t[1] < 0 || s2b[2] > 0) return 0;
+			if(e2t[0] < 0 || e2b[1] > 0 || e2t[2] < 0) return 0;
 
 			r = prodsub(
 				dir[0], dir[1], dir[0], dir[1],
@@ -103,12 +103,12 @@ int pluecker_(const float dir[3], const float * dist, const float const s2b[3], 
 
 			r = prodsub(
 				dir[0], dir[1], dir[0], dir[1],
-				s2b[1], s2b[0], s2t[1], s2t[0]);
+				s2t[1], s2b[0], s2b[1], s2t[0]);
 			if(r.a[0] < r.a[1] || r.a[2] > r.a[3]) return 0;
 
 			r = prodsub(
 				dir[0], dir[2], dir[0], dir[2],
-				s2b[2], s2t[0], s2t[2], s2b[0]);
+				s2t[2], s2t[0], s2b[2], s2b[0]);
 			if(r.a[0] < r.a[1] || r.a[2] > r.a[3]) return 0;
 
 			r = prodsub(
