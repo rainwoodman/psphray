@@ -22,7 +22,7 @@ sph-depth.c \
 reader-massiveblack.c \
 reader-psphray.c
 
-OBJS = $(SOURCES:.c=.o) pluecker.o verner.o
+OBJS = $(SOURCES:.c=.o) pluecker-sse.o verner.o
 ALL = psphray sane test-solve test-peano
 
 .SUFFIXES: .inc .F90 .s
