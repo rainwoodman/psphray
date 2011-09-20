@@ -401,8 +401,13 @@ static void deposit(){
 			const double sml = psys.sml[ipar];
 			const double sml_inv = 1.0 / sml;
 
+			int c = 0;
 			while(!bitmask_aquire(active, ipar, 10000000)) {
-				WARNING("Dead lock on particle %ld, thread %d", ipar, omp_get_thread_num());
+				c++;
+				if(c > 100) {
+					WARNING("Dead lock on particle %ld, thread %d", ipar, omp_get_thread_num());
+					c = 0;
+				}
 			}
 
 			const double NH = psys_NH(ipar);

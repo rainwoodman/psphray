@@ -93,12 +93,7 @@ static inline int bitmask_aquire(bitmask_t * mask, intptr_t idx, intptr_t timeou
 		c++;
 		if(c >= timeout) return 0;
 	}
-
-	while(__sync_fetch_and_or(p, bit) & bit) {
-		c++;
-		if(c >= timeout) return 0;
-	}
-	return 1;
+	return !(__sync_fetch_and_or(p, bit) & bit);
 }
 
 static inline int bitmask_test(bitmask_t * mask, intptr_t idx) {
