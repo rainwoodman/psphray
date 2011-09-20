@@ -104,12 +104,15 @@ static struct {
 	double rec_photon_count_sum;
 
 	size_t saturated_deposit_count;
+	size_t total_deposit_count;
 	size_t gsl_error_count;
 	size_t evolve_count;
 	size_t tick_subtotal;
 
 	FILE * parlogfile;
 	FILE * hitlogfile;
+
+	double mean_b_sml;
 } stat;
 
 void init() {
@@ -151,8 +154,10 @@ void run_epoch() {
 				stat.src_photon_count.total, stat.rec_photon_count.total);
 			MESSAGE("PH STORAGE : Lost %g Rec %g ", 
 				stat.lost_photon_count_sum, stat.rec_photon_count_sum);
+			MESSAGE("Deposit: saturated = %lu, total=%lu", stat.saturated_deposit_count, stat.total_deposit_count);
 			MESSAGE("Evolve     : Error %lu Total %lu", 
 				stat.gsl_error_count, stat.evolve_count);
+			MESSAGE("b/sml : mean = %g", stat.mean_b_sml/ stat.total_deposit_count);
 
 			stat.src_ray_count.subtotal = 0;
 			stat.rec_ray_count.subtotal = 0;
@@ -411,12 +416,12 @@ static void deposit(){
 
 			double absorb = - TM * (expm1(-tau));
 			if(absorb > NHI) {
+				#pragma omp atomic
 				stat.saturated_deposit_count ++;
 				absorb = NHI;
 				TM -= absorb;
 			} else {
 				TM *= exp(-tau);
-
 			}
 			
 			const double delta = absorb / NH;
@@ -425,7 +430,13 @@ static void deposit(){
 			bitmask_clear(active, ipar);
 
 			#pragma omp atomic
+			stat.mean_b_sml += sph_depth(b * sml_inv);
+
+			#pragma omp atomic
 			psys.heat[ipar] += C_H_PER_MASS * delta * (r[i].freq - 1) * U_RY_ENG;
+
+			#pragma omp atomic
+			stat.total_deposit_count ++;
 
 			#pragma omp atomic
 			psys.hits[ipar]++;
