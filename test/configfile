@@ -1,0 +1,32 @@
+version = "1.0";
+
+psphray: {
+	atomicRates = "../test/atomic_rates_Cen.txt";
+	isothermal = false;
+	onTheSpot = true;
+};
+
+cosmology: {
+	comoving = true;
+	omegaL = 0.74;
+	omegaM = 0.26;
+	omegaB = 0.044;
+	h      = 0.72;
+	hmf    = 1;
+};
+
+box: {
+	boundary= "periodic";
+#	boundary= "vaccum";
+};
+
+units: {
+  massGramh = 1.984700522e+43;
+  lengthCMh = 3.083545556e+21;
+  timeSh = 3.08568025e+16;
+};
+
+specs: {
+  d6bh: "../test/d6bh.spec";
+  sun: { type="blackbody", T = 1e4}
+};
