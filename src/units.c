@@ -25,6 +25,7 @@ double C_BOLTZMANN = 0.0;
 double C_SPEED_LIGHT = 0.0;
 
 double C_H_PER_MASS = 0.0;
+double C_HE_PER_MASS = 0.0;
 
 double U_MPROTON_OVER_C_BOLTZMANN = 0.0;
 double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
@@ -73,6 +74,7 @@ double units_init() {
 	U_ERG = 1e-7 * U_J;
 	U_RY_ENG = 13.60569253 * U_EV;
 	C_H_PER_MASS = C_HMF / U_MPROTON;
+	C_HE_PER_MASS = (1.0 - C_HMF) / (4 * U_MPROTON);
 	C_SPEED_LIGHT = 3e8 * U_M / U_SEC;
 
 	U_MPROTON_OVER_C_BOLTZMANN = U_MPROTON / C_BOLTZMANN;

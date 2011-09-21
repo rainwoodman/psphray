@@ -38,8 +38,8 @@ static int _blockid(const char * blk, char ** error) {
 	if(!strcmp(blk, "sml")) return 8 ;
 	if(!strcmp(blk, "Hmf")) return 9 ;
 	if(!strcmp(blk, "Hemf")) return 10 ;
-	if(!strcmp(blk, "HeIa")) return 11 ;
-	if(!strcmp(blk, "HeIIa")) return 12 ;
+	if(!strcmp(blk, "xHeI")) return 11 ;
+	if(!strcmp(blk, "xHeII")) return 12 ;
 	if(!strcmp(blk, "gammaHI")) return 13 ;
 	if(!strcmp(blk, "HIa_cloudy")) return 14 ;
 	if(!strcmp(blk, "eos")) return 15 ;
@@ -54,7 +54,7 @@ static int _blockid(const char * blk, char ** error) {
 
 static const char * _blockname(const int blockid, char ** error) {
 	static char * names[] = {"header", 
-"pos","id","mass","ie","rho","ye","xHI","sml","Hmf","Hemf","HeIa","HeIIa","gammaHI","HIa_cloudy","eos","lasthit","hits","sft","ngammas","spec"
+"pos","id","mass","ie","rho","ye","xHI","sml","Hmf","Hemf","xHeI","xHeII","gammaHI","HIa_cloudy","eos","lasthit","hits","sft","ngammas","spec"
 };
 
 	if(blockid < 0 || blockid >= sizeof(names) / sizeof(char*)) {
@@ -76,8 +76,8 @@ static size_t _itemsize(const char * blk, char ** error) {
 	if(!strcmp(blk, "sml")) return 4 ;
 	if(!strcmp(blk, "Hmf")) return 4 ;
 	if(!strcmp(blk, "Hemf")) return 4 ;
-	if(!strcmp(blk, "HeIa")) return 4 ;
-	if(!strcmp(blk, "HeIIa")) return 4 ;
+	if(!strcmp(blk, "xHeI")) return 4 ;
+	if(!strcmp(blk, "xHeII")) return 4 ;
 	if(!strcmp(blk, "gammaHI")) return 4 ;
 	if(!strcmp(blk, "HIa_cloudy")) return 4 ;
 	if(!strcmp(blk, "eos")) return 4 ;
@@ -101,8 +101,8 @@ static size_t _pstart(const struct header_t * h, const char * blk, int ptype, ch
 	if(!strcmp(blk, "sml")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "Hmf")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "Hemf")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
-	if(!strcmp(blk, "HeIa")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
-	if(!strcmp(blk, "HeIIa")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "xHeI")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
+	if(!strcmp(blk, "xHeII")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "gammaHI")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "HIa_cloudy")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
 	if(!strcmp(blk, "eos")) return (0 < ptype)?(size_t)(h->N[0]): 0 ;
@@ -268,7 +268,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	}
 
 
-	if(!strcmp(blk, "HeIa")) {
+	if(!strcmp(blk, "xHeI")) {
 
 
 		if(1&&h->flag_Helium) {
@@ -283,7 +283,7 @@ static size_t _length(const struct header_t * h, const char * blk, char ** error
 	}
 
 
-	if(!strcmp(blk, "HeIIa")) {
+	if(!strcmp(blk, "xHeII")) {
 
 
 		if(1&&h->flag_Helium) {
@@ -473,6 +473,7 @@ c->Nfiles = h->Nfiles;
 c->h = h->h;
 c->boxsize = h->boxsize;
 
+c->hasHe = h->flag_Helium;
 c->OmegaB = h->OmegaB;
 
 }
@@ -496,6 +497,7 @@ h->Nfiles = c->Nfiles;
 h->h = c->h;
 h->boxsize = c->boxsize;
 
+h->flag_Helium = c->hasHe;
 h->OmegaB = c->OmegaB;
 
 }

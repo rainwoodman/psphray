@@ -41,8 +41,8 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
  * */
 #define FETCH_VARS \
 	const double seconds = step->time / U_SEC; \
-	double xHII, xHI; \
-	lambdaHI_to_xHI_xHII(x[0], xHI, xHII); \
+	const double xHII = lambdaH_to_xHII(x[0]); \
+	const double xHI = lambdaH_to_xHI(x[0]); \
 	const double fac = xHI * xHI + xHII * xHII; \
 	const double ye = xHII + step->yeMET; \
 	const double nH2 = step->nH * step->nH; \
@@ -167,7 +167,7 @@ int step_evolve(Step * step) {
 	double t = 0;
 
 	double x[3];
-	x[0] = step->lambdaHI;
+	x[0] = step->lambdaH;
 	x[1] = 0;
 	x[2] = step->ie;
 
@@ -186,7 +186,7 @@ int step_evolve(Step * step) {
 
 	if(x[0] < 0) x[0] = 0;
 
-	step->lambdaHI = x[0];
+	step->lambdaH = x[0];
 	step->dyGrec = x[1];
 	step->ie = x[2];
 

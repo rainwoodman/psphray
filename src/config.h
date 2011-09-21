@@ -77,6 +77,7 @@ extern double C_SPEED_LIGHT;
 extern double U_MPROTON_OVER_C_BOLTZMANN;
 extern double C_BOLTZMANN_OVER_U_MPROTON;
 extern double C_H_PER_MASS;
+extern double C_HE_PER_MASS;
 
 double z2t(double z);
 double t2z(double z);

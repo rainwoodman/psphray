@@ -515,13 +515,9 @@ static void update_pars() {
 		Step step = {0};
 
 		const double NH = psys_NH(ipar);
-#if 1
 		step.yGdep = psys.yGdep[ipar];
-		step.lambdaHI = psys.lambdaHI[ipar];
-#else
-		step.lambdaHI = lambdaHI_from_xHI_xHII(xHI - psys.yGdep[ipar], xHII + psys.yGdep[ipar]);
-		step.yGdep = 0;
-#endif
+		step.lambdaH = psys.lambdaH[ipar];
+
 		step.yeMET = psys.yeMET[ipar];
 		step.nH = nH_fac * rho * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
@@ -530,16 +526,16 @@ static void update_pars() {
 
 		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		maybe_write_particle(ipar, stat.parlogfile, "%lu %lu %g %g %g %g %g %g %g\n",
-				psys.tick, ipar, step.time, step.T, step.lambdaHI, step.nH, step.yGdep, step.ie, step.heat);
+				psys.tick, ipar, step.time, step.T, step.lambdaH, step.nH, step.yGdep, step.ie, step.heat);
 
 		if(!step_evolve(&step)) {
-			double xHI, xHII;
-			lambdaHI_to_xHI_xHII(step.lambdaHI, xHI, xHII);
+			const double xHI = lambdaH_to_xHI(step.lambdaH);
+			const double xHII = lambdaH_to_xHII(step.lambdaH);
 			WARNING("evolve failed: "
 				"time = %g\n"
 				"step.time = %g; \n"
 				"step.T = %g; \n"
-				"step.lambdaHI=%g; \n"
+				"step.lambdaH=%g; \n"
 				"step.yeMET=%g;\n"
 				"step.nH=%g;\n"
 				"step.yGdep=%g;\n"
@@ -548,7 +544,7 @@ static void update_pars() {
 				"xHI=%g\n"
 				"xHII=%g\n",
 				step.time/U_MYR, step.time, step.T, 
-				step.lambdaHI, 
+				step.lambdaH, 
 				step.yeMET, step.nH, step.yGdep, step.ie, step.heat,
 				xHI, xHII
 				);
@@ -558,7 +554,7 @@ static void update_pars() {
 			if(psys.yGrec[ipar] < 0) psys.yGrec[ipar] = 0;
 			increase_recomb += step.dyGrec * NH;
 
-			psys.lambdaHI[ipar] = step.lambdaHI;
+			psys.lambdaH[ipar] = step.lambdaH;
 			if(!CFG_ADIABATIC)
 				psys.ie[ipar] = step.ie;
 

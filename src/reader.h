@@ -12,6 +12,7 @@ typedef struct _ReaderConstants {
 	double OmegaB;
 	double h;
 	double PhysDensThresh;
+	int hasHe;
 } ReaderConstants;
 Reader * reader_new(const char * format);
 void reader_destroy(Reader * reader);

@@ -97,7 +97,9 @@ static void hilbert_reorder() {
 	gsl_heapsort_index(perm, peanokeys, psys.npar, sizeof(intptr_t), (void*)intptr_t_compare);
 
 	psys.pos = permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar);
-	psys.lambdaHI = permute(perm, psys.lambdaHI, sizeof(double), sizeof(double), psys.npar);
+	psys.lambdaH = permute(perm, psys.lambdaH, sizeof(double), sizeof(double), psys.npar);
+	psys.lambdaHeI = permute(perm, psys.lambdaHeI, sizeof(double), sizeof(double), psys.npar);
+	psys.lambdaHeII = permute(perm, psys.lambdaHeII, sizeof(double), sizeof(double), psys.npar);
 	psys.yeMET = permute(perm, psys.yeMET, sizeof(float), sizeof(float), psys.npar);
 	psys.mass = permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar);
 	psys.sml = permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar);
@@ -264,7 +266,9 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	psys.ie = calloc(sizeof(float), ngas);
 	psys.sml = calloc(sizeof(float), ngas);
 	psys.rho = calloc(sizeof(float), ngas);
-	psys.lambdaHI = calloc(sizeof(double), ngas);
+	psys.lambdaH = calloc(sizeof(double), ngas);
+	psys.lambdaHeI = calloc(sizeof(double), ngas);
+	psys.lambdaHeII = calloc(sizeof(double), ngas);
 	psys.yeMET = calloc(sizeof(float), ngas);
 	psys.yGrec = calloc(sizeof(float), ngas);
 	psys.yGdep = calloc(sizeof(float), ngas);
@@ -294,13 +298,18 @@ static void psystem_read_epoch(ReaderConstants * c) {
 
 		for(ipar = 0; ipar < npar_file; ipar++) {
 			const double xHII = 1.0 - xHI[ipar];
-			psys_set_lambdaHI(nread + ipar, xHI[ipar], xHII);
+			psys_set_lambdaH(nread + ipar, xHI[ipar], xHII);
 
 			const double yeMET = psys.yeMET[nread + ipar] - xHII;
 			psys.yeMET[nread + ipar] = (yeMET < 0.0)?0.0:yeMET;
 		}
 
 		free(xHI);
+		/* initialize He to fully neutral, for now */
+		for(ipar = 0; ipar < npar_file; ipar++) {
+			psys_set_lambdaHe(nread + ipar, 1.0, 0.0, 0.0);
+		}
+
 		if(reader_itemsize(r, "id") == 4) {
 			unsigned int * id = reader_alloc(r, "id", 0);
 			reader_read(r, "id", 0, id);
@@ -540,6 +549,7 @@ void psystem_write_output(int outputnum) {
 		Reader * r = reader_new("psphray");
 		reader_create(r, filename);
 		ReaderConstants * c = reader_constants(r);
+		c->hasHe = 1;
 		c->Ntot[0] = psys.npar;
 		c->N[0] = gas_size;
 		c->Ntot[5] = psys.nsrcs;
@@ -561,12 +571,18 @@ void psystem_write_output(int outputnum) {
 		reader_write(r, "mass", 0, &psys.mass[gas_start]);
 		float * xHI = reader_alloc(r, "xHI", 0);
 		float * ye = reader_alloc(r, "ye", 0);
+		float * xHeI = reader_alloc(r, "xHeI", 0);
+		float * xHeII = reader_alloc(r, "xHeII", 0);
 		for(i = 0; i < gas_size; i++) {
 			xHI[i] = psys_xHI(i);
+			xHeI[i] = psys_xHeI(i);
+			xHeII[i] = psys_xHeII(i);
 			ye[i] = psys_ye(i);
 		}
 		reader_write(r, "xHI", 0, xHI);
 		reader_write(r, "ye", 0, ye);
+		free(xHeI);
+		free(xHeII);
 		free(xHI);
 		free(ye);
 		reader_write(r, "ie", 0, &psys.ie[gas_start]);
@@ -657,8 +673,8 @@ static void psystem_stat_internal(void * field, size_t npar, int type, int dim, 
 
 void psystem_stat(const char * component) {
 	double min[3], max[3], mean[3];
-	if(!strcmp(component, "lambdaHI")) {
-		psystem_stat_internal(psys.lambdaHI, psys.npar, 1, 1, max, min, mean);
+	if(!strcmp(component, "lambdaH")) {
+		psystem_stat_internal(psys.lambdaH, psys.npar, 1, 1, max, min, mean);
 	}
 	if(!strcmp(component, "xHI")) {
 		float * xHI = malloc(sizeof(float) * psys.npar);
