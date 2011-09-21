@@ -17,13 +17,13 @@ int main(int argc, char* argv[]) {
 	MESSAGE("1 ryd verner cross section is %e", xs_get(XS_HI, 1.0));
 	MESSAGE("1 ryd energy = %e", U_RY_ENG);
 	MESSAGE("1 Kelvin energy = %e", C_BOLTZMANN * 1 * U_KELVIN);
-	MESSAGE("1e5K HI_CI %e HII_RC_A %e HII_RCC_A %e", 
-			ar_get(AR_HI_CI, 5),
-			ar_get(AR_HII_RC_A, 5),
-			ar_get(AR_HII_RCC_A, 5)
+	MESSAGE("1e4K HI_CI %e HII_RC_A %e HII_RCC_A %e", 
+			ar_get(AR_HI_CI, 4),
+			ar_get(AR_HII_RC_A, 4),
+			ar_get(AR_HII_RCC_A, 4)
 		);
 
-	MESSAGE("sph depth %g", sph_depth(0.4));
+	MESSAGE("sph depth %g", sph_depth(0.66));
 	MESSAGE("10 < 1 = %d", (1. > 10.) - (10. > 1.));
 	MESSAGE("--------unit sanity check------");
 	MESSAGE("kpc /h = %f", units_parse("kpc / h"));
