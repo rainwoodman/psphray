@@ -193,6 +193,3 @@ int step_evolve(Step * step) {
 	return 1;
 }
 
-int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, double x[], double dx[], double seconds) {
-
-}
