@@ -71,10 +71,10 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 
 /* from GABE's notes  */
 	if(!CFG_ON_THE_SPOT) {
-		dxdt[0] = seconds * (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII) / fac;
+		dxdt[0] = seconds * (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII);
 		dxdt[1] = seconds * alpha_AB * ye * xHII;
 	} else {
-		dxdt[0] = seconds * (-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII) / fac;
+		dxdt[0] = seconds * (-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII);
 		dxdt[1] = 0;
 	}
 	if(CFG_ADIABATIC | CFG_ISOTHERMAL) {
@@ -87,13 +87,13 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 	//	MESSAGE("T = %g H=%g L=%g eta=%g psi=%g zeta=%g beta=%g xHI=%g\n", T, heat_mean, L, eta_HII, psi_HI, zeta_HI, beta, xHI);
 		dxdt[2] = seconds * (heat_mean   - L);
 	}
-/*
-	if(dxdt[0] > 0.0 && (xHI <=0.0 || xHI >= 1.0)) {
+
+	if(dxdt[0] > 0.0 && xHI >= 1.0) {
 		dxdt[0] *= -1;
 		dxdt[1] *= -1;
 		dxdt[2] *= -1;
 	}
-*/
+
 	return GSL_SUCCESS;
 }
 
@@ -102,21 +102,14 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Ste
 	const int D = 3;
 	FETCH_VARS;
 
-	double dxdt0 = 0.0;
 	if(!CFG_ON_THE_SPOT) {
-		dxdt0 = (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII) / fac;
 		dfdx[0 * D + 0] = seconds * (
-			- 2 * (xHI - xHII) * dxdt0 
-			+ gamma * xHI 
-			- ((gamma + alpha_A) * ye + alpha_A * xHII)
+			+ gamma * xHI - ((gamma + alpha_A) * ye + alpha_A * xHII)
 			);
-		dfdx[1 * D + 0] = seconds * (-fac * alpha_AB * (ye + xHII));
+		dfdx[1 * D + 0] = seconds * (alpha_AB * (ye + xHII));
 	} else {
-		dxdt0 = (-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII) / fac;
 		dfdx[0 * D + 0] = seconds * (
-			- 2 * (xHI - xHII) * dxdt0 
-			+ gamma * xHI 
-			- ((gamma + alpha_B) * ye + alpha_B * xHII)
+			+ gamma * xHI - ((gamma + alpha_B) * ye + alpha_B * xHII)
 			);
 		dfdx[1 * D + 0] = 0;
 
@@ -129,7 +122,7 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Ste
 	if(CFG_ADIABATIC | CFG_ISOTHERMAL) {
 		dfdx[2 * D + 0] = 0;
 	} else {
-		dfdx[2 * D + 0] = seconds * U_ERG * C_H_PER_MASS * fac * (
+		dfdx[2 * D + 0] = seconds * U_ERG * C_H_PER_MASS * (
 			+ (eta_HII + beta) * (ye  + xHII)
 			+ (zeta_HI + psi_HI) * (xHI - ye)
 			+ chi
@@ -138,13 +131,17 @@ static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Ste
 	dfdx[2 * D + 1] = 0;
 	dfdx[2 * D + 2] = 0;
 
-/*
-	if(dxdt0 > 0.0 && (xHI <=0.0 || xHI >= 1.0)) {
-		dfdx[0 * D + 0] *= -1;
-		dfdx[1 * D + 0] *= -1;
-		dfdx[2 * D + 0] *= -1;
+	if(xHI >= 1.0) {
+		const double dx0dt = !CFG_ON_THE_SPOT?
+			(-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII):
+			(-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII);
+		if(dx0dt > 0) {
+			dfdx[0 * D + 0] *= -1;
+			dfdx[1 * D + 0] *= -1;
+			dfdx[2 * D + 0] *= -1;
+		}
 	}
-*/
+
 	dfdt[0] = 0;
 	dfdt[1] = 0;
 	dfdt[2] = 0;

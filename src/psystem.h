@@ -84,34 +84,23 @@ extern PSystem psys;
 
 /* conversion from lambdaH to xHI and xHII */
 static inline const double lambdaH_to_xHI(const double lambdaH) {
-	const double r = tan(lambdaH);
-	return r / (1. + r);
+	return lambdaH;
 }
 static inline const double lambdaH_to_xHII(const double lambdaH) {
-	const double r = tan(lambdaH);
-	const double r_inv = (r!=0.0)?1/r:HUGENUMBER;
-	return r_inv / (1. + r_inv);
+	return 1.0 - lambdaH;
 }
 static inline const double lambdaH_from_xHI_xHII(const double xHI, const double xHII) {
 }
 /* conversion from lambdaHeI, lambdaHeII to xHeI and xHeII and xHeIII */
 static inline const double lambdaHe_to_xHeI(const double lambdaHeI, const double lambdaHeII) {
-	const double r = tan(lambdaHeI);
-	return r / (1. + r);
+	return lambdaHeI;
 }
 static inline const double lambdaHe_to_xHeII(const double lambdaHeI, const double lambdaHeII) {
-	const double r1 = tan(lambdaHeI);
-	const double r2 = tan(lambdaHeII);
-	const double r1_inv = (r1!=0.0)?1/r1:HUGENUMBER;
-	return r1_inv / (1. + r1_inv) * r2 / (1. + r2);
+	return lambdaHeII;
 }
 
 static inline const double lambdaHe_to_xHeIII(const double lambdaHeI, const double lambdaHeII) {
-	const double r1 = tan(lambdaHeI);
-	const double r2 = tan(lambdaHeII);
-	const double r1_inv = (r1!=0.0)?1/r1:HUGENUMBER;
-	const double r2_inv = (r2!=0.0)?1/r2:HUGENUMBER;
-	return r1_inv / (1. + r1_inv) * r2_inv / (1. + r2_inv);
+	return 1.0 - lambdaHeI - lambdaHeII;
 }
 
 
@@ -132,18 +121,18 @@ static inline const double psys_xHeIII(const intptr_t i) {
 }
 
 static inline void psys_set_lambdaH(const intptr_t i, const double xHI, const double xHII) {
-	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaH[i] = atan(HUGENUMBER);
-	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaH[i] = atan(1/HUGENUMBER);
-	else psys.lambdaH[i] = atan2(xHI , xHII);
+	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaH[i] = 1.0;
+	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaH[i] = 0.0;
+	else psys.lambdaH[i] = xHI;
 }
 static inline void psys_set_lambdaHe(const intptr_t i, const double xHeI, const double xHeII, const double xHeIII) {
-	if(xHeI >= 1.0 || (xHeII + xHeIII) <= 0.0) psys.lambdaHeI[i] = atan(HUGENUMBER);
-	else if(xHeI <= 0.0 || (xHeII + xHeIII) >=1.0) psys.lambdaHeI[i] = atan(1/HUGENUMBER);
-	else psys.lambdaHeI[i] = atan2(xHeI , xHeII + xHeIII);
+	if(xHeI >= 1.0 || (xHeII + xHeIII) <= 0.0) psys.lambdaHeI[i] = 1.0;
+	else if(xHeI <= 0.0 || (xHeII + xHeIII) >=1.0) psys.lambdaHeI[i] = 0.0;
+	else psys.lambdaHeI[i] = xHeI;
 
-	if((xHeII + xHeI) >= 1.0 || xHeIII <= 0.0) psys.lambdaHeII[i] = atan(HUGENUMBER);
-	else if(xHeII <= 0.0 || (xHeIII + xHeI) >=1.0) psys.lambdaHeII[i] = atan(1/HUGENUMBER);
-	else psys.lambdaHeII[i] = atan2(xHeII , xHeIII);
+	if(xHeII >= 1.0 || (xHeI + xHeIII) <= 0.0) psys.lambdaHeII[i] = 1.0;
+	else if(xHeII <= 0.0 || (xHeIII + xHeI) >=1.0) psys.lambdaHeII[i] = 0.0;
+	else psys.lambdaHeII[i] = xHeII;
 }
 
 static inline const double psys_NH(const intptr_t i) {
