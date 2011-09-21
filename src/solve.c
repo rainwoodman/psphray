@@ -164,24 +164,19 @@ int step_evolve(Step * step) {
 	double t = 0;
 
 	double x[3];
+	double dxdt[3];
 	x[0] = step->lambdaH;
 	x[1] = 0;
 	x[2] = step->ie;
 
-	driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_msbdf,
-			1.0 / 100., 1e-7, 1e-7);
-//	gsl_odeiv2_driver_reset(driver);
-	gsl_odeiv2_driver_set_nmax(driver, 100000);
-	int code = gsl_odeiv2_driver_apply(driver, &t, 1.0, x);
+	function(t, x, dxdt, step);
 
-	gsl_odeiv2_driver_free(driver);
-
-	if(GSL_SUCCESS != code ) {
-		WARNING("gsl failed: %s", gsl_strerror(code));
-		return 0;
-	}
+	x[0] += dxdt[0];
+	x[1] += dxdt[1];
+	x[2] += dxdt[2];
 
 	if(x[0] < 0) x[0] = 0;
+	if(x[0] > 1) x[0] = 1;
 
 	step->lambdaH = x[0];
 	step->dyGrec = x[1];
