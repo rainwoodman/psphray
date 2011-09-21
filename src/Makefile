@@ -4,8 +4,8 @@ OPT=-O3 -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort
 LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc 
-LIBS = -lconfig -lgfortran -lgsl -lgslcblas -ljemalloc -lguide -liomp5 -limf -lpthread
-
+LIBS = -lconfig -lgfortran -lgsl -lgslcblas -lguide -liomp5 -limf -lpthread
+LIBS += -ljemalloc
 SOURCES = \
 config.c \
 units.c \
