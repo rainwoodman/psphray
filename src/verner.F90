@@ -25,3 +25,33 @@
     sigma = sigma * 1.0d-18
 
   end function Verner_HI_photo_cs
+
+!------------------------------------------
+!> HeI photo ionization (Osterbrok)  [cm^2]
+    function Osterbrok_HeI_photo_cs(Ry) result(sigma)    
+        real :: Ry !< frequency [Ry]
+        real :: sigma !< cross section
+        real :: scaled_freq
+        real, parameter :: nuHeI = 24.587
+        if (Ry * 13.6 < nu_HeI) then
+           sigma = 0.0e0
+           return
+        end if
+        scaled_freq = Ry * 13.6 / nu_HeI
+        sigma = 7.2e-18 * & 
+                ( 1.66e0 * ( scaled_freq )**(-2.05e0) + &
+                  0.66e0 * ( scaled_freq )**(-3.05e0) )
+    end function Osterbrok_HeI_photo_cs
+
+!------------------------------------------
+!> HeII photo ionization (Osterbrok)  [cm^2]
+    function Osterbrok_HeII_photo_cs(Ry) result(sigma)    
+        real :: Ry !< frequency (Ry)
+        real :: sigma !< cross section
+        real, parameter :: nu_HeII = 54.416
+        if (freq * 13.6 < nu_HeII) then
+           sigma = 0.0e0
+           return
+        end if
+        sigma = 1.58e-18 * ( freq * 13.6 / nu_HeII ) ** (-3)
+    end function Osterbrok_HeII_photo_cs

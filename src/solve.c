@@ -43,20 +43,29 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
 	const double seconds = step->time / U_SEC; \
 	const double xHI = lambdaH_to_xHI(x[0]); \
 	const double xHII = lambdaH_to_xHII(x[0]); \
+	const double xHeI = lambdaHe_to_xHeI(x[1], x[1]); \
+	const double xHeII = lambdaHe_to_xHeII(x[1], x[2]); \
+	const double xHeIII = lambdaHe_to_xHeIII(x[1], x[2]); \
 	const double fac = xHI * xHI + xHII * xHII; \
-	const double ye = xHII + step->yeMET; \
+	const double ye = lambda_to_ye(x[0], x[1], x[2]) + step->yeMET; \
 	const double nH2 = step->nH * step->nH; \
 	const double nH3 = nH2 * step->nH; \
 	const double nH = step->nH; \
-	const double yGdep_mean = step->yGdep / seconds; \
-	const double heat_mean = step->heat / seconds; \
 	const double yeMET = step->yeMET; \
-	const double T = CFG_ISOTHERMAL?step->T:ieye2T(x[2], ye); \
+	const double T = CFG_ISOTHERMAL?step->T:ieye2T(x[6], ye); \
 	const double logT = log10(T); \
-	const double gamma = ar_get(AR_HI_CI, logT) * nH; \
-	const double alpha_A = ar_get(AR_HII_RC_A, logT) * nH; \
-	const double alpha_B = ar_get(AR_HII_RC_B, logT) * nH; \
-	const double alpha_AB = alpha_A - alpha_B; \
+	const double gamma_HI = ar_get(AR_HI_CI, logT) * nH; \
+	const double alpha_HII_A = ar_get(AR_HII_RC_A, logT) * nH; \
+	const double alpha_HII_B = ar_get(AR_HII_RC_B, logT) * nH; \
+	const double alpha_HII_AB = alpha_HII_A - alpha_HII_B; \
+	const double gamma_HeI = ar_get(AR_HEI_CI, logT) * nH; \
+	const double gamma_HeII = ar_get(AR_HEII_CI, logT) * nH; \
+	const double alpha_HeII_A = ar_get(AR_HEII_RC_A, logT) * nH; \
+	const double alpha_HeII_B = ar_get(AR_HEII_RC_B, logT) * nH; \
+	const double alpha_HeII_AB = alpha_HeII_A - alpha_HeII_B; \
+	const double alpha_HeIII_A = ar_get(AR_HEIII_RC_A, logT) * nH; \
+	const double alpha_HeIII_B = ar_get(AR_HEIII_RC_B, logT) * nH; \
+	const double alpha_HeIII_AB = alpha_HeIII_A - alpha_HeIII_B; \
 	const double eta_HII = (CFG_ON_THE_SPOT?ar_get(AR_HII_RCC_B, logT):ar_get(AR_HII_RCC_A, logT)) * nH; \
 	const double psi_HI = ar_get(AR_HI_CEC, logT) * nH; \
 	const double zeta_HI = ar_get(AR_HI_CIC, logT) * nH; \
@@ -71,80 +80,41 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 
 /* from GABE's notes  */
 	if(!CFG_ON_THE_SPOT) {
-		dxdt[0] = seconds * (-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII);
-		dxdt[1] = seconds * alpha_AB * ye * xHII;
+		dxdt[0] = -step->yGdepHI + seconds * (- gamma_HI * ye * xHI + alpha_HII_A * ye * xHII);
+		dxdt[1] = -step->yGdepHeI + seconds * (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
+		dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
+		dxdt[3] = seconds * alpha_HII_AB * ye * xHII;
+		dxdt[4] = seconds * alpha_HeII_AB * ye * xHeII;
+		dxdt[5] = seconds * alpha_HeIII_AB * ye * xHeIII;
 	} else {
-		dxdt[0] = seconds * (-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII);
-		dxdt[1] = 0;
+		dxdt[0] = -step->yGdepHI + seconds * (- gamma_HI * ye * xHI + alpha_HII_B * ye * xHII);
+		dxdt[1] = -step->yGdepHeI + seconds * (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
+		dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
+		dxdt[3] = 0;
+		dxdt[4] = 0;
+		dxdt[5] = 0;
 	}
 	if(CFG_ADIABATIC | CFG_ISOTHERMAL) {
-		dxdt[2] = 0.0;
+		dxdt[6] = 0.0;
 	} else {
 		const double L = U_ERG * C_H_PER_MASS * (
 			(zeta_HI + psi_HI) * ye * xHI + 
 			 (eta_HII * ye * xHII) +
 			 beta * ye * xHII + chi * ye);
 	//	MESSAGE("T = %g H=%g L=%g eta=%g psi=%g zeta=%g beta=%g xHI=%g\n", T, heat_mean, L, eta_HII, psi_HI, zeta_HI, beta, xHI);
-		dxdt[2] = seconds * (heat_mean   - L);
+		dxdt[6] = step->heat - seconds * L;
 	}
 
 	if(dxdt[0] > 0.0 && xHI >= 1.0) {
 		dxdt[0] *= -1;
 		dxdt[1] *= -1;
 		dxdt[2] *= -1;
+		dxdt[3] *= -1;
+		dxdt[4] *= -1;
+		dxdt[5] *= -1;
+		dxdt[6] *= -1;
 	}
 
-	return GSL_SUCCESS;
-}
-
-static int jacobian(double t, const double x[], double *dfdx, double dfdt[], Step * step) {
-
-	const int D = 3;
-	FETCH_VARS;
-
-	if(!CFG_ON_THE_SPOT) {
-		dfdx[0 * D + 0] = seconds * (
-			+ gamma * xHI - ((gamma + alpha_A) * ye + alpha_A * xHII)
-			);
-		dfdx[1 * D + 0] = seconds * (alpha_AB * (ye + xHII));
-	} else {
-		dfdx[0 * D + 0] = seconds * (
-			+ gamma * xHI - ((gamma + alpha_B) * ye + alpha_B * xHII)
-			);
-		dfdx[1 * D + 0] = 0;
-
-	}
-	dfdx[0 * D + 1] = 0;
-	dfdx[0 * D + 2] = 0;
-
-	dfdx[1 * D + 1] = 0;
-	dfdx[1 * D + 2] = 0;
-	if(CFG_ADIABATIC | CFG_ISOTHERMAL) {
-		dfdx[2 * D + 0] = 0;
-	} else {
-		dfdx[2 * D + 0] = seconds * U_ERG * C_H_PER_MASS * (
-			+ (eta_HII + beta) * (ye  + xHII)
-			+ (zeta_HI + psi_HI) * (xHI - ye)
-			+ chi
-			);
-	}
-	dfdx[2 * D + 1] = 0;
-	dfdx[2 * D + 2] = 0;
-
-	if(xHI >= 1.0) {
-		const double dx0dt = !CFG_ON_THE_SPOT?
-			(-yGdep_mean - gamma * ye * xHI + alpha_A * ye * xHII):
-			(-yGdep_mean - gamma * ye * xHI + alpha_B * ye * xHII);
-		if(dx0dt > 0) {
-			dfdx[0 * D + 0] *= -1;
-			dfdx[1 * D + 0] *= -1;
-			dfdx[2 * D + 0] *= -1;
-		}
-	}
-
-	dfdt[0] = 0;
-	dfdt[1] = 0;
-	dfdt[2] = 0;
 	return GSL_SUCCESS;
 }
 
@@ -153,34 +123,37 @@ int step_evolve(Step * step) {
 
 //	MESSAGE("x1 = %le , x2 = %le x[0] - B %g", x1, x2, x[0] - B);
 
-	gsl_odeiv2_system sys;
-	gsl_odeiv2_driver * driver;
-
-	sys.function = function;
-	sys.jacobian = jacobian;
-	sys.dimension = 3;
-	sys.params = step;
-
 	double t = 0;
 
-	double x[3];
-	double dxdt[3];
+	double x[7];
+	double dxdt[7];
 	x[0] = step->lambdaH;
-	x[1] = 0;
-	x[2] = step->ie;
+	x[1] = step->lambdaHeI;
+	x[2] = step->lambdaHeII;
+	x[3] = 0;
+	x[4] = 0;
+	x[5] = 0;
+	x[6] = step->ie;
 
 	function(t, x, dxdt, step);
 
 	x[0] += dxdt[0];
 	x[1] += dxdt[1];
 	x[2] += dxdt[2];
+	x[3] += dxdt[3];
+	x[4] += dxdt[4];
+	x[5] += dxdt[5];
 
 	if(x[0] < 0) x[0] = 0;
 	if(x[0] > 1) x[0] = 1;
 
 	step->lambdaH = x[0];
-	step->dyGrec = x[1];
-	step->ie = x[2];
+	step->lambdaHeI = x[1];
+	step->lambdaHeII = x[2];
+	step->dyGrecHII = x[3];
+	step->dyGrecHeII = x[4];
+	step->dyGrecHeIII = x[5];
+	step->ie = x[6];
 
 	return 1;
 }

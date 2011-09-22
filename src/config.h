@@ -27,6 +27,7 @@ extern int CFG_ADIABATIC;
 extern int CFG_ISOTHERMAL;
 extern int CFG_ON_THE_SPOT;
 extern int CFG_COMOVING;
+extern int CFG_H_ONLY;
 extern int CFG_DUMP_HOTSPOTS;
 extern int CFG_TRACE_ONLY;
 
@@ -78,7 +79,9 @@ extern double U_MPROTON_OVER_C_BOLTZMANN;
 extern double C_BOLTZMANN_OVER_U_MPROTON;
 extern double C_H_PER_MASS;
 extern double C_HE_PER_MASS;
-
+extern double C_HI_FREQ;
+extern double C_HEI_FREQ;
+extern double C_HEII_FREQ;
 double z2t(double z);
 double t2z(double z);
 static inline double ieye2T(const double ie, const double ye) {
@@ -99,10 +102,18 @@ extern int AR_HII_RC_A;
 extern int AR_HII_RCC_A;
 extern int AR_HII_RC_B;
 extern int AR_HII_RCC_B;
+extern int AR_HEI_CI;
+extern int AR_HEII_CI;
+extern int AR_HEII_RC_A;
+extern int AR_HEII_RC_B;
+extern int AR_HEIII_RC_A;
+extern int AR_HEIII_RC_B;
 extern int AR_E_BREMC;
 extern int AR_E_COMPC;
 extern int XS_FREQ;
 extern int XS_HI;
+extern int XS_HEI;
+extern int XS_HEII;
 
 const double ar_get(const int id, const double logT);
 const double xs_get(const int id, const double freq);

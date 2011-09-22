@@ -36,8 +36,22 @@ typedef struct {
 	int8_t * flag;
 	size_t npar;
 
-	float * yGrec; /* number of recombination photon / NH */
-	float * yGdep; /* number of ionizating photon / NH */
+	union {
+	struct {
+	float * yGdepHI; /* number of ionizating photon / NH */
+	float * yGdepHeI; /* number of ionizating photon / NHe */
+	float * yGdepHeII; /* number of ionizating photon / NHe */
+	};
+	float * (yGdep[3]);
+	};
+	union {
+	struct {
+		float * yGrecHII; /* number of ionizating photon / NH */
+		float * yGrecHeII; /* number of ionizating photon / NHe */
+		float * yGrecHeIII; /* number of ionizating photon / NHe */
+	};
+	float * (yGrec[3]);
+	};
 	float * heat;  /* total heat deposition per mass in a step*/
 	intptr_t * lasthit; /* time tick of last update */
 	int * hits;   /* total number of hits, subtotaled between snapshots*/
@@ -62,15 +76,21 @@ void psystem_stat(const char * component);
 
 typedef struct _Step {
 	double lambdaH;
+	double lambdaHeI;
+	double lambdaHeII;
 	double ie;
 	double yeMET;
-	double yGdep;
+	double yGdepHI;
+	double yGdepHeI;
+	double yGdepHeII;
 	double heat;
 	double time;
 	double nH;
 	double T;
 
-	double dyGrec;
+	double dyGrecHII;
+	double dyGrecHeII;
+	double dyGrecHeIII;
 } Step;
 
 
@@ -96,13 +116,17 @@ static inline const double lambdaHe_to_xHeI(const double lambdaHeI, const double
 	return lambdaHeI;
 }
 static inline const double lambdaHe_to_xHeII(const double lambdaHeI, const double lambdaHeII) {
-	return lambdaHeII;
-}
-
-static inline const double lambdaHe_to_xHeIII(const double lambdaHeI, const double lambdaHeII) {
 	return 1.0 - lambdaHeI - lambdaHeII;
 }
 
+static inline const double lambdaHe_to_xHeIII(const double lambdaHeI, const double lambdaHeII) {
+	return lambdaHeII;
+}
+static inline const double lambda_to_ye(const double lambdaH, double lambdaHeI, double lambdaHeII) {
+	return lambdaH_to_xHII(lambdaH) 
+		+ C_HMF / 4.0 * (lambdaHe_to_xHeII(lambdaHeI, lambdaHeII) + 2 * lambdaHe_to_xHeIII(lambdaHeI, lambdaHeII));
+
+}
 
 static inline const double psys_xHI(const intptr_t i) {
 	return lambdaH_to_xHI(psys.lambdaH[i]);
@@ -130,9 +154,9 @@ static inline void psys_set_lambdaHe(const intptr_t i, const double xHeI, const 
 	else if(xHeI <= 0.0 || (xHeII + xHeIII) >=1.0) psys.lambdaHeI[i] = 0.0;
 	else psys.lambdaHeI[i] = xHeI;
 
-	if(xHeII >= 1.0 || (xHeI + xHeIII) <= 0.0) psys.lambdaHeII[i] = 1.0;
-	else if(xHeII <= 0.0 || (xHeIII + xHeI) >=1.0) psys.lambdaHeII[i] = 0.0;
-	else psys.lambdaHeII[i] = xHeII;
+	if(xHeIII >= 1.0 || (xHeI + xHeII) <= 0.0) psys.lambdaHeII[i] = 1.0;
+	else if(xHeIII <= 0.0 || (xHeII + xHeI) >=1.0) psys.lambdaHeII[i] = 0.0;
+	else psys.lambdaHeII[i] = xHeIII;
 }
 
 static inline const double psys_NH(const intptr_t i) {

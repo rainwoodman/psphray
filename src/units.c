@@ -27,6 +27,10 @@ double C_SPEED_LIGHT = 0.0;
 double C_H_PER_MASS = 0.0;
 double C_HE_PER_MASS = 0.0;
 
+double C_HI_FREQ = 0.0;
+double C_HEI_FREQ = 0.0;
+double C_HEII_FREQ = 0.0;
+
 double U_MPROTON_OVER_C_BOLTZMANN = 0.0;
 double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
 
@@ -77,6 +81,9 @@ double units_init() {
 	C_HE_PER_MASS = (1.0 - C_HMF) / (4 * U_MPROTON);
 	C_SPEED_LIGHT = 3e8 * U_M / U_SEC;
 
+	C_HI_FREQ = 1;
+	C_HEI_FREQ = 24.587 / 13.6;
+	C_HEII_FREQ = 54.416 / 13.6;
 	U_MPROTON_OVER_C_BOLTZMANN = U_MPROTON / C_BOLTZMANN;
 	C_BOLTZMANN_OVER_U_MPROTON = 1.0 / (U_MPROTON / C_BOLTZMANN);
 }

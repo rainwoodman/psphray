@@ -106,8 +106,11 @@ static void hilbert_reorder() {
 	psys.rho = permute(perm, psys.rho, sizeof(float), sizeof(float), psys.npar);
 	psys.ie = permute(perm, psys.ie, sizeof(float), sizeof(float), psys.npar);
 	psys.flag = permute(perm, psys.flag, sizeof(int8_t), sizeof(int8_t), psys.npar);
-	psys.yGrec = permute(perm, psys.yGrec, sizeof(float), sizeof(float), psys.npar);
-	psys.yGdep = permute(perm, psys.yGdep, sizeof(float), sizeof(float), psys.npar);
+	int i;
+	for(i = 0; i < 3; i++) {
+		psys.yGrec[i] = permute(perm, psys.yGrec[i], sizeof(float), sizeof(float), psys.npar);
+		psys.yGdep[i] = permute(perm, psys.yGdep[i], sizeof(float), sizeof(float), psys.npar);
+	}
 	psys.heat = permute(perm, psys.heat, sizeof(float), sizeof(float), psys.npar);
 	psys.lasthit = permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
 	psys.hits = permute(perm, psys.hits, sizeof(int), sizeof(int), psys.npar);
@@ -270,8 +273,11 @@ static void psystem_read_epoch(ReaderConstants * c) {
 	psys.lambdaHeI = calloc(sizeof(double), ngas);
 	psys.lambdaHeII = calloc(sizeof(double), ngas);
 	psys.yeMET = calloc(sizeof(float), ngas);
-	psys.yGrec = calloc(sizeof(float), ngas);
-	psys.yGdep = calloc(sizeof(float), ngas);
+	int i;
+	for(i = 0; i < 3; i++) {
+		psys.yGrec[i] = calloc(sizeof(float), ngas);
+		psys.yGdep[i] = calloc(sizeof(float), ngas);
+	}
 	psys.heat = calloc(sizeof(float), ngas);
 	psys.lasthit = calloc(sizeof(intptr_t), ngas);
 	psys.hits = calloc(sizeof(int), ngas);
@@ -652,6 +658,9 @@ static void psystem_stat_internal(void * field, size_t npar, int type, int dim, 
 	for(ipar = 1; ipar < npar; ipar++) {
 		_get_value(field, ipar, type, dim, value);
 		for(d = 0; d < dim; d++) {
+			if(isnan(value[d])) {
+				WARNING("nan found ipar=%ld", ipar);
+			}
 			if(_mx[d] < value[d]) _mx[d] = value[d];
 			if(_mn[d] > value[d]) _mn[d] = value[d];
 			_sum[d] += value[d];
@@ -686,11 +695,23 @@ void psystem_stat(const char * component) {
 		psystem_stat_internal(xHI, psys.npar, 0, 1, max, min, mean);
 		free(xHI);
 	}
-	if(!strcmp(component, "yGrec")) {
-		psystem_stat_internal(psys.yGrec, psys.npar, 0, 1, max, min, mean);
+	if(!strcmp(component, "yGrecHII")) {
+		psystem_stat_internal(psys.yGrecHII, psys.npar, 0, 1, max, min, mean);
 	}
-	if(!strcmp(component, "yGdep")) {
-		psystem_stat_internal(psys.yGdep, psys.npar, 0, 1, max, min, mean);
+	if(!strcmp(component, "yGrecHeII")) {
+		psystem_stat_internal(psys.yGrecHeII, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "yGrecHeIII")) {
+		psystem_stat_internal(psys.yGrecHeII, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "yGdepHI")) {
+		psystem_stat_internal(psys.yGdepHI, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "yGdepHeI")) {
+		psystem_stat_internal(psys.yGdepHeI, psys.npar, 0, 1, max, min, mean);
+	}
+	if(!strcmp(component, "yGdepHeII")) {
+		psystem_stat_internal(psys.yGdepHeII, psys.npar, 0, 1, max, min, mean);
 	}
 	if(!strcmp(component, "heat")) {
 		psystem_stat_internal(psys.heat, psys.npar, 0, 1, max, min, mean);

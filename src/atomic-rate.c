@@ -27,13 +27,24 @@ int AR_HI_CIC = -1;
 int AR_HI_CEC = -1;
 int AR_E_BREMC = -1;
 int AR_E_COMPC = -1;
+int AR_HEI_CI = -1;
+int AR_HEII_CI = -1;
+int AR_HEII_RC_A = -1;
+int AR_HEII_RC_B = -1;
+int AR_HEIII_RC_A = -1;
+int AR_HEIII_RC_B = -1;
 int XS_FREQ = -1;
 int XS_HI = -1;
+int XS_HEI = -1;
+int XS_HEII = -1;
 
 static TabFun ar = {0};
 static TabFun xs = {0};
 
 extern float verner_hi_photo_cs_(float *);
+extern float osterbrok_hei_photo_cs_(float *);
+extern float osterbrok_heii_photo_cs_(float *);
+
 static const double tabfun_get(const TabFun * tabfun, const int id, const double value);
 static int tabfun_col_id(const TabFun * tabfun, const char * col);
 static void tabfun_init(TabFun * tabfun, const char * filename);
@@ -44,6 +55,14 @@ static int tabfun_ensure_col(TabFun * tabfun, char * col, double (*func)(double)
 static double verner(double freq) {
 	float ryd = freq;
 	return verner_hi_photo_cs_(&ryd);
+}
+static double osterbrok_HeI(double freq) {
+	float ryd = freq;
+	return osterbrok_hei_photo_cs_(&ryd);
+}
+static double osterbrok_HeII(double freq) {
+	float ryd = freq;
+	return osterbrok_heii_photo_cs_(&ryd);
 }
 static double bremsstrahlung_cen_1992(double T) {
 	return 1.42e-27 * 1.5 * sqrt(T);
@@ -62,6 +81,12 @@ void ar_init(const char * filename) {
 	AR_HII_RCC_A = tabfun_ensure_col(&ar, "HIIrccA", NULL);
 	AR_HII_RC_B = tabfun_ensure_col(&ar, "HIIrcB", NULL);
 	AR_HII_RCC_B = tabfun_ensure_col(&ar, "HIIrccB", NULL);
+	AR_HEI_CI = tabfun_ensure_col(&ar, "HeIci", NULL);
+	AR_HEII_CI = tabfun_ensure_col(&ar, "HeIIci", NULL);
+	AR_HEII_RC_A = tabfun_ensure_col(&ar, "HeIIrcA", NULL);
+	AR_HEII_RC_B = tabfun_ensure_col(&ar, "HeIIrcB", NULL);
+	AR_HEIII_RC_A = tabfun_ensure_col(&ar, "HeIIIrcA", NULL);
+	AR_HEIII_RC_B = tabfun_ensure_col(&ar, "HeIIIrcB", NULL);
 	AR_HI_CIC = tabfun_ensure_col(&ar, "HIcic", NULL);
 	AR_HI_CEC = tabfun_ensure_col(&ar, "HIcec", NULL);
 	AR_E_BREMC = tabfun_ensure_col(&ar, "Brem", bremsstrahlung_cen_1992);
@@ -96,6 +121,8 @@ void xs_init(const char * filename) {
 	}
 
 	XS_HI = tabfun_ensure_col(&xs, "HI", verner);
+	XS_HEI = tabfun_ensure_col(&xs, "HeI", osterbrok_HeI);
+	XS_HEII = tabfun_ensure_col(&xs, "HeII", osterbrok_HeII);
 	XS_FREQ = 0;
 }
 
