@@ -91,6 +91,12 @@ static inline int lock(intptr_t idx, size_t timeout) {
 	}
 	return !(__sync_val_compare_and_swap(p, 0, 1));
 }
+static inline int locked(intptr_t idx) {
+	idx = bitmask_shuffle(idx);
+	volatile int64_t * p = locks + idx;
+	return *p;
+}
+
 static inline void unlock(intptr_t idx) {
 	idx = bitmask_shuffle(idx);
 	volatile int64_t * p = locks + idx;
@@ -132,8 +138,11 @@ static struct {
 	FILE * parlogfile;
 	FILE * hitlogfile;
 
-	double lock_time;
+	double spinlock_time;
 	double deposit_time;
+	double raytrace_time;
+	double update_time;
+	double emit_time;
 } stat;
 
 void init() {
@@ -146,6 +155,7 @@ void run_epoch() {
 	locks = calloc(psys.npar + 0xffff, sizeof(int64_t));
 	memset(&stat, 0, sizeof(stat));
 
+	double t0 = omp_get_wtime();
 	intptr_t istep = 0;
 
 	if(CFG_DUMP_HOTSPOTS) {
@@ -179,7 +189,7 @@ void run_epoch() {
 			MESSAGE("Deposit: saturated = %lu, total=%lu", stat.saturated_deposit_count, stat.total_deposit_count);
 			MESSAGE("Evolve     : Error %lu Total %lu", 
 				stat.gsl_error_count, stat.evolve_count);
-			MESSAGE("Time : SpinLock %g Deposit %g", stat.lock_time, stat.deposit_time);
+			MESSAGE("Time : SpinLock %g", stat.spinlock_time);
 
 			stat.src_ray_count.subtotal = 0;
 			stat.rec_ray_count.subtotal = 0;
@@ -199,6 +209,10 @@ void run_epoch() {
 			psystem_stat("yGrecHeIII");
 
 			psystem_write_output(istep + 1);
+
+			MESSAGE("Real Time: emit %g raytrace %g deposit %g update %g total %g",
+				stat.emit_time, stat.raytrace_time, stat.deposit_time, stat.update_time, omp_get_wtime() - t0);
+			MESSAGE("-----end of tick: %lu -------", psys.tick);
 			istep++;
 			stat.tick_subtotal = 0;
 		}
@@ -239,6 +253,7 @@ void run_epoch() {
 
 
 static void emit_rays() {
+	const double t0 = omp_get_wtime();
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	double weights[psys.nsrcs];
 	intptr_t i;
@@ -426,10 +441,12 @@ static void emit_rays() {
 	}
 
 	if(src_ran != NULL) gsl_ran_discrete_free(src_ran);
+	stat.emit_time += omp_get_wtime() - t0;
 }
 
 static void trace() {
 	intptr_t i;
+	const double t0 = omp_get_wtime();
 	#pragma omp parallel for private(i)
 	for(i = 0; i < r_length; i++) {
 		r[i].x_length = rt_trace(r[i].s, r[i].dir, r[i].length, 
@@ -437,23 +454,26 @@ static void trace() {
 
 		qsort(r[i].x, r[i].x_length, sizeof(Xtype), x_t_compare);
 	}
+	stat.raytrace_time += omp_get_wtime() - t0;
 }
 
 static void deposit(){
+	const double t0 = omp_get_wtime();
 	intptr_t i;
 
 	const double U_CM2 = U_CM * U_CM;
 
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	const double scaling_fac2_inv = 1.0 / (scaling_fac * scaling_fac);
-	double lock_time = 0.0;
-	double deposit_time = 0.0;
+	double spinlock_time = 0.0;
 	size_t saturated_deposit_count = 0;
 	size_t total_deposit_count = 0;
-	#pragma omp parallel for private(i) reduction(+: lock_time, deposit_time, total_deposit_count, saturated_deposit_count) schedule(guided, 1)
+	#pragma omp parallel private(i) reduction(+: spinlock_time, total_deposit_count, saturated_deposit_count) 
+	#pragma omp single
 	for(i = 0; i < r_length; i++) {
-	if(r[i].x_length != 0) {
-		double t0 = omp_get_wtime();
+		if(r[i].x_length == 0) continue;
+		#pragma omp task untied
+		{
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
 		intptr_t j;
@@ -467,10 +487,25 @@ static void deposit(){
 		total_deposit_count += r[i].x_length;
 
 		for(j = 0; j < r[i].x_length; j++) {
-			const intptr_t ipar = r[i].x[j].ipar;
-			#pragma omp atomic
-			psys.hits[ipar]++;
 
+			double absorb = 0.0;
+
+			/* find the first unlocked par in this queue that is close to the head this actually makes it slower*/
+			/*
+			intptr_t k = 0;
+			for(k = j; k < r[i].x_length; k++) {
+				if(psys.sml[r[i].x[j].ipar] + r[i].x[j].d < r[i].x[k].d) break;
+				if(!locked(r[i].x[k].ipar)) {
+					if(j != k) {
+						const Xtype tmp = r[i].x[j];
+						r[i].x[j] = r[i].x[k];
+						r[i].x[k] = tmp;
+					}
+					break;
+				}
+			} */
+
+			const intptr_t ipar = r[i].x[j].ipar;
 			const double b = r[i].x[j].b;
 			const double sml = psys.sml[ipar];
 			const double sml_inv = 1.0 / sml;
@@ -482,79 +517,72 @@ static void deposit(){
 			const double xHeI = psys_xHeI(ipar);
 			const double xHeII = psys_xHeII(ipar);
 			const double kernel = sph_depth(b * sml_inv) * (sml_inv * sml_inv) * scaling_fac2_inv;
-			double absorb = 0.0;
 
-
-			intptr_t c = 0;
-			double t0 = omp_get_wtime();
-			while(!lock(ipar, 10000000)) {
-				c++;
-			}
-			lock_time += (omp_get_wtime() - t0);
+			volatile double t0 = omp_get_wtime();
+			while(!lock(ipar, 100000000)) continue;
+			spinlock_time += (omp_get_wtime() - t0);
 
 			const double NHI = (xHI - psys.yGdepHI[ipar]) * NH;
+			double deltaHI = 0.0;
+			double deltaHeI = 0.0;
+			double deltaHeII = 0.0;
 			if(NHI > 0) {
 				const double NHIcd = kernel * NHI;
 
 				const double tauHI = sigmaHI * NHIcd;
-			//	MESSAGE("b = %g transimt = %g absorb = %g Tau=%g", b, TM,absorb, Tau);
 
 				double absorbHI = - TM * (expm1(-tauHI));
-				if(absorbHI > NHI) {
-					saturated_deposit_count ++;
-					absorbHI = NHI;
-				}
 				absorb += absorbHI;
 			
-				const double deltaHI = absorbHI * NH_inv;
-				psys.yGdepHI[ipar] += deltaHI;
-				psys.heat[ipar] += heat_factor_HI * deltaHI;
-			}
-			unlock(ipar);
-
-			if(!CFG_H_ONLY && NHe != 0.0) {
-				double t0 = omp_get_wtime();
-				while(!lock(ipar, 10000000)) {
-					c++;
+				if(absorbHI > NHI) {
+					absorbHI = NHI;
+					saturated_deposit_count ++;
 				}
-				lock_time += (omp_get_wtime() - t0);
+
+				deltaHI = absorbHI * NH_inv;
+
+			}
+			if(!CFG_H_ONLY && NHe != 0.0) {
 				const double NHeI = (xHeI - psys.yGdepHeI[ipar]) * NHe;
 				if(NHeI > 0) {
 					const double NHeIcd = kernel * NHeI;
 					const double tauHeI = sigmaHeI * NHeIcd;
 					double absorbHeI = - TM * (expm1(-tauHeI));
-					if(absorbHeI > NHeI) {
-						saturated_deposit_count ++;
-						absorbHeI = NHeI;
-					}
 					const double deltaHeI = absorbHeI * NHe_inv;
-					psys.yGdepHeI[ipar] += deltaHeI;
+					if(absorbHeI > NHeI) {
+						absorbHeI = NHeI;
+						saturated_deposit_count ++;
+					}
 					absorb += absorbHeI;
-					psys.heat[ipar] += deltaHeI * heat_factor_HeI;
 				}
-				unlock(ipar);
 
-				t0 = omp_get_wtime();
-				while(!lock(ipar, 10000000)) {
-					c++;
-				}
-				lock_time += (omp_get_wtime() - t0);
 				const double NHeII = (xHeII - psys.yGdepHeII[ipar]) * NHe;
 				if(NHeII > 0) {
 					const double NHeIIcd = kernel * NHeII;
 					const double tauHeII = sigmaHeII * NHeIIcd;
 					double absorbHeII = - TM * (expm1(-tauHeII));
 					if(absorbHeII > NHeII) {
-						saturated_deposit_count ++;
 						absorbHeII = NHeII;
+						saturated_deposit_count ++;
 					}
 					absorb += absorbHeII;
-					const double deltaHeII = absorbHeII * NHe_inv;
-					psys.yGdepHeII[ipar] += deltaHeII;
-					psys.heat[ipar] += deltaHeII * heat_factor_HeII;
+					deltaHeII = absorbHeII * NHe_inv;
+
 				}
-				unlock(ipar);
 			}
+
+			psys.yGdepHI[ipar] += deltaHI;
+			psys.heat[ipar] += heat_factor_HI * deltaHI;
+
+			psys.yGdepHeI[ipar] += deltaHeI;
+			psys.heat[ipar] += deltaHeI * heat_factor_HeI;
+
+			psys.yGdepHeII[ipar] += deltaHeII;
+			psys.heat[ipar] += deltaHeII * heat_factor_HeII;
+
+			psys.hits[ipar]++;
+			unlock(ipar);
+
 
 			maybe_write_particle(ipar, stat.hitlogfile, 
 						"%lu %ld %g %g %g %g %g %g %g %g %g\n",
@@ -575,11 +603,10 @@ static void deposit(){
 		ARRAY_RESIZE(r[i].x, Xtype, j);
 		r[i].length = r[i].x[j - 1].d;
 		stat.lost_photon_count_sum += TM;
-		deposit_time += (omp_get_wtime() - t0);
+		}
 	}
-	}
-	stat.lock_time += lock_time;
-	stat.deposit_time += deposit_time;
+	stat.spinlock_time += spinlock_time;
+	stat.deposit_time += (omp_get_wtime() - t0);
 	stat.total_deposit_count += total_deposit_count;
 	stat.saturated_deposit_count += saturated_deposit_count;
 }
@@ -620,6 +647,7 @@ static void update_pars() {
 	const double nH_fac = C_HMF / (U_MPROTON / (U_CM * U_CM * U_CM));
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1.0):1.0;
 	const double scaling_fac3_inv = 1.0/(scaling_fac * scaling_fac * scaling_fac);
+	const double t0 = omp_get_wtime();
 	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
 	for(j = 0; j < x_length; j++) {
 		const intptr_t ipar = x[j].ipar;
@@ -702,6 +730,7 @@ static void update_pars() {
 	stat.gsl_error_count += d1;
 	stat.evolve_count += d2;
 	stat.rec_photon_count_sum += increase_recomb;
+	stat.update_time += omp_get_wtime() - t0;
 }
 
 static int x_t_compare(const void * p1, const void * p2) {
