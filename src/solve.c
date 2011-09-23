@@ -115,6 +115,15 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 		dxdt[6] *= -1;
 	}
 
+	int i;
+	for(i = 0; i < 7; i++) {
+		if(isnan(dxdt[i])) {
+			ERROR("nan found in dxdt[%d]", i);
+		}
+	}
+	if(x[6] + dxdt[6] < 0) {
+		ERROR("x[6] < 0");
+	}
 	return GSL_SUCCESS;
 }
 
@@ -135,6 +144,12 @@ int step_evolve(Step * step) {
 	x[5] = 0;
 	x[6] = step->ie;
 
+	int i;
+	for(i = 0 ; i < 7; i++) {
+		if(isnan(x[i])) {
+			ERROR("nan found in x[%d]", i);
+		}
+	}
 	function(t, x, dxdt, step);
 
 	x[0] += dxdt[0];
@@ -143,6 +158,7 @@ int step_evolve(Step * step) {
 	x[3] += dxdt[3];
 	x[4] += dxdt[4];
 	x[5] += dxdt[5];
+	x[6] += dxdt[6];
 
 	if(x[0] < 0) x[0] = 0;
 	if(x[0] > 1) x[0] = 1;
