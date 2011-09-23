@@ -15,9 +15,9 @@
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-#ifdef _OPENMP
+//#ifdef _OPENMP
 #include <omp.h>
-#endif
+//#endif
 struct r_t {
 	float s[3];
 	float dir[3];
@@ -158,6 +158,9 @@ void run_epoch() {
 	double t0 = omp_get_wtime();
 	intptr_t istep = 0;
 
+	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray + (CFG_ON_THE_SPOT?0:(psys.epoch->nrec * (CFG_H_ONLY?1:3))));
+
+
 	if(CFG_DUMP_HOTSPOTS) {
 		stat.parlogfile = fopen_printf("parlogfile-%03d", "w", psys.epoch - EPOCHS);
 		stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", psys.epoch - EPOCHS);
@@ -280,14 +283,14 @@ static void emit_rays() {
 		}
 	}
 
-	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray);
-
 	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
+	intptr_t j = 0;
 	for(i = 0; i < psys.epoch->nray; i++) {
 		const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
-		r[i].isrc = isrc;
+		r[j].isrc = isrc;
 		/* src ray */
-		r[i].type = -1;
+		r[j].type = -1;
+		j++;
 	}
 
 	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && x_length > 0) {
@@ -297,17 +300,17 @@ static void emit_rays() {
 			#pragma omp parallel for private(i)
 			for(i = 0; i < x_length; i++) {
 				const intptr_t ipar = x[i].ipar;
-				f[i] = psys.yGrec[species][ipar];
+				f[i] = fmax(0.0, psys.yGrec[species][ipar]);
 			}
 
 			gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(x_length, f);
-
 			intptr_t k;
 			for(k = 0; k < psys.epoch->nrec; k++) {
 				int i = gsl_ran_discrete(RNG, rec_ran);
-				struct r_t * p = ARRAY_APPEND(r, struct r_t);
+				struct r_t * p = &r[j];
 				p->type = species;
 				p->ipar = x[i].ipar;
+				j++;
 			}
 			gsl_ran_discrete_free(rec_ran);
 		}
@@ -358,15 +361,17 @@ static void emit_rays() {
 			for(d = 0; d < 3; d++) {
 				r[i].s[d] = psys.pos[ipar][d];
 			}
+			const double T = ieye2T(psys.ie[ipar], psys_ye(ipar));
+			const double logT = log10(T);
 			if(r[i].type == 0) {
 				r[i].Nph = psys.yGrecHII[ipar] * psys_NH(ipar);
-				r[i].freq = C_HI_FREQ;
+				r[i].freq = lte_gen_freq(LTE_FREQ_HI, logT);
 			} else if(r[i].type == 1) {
 				r[i].Nph = psys.yGrecHeII[ipar] * psys_NHe(ipar);
-				r[i].freq = C_HEI_FREQ;
+				r[i].freq = lte_gen_freq(LTE_FREQ_HEI, logT);
 			} else if(r[i].type == 2) {
 				r[i].Nph = psys.yGrecHeIII[ipar] * psys_NHe(ipar);
-				r[i].freq = C_HEII_FREQ;
+				r[i].freq = lte_gen_freq(LTE_FREQ_HEII, logT);
 			}
 			r[i].length = max_rec_length;
 			gsl_ran_dir_3d(RNG, &dx, &dy, &dz);
@@ -480,9 +485,9 @@ static void deposit(){
 		const double sigmaHI = xs_get(XS_HI, r[i].freq) * U_CM2;
 		const double sigmaHeI = xs_get(XS_HEI, r[i].freq) * U_CM2;
 		const double sigmaHeII = xs_get(XS_HEII, r[i].freq) * U_CM2;
-		const double heat_factor_HI = C_H_PER_MASS * (r[i].freq - C_HI_FREQ) * U_RY_ENG;
-		const double heat_factor_HeI = C_HE_PER_MASS * (r[i].freq - C_HEI_FREQ) * U_RY_ENG;
-		const double heat_factor_HeII = C_HE_PER_MASS * (r[i].freq - C_HEII_FREQ) * U_RY_ENG;
+		const double heat_factor_HI = C_H_PER_MASS * fmax(0, r[i].freq - C_HI_FREQ) * U_RY_ENG;
+		const double heat_factor_HeI = C_HE_PER_MASS * fmax(0, r[i].freq - C_HEI_FREQ) * U_RY_ENG;
+		const double heat_factor_HeII = C_HE_PER_MASS * fmax(0, r[i].freq - C_HEII_FREQ) * U_RY_ENG;
 
 		total_deposit_count += r[i].x_length;
 
