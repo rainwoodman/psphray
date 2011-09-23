@@ -6,6 +6,7 @@
 #include "reader.h"
 #include "reader-internal.h"
 #define constants_t _ReaderConstants
+#pragma pack (4)
 #include "reader-psphray.inc"
 
 void psphray_get_reader_funcs(ReaderFuncs * funcs) {

@@ -19,6 +19,7 @@ f.write(
 #include "reader.h"
 #include "reader-internal.h"
 #define constants_t _ReaderConstants
+#pragma pack (4)
 #include "reader-%s.inc"
 
 void %s_get_reader_funcs(ReaderFuncs * funcs) {
