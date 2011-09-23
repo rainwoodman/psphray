@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support 
-OPT=-O3 -fopenmp
+OPT= -O3 -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort
 LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc 
@@ -16,6 +16,7 @@ raytrace.c \
 spectra.c \
 solve.c \
 peano.c \
+lte.c \
 atomic-rate.c \
 loop.c \
 sph-depth.c \

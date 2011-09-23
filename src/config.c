@@ -33,6 +33,7 @@ double C_OMEGA_M = 0.26;
 double C_OMEGA_B = 0.044;
 double C_H = 0.72;
 double C_HMF = 0.76;
+double C_HEMF = 0.24;
 
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 #define config_ensure_int(c, p, v)  if(!config_lookup(c, p)) config_setting_set_int(config_ensure(c, p, CONFIG_TYPE_INT), v)
@@ -89,6 +90,9 @@ void cfg_init(char * filename) {
 
 	config_lookup_float(CFG, "cosmology.h", &C_H);
 	config_lookup_float(CFG, "cosmology.hmf", &C_HMF);
+	C_HEMF = 1 - C_HMF;
+	config_ensure_float(CFG, "cosmology.hemf", C_HEMF);
+	config_lookup_float(CFG, "cosmology.hemf", &C_HEMF);
 	config_lookup_float(CFG, "cosmology.omegaL", &C_OMEGA_L);
 	config_lookup_float(CFG, "cosmology.omegaM", &C_OMEGA_M);
 	config_lookup_float(CFG, "cosmology.omegaB", &C_OMEGA_B);
@@ -106,6 +110,8 @@ void cfg_init(char * filename) {
 
 	ar_init(arfilename);
 	xs_init(xsfilename);
+
+	lte_init();
 	spec_init();
 
 	epochs_init();

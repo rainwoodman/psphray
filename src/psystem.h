@@ -124,7 +124,7 @@ static inline const double lambdaHe_to_xHeIII(const double lambdaHeI, const doub
 }
 static inline const double lambda_to_ye(const double lambdaH, double lambdaHeI, double lambdaHeII) {
 	return lambdaH_to_xHII(lambdaH) 
-		+ C_HMF / 4.0 * (lambdaHe_to_xHeII(lambdaHeI, lambdaHeII) + 2 * lambdaHe_to_xHeIII(lambdaHeI, lambdaHeII));
+		+ C_HEMF / C_HMF *0.25 * (lambdaHe_to_xHeII(lambdaHeI, lambdaHeII) + 2 * lambdaHe_to_xHeIII(lambdaHeI, lambdaHeII));
 
 }
 

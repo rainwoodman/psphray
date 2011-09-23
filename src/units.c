@@ -78,7 +78,7 @@ double units_init() {
 	U_ERG = 1e-7 * U_J;
 	U_RY_ENG = 13.60569253 * U_EV;
 	C_H_PER_MASS = C_HMF / U_MPROTON;
-	C_HE_PER_MASS = (1.0 - C_HMF) / (4 * U_MPROTON);
+	C_HE_PER_MASS = C_HEMF / (4 * U_MPROTON);
 	C_SPEED_LIGHT = 3e8 * U_M / U_SEC;
 
 	C_HI_FREQ = 1;
@@ -170,13 +170,3 @@ double t2z(double t) {
 	return 1.0 / a - 1.0;
 }
 
-/*
-float ieye2T(const float ie, const float ye) {
-	return U_MPROTON_OVER_C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
-			C_HMF + C_HMF * ye) * 2.0 / 3.0 ;
-}
-float Tye2ie(const float T, const float ye) {
-	return T * C_BOLTZMANN_OVER_U_MPROTON * ( (1.0 - C_HMF) * 0.25 + 
-			C_HMF + C_HMF * ye) / 2.0 * 3.0 ;
-}
-*/

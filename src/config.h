@@ -69,6 +69,7 @@ extern double C_1_CMH;
 extern double C_1_GRAMH;
 extern double C_1_SECH;
 extern double C_HMF;
+extern double C_HEMF;
 extern double C_OMEGA_L;
 extern double C_OMEGA_M;
 extern double C_OMEGA_B;
@@ -85,12 +86,12 @@ extern double C_HEII_FREQ;
 double z2t(double z);
 double t2z(double z);
 static inline double ieye2T(const double ie, const double ye) {
-	return U_MPROTON_OVER_C_BOLTZMANN * ie / ( (1.0 - C_HMF) * 0.25 + 
+	return U_MPROTON_OVER_C_BOLTZMANN * ie / ( C_HEMF * 0.25 + 
 			C_HMF + C_HMF * ye) * 2.0 / 3.0 ;
 
 }
 static inline double Tye2ie(const double T, const double ye) {
-	return T * C_BOLTZMANN_OVER_U_MPROTON * ( (1.0 - C_HMF) * 0.25 + 
+	return T * C_BOLTZMANN_OVER_U_MPROTON * ( C_HEMF * 0.25 + 
 			C_HMF + C_HMF * ye) / 2.0 * 3.0 ;
 }
 
@@ -120,4 +121,9 @@ const double xs_get(const int id, const double freq);
 
 const int spec_get(const char * name);
 double spec_gen_freq(const int id);
+
+extern int LTE_FREQ_HI;
+extern int LTE_FREQ_HEI;
+extern int LTE_FREQ_HEII;
+double lte_gen_freq(const int id, const double logT);
 

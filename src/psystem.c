@@ -586,6 +586,8 @@ void psystem_write_output(int outputnum) {
 			ye[i] = psys_ye(i);
 		}
 		reader_write(r, "xHI", 0, xHI);
+		reader_write(r, "xHeI", 0, xHeI);
+		reader_write(r, "xHeII", 0, xHeII);
 		reader_write(r, "ye", 0, ye);
 		free(xHeI);
 		free(xHeII);
