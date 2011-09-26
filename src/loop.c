@@ -204,6 +204,7 @@ void run_epoch() {
 
 			psystem_stat("T");
 			psystem_stat("xHI");
+			psystem_stat("xHeI");
 			psystem_stat("heat");
 			psystem_stat("ye");
 			psystem_stat("ie");
@@ -321,7 +322,6 @@ static void emit_rays() {
 	qsort(r, r_length, sizeof(struct r_t), r_t_compare);
     
 	/* now make the photons in the rays */
-	int identical_count = -10000;
 	for(i = 0; i < r_length; i++) {
 		int d;
 		double dx, dy, dz;
@@ -384,6 +384,7 @@ static void emit_rays() {
 			ERROR("never reach here");
 		}
 	}
+	int identical_count = -10000;
 	for(i = 0; i <= r_length; i++) {
 		if(i == 0) {
 			identical_count = 1;
@@ -477,6 +478,7 @@ static void deposit(){
 	#pragma omp single
 	for(i = 0; i < r_length; i++) {
 		if(r[i].x_length == 0) continue;
+		if(r[i].Nph == 0) continue;
 		#pragma omp task untied
 		{
 		double Tau = 0.0;
@@ -527,63 +529,89 @@ static void deposit(){
 			while(!lock(ipar, 100000000)) continue;
 			spinlock_time += (omp_get_wtime() - t0);
 
-			const double NHI = (xHI - psys.yGdepHI[ipar]) * NH;
+			const double NHI = fdim(xHI, psys.yGdepHI[ipar]) * NH;
 			double deltaHI = 0.0;
 			double deltaHeI = 0.0;
 			double deltaHeII = 0.0;
-			if(NHI > 0) {
-				const double NHIcd = kernel * NHI;
+			double tausum = 0.0;
+			double tauHI = 0.0;
+			double tauHeI = 0.0;
+			double tauHeII = 0.0;
 
-				const double tauHI = sigmaHI * NHIcd;
+			const double NHIcd = kernel * NHI;
 
-				double absorbHI = - TM * (expm1(-tauHI));
-				absorb += absorbHI;
-			
-				if(absorbHI > NHI) {
-					absorbHI = NHI;
+			tauHI = sigmaHI * NHIcd;
+			tausum += tauHI;
+
+			if(!CFG_H_ONLY && NHe != 0.0) {
+				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
+				const double NHeIcd = kernel * NHeI;
+				tauHeI = sigmaHeI * NHeIcd;
+				tausum += tauHeI;
+
+				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
+				const double NHeIIcd = kernel * NHeII;
+				tauHeII = sigmaHeII * NHeIIcd;
+				tausum += tauHeII;
+			}
+
+			if(tausum == 0.0) {
+				unlock(ipar);
+				continue;
+			}
+
+			absorb = -TM * expm1(-tausum);
+			double absorbHI = tauHI / tausum * absorb;
+			if(absorbHI > NHI) {
+				absorbHI = NHI;
+				saturated_deposit_count ++;
+			}
+			deltaHI = absorbHI * NH_inv;
+			absorb = absorbHI;
+			if(!CFG_H_ONLY && NHe != 0.0) {
+				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
+				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
+				double absorbHeI = tauHeI / tausum * absorb;
+				if(absorbHeI > NHeI) {
+					absorbHeI = NHeI;
 					saturated_deposit_count ++;
 				}
-
-				deltaHI = absorbHI * NH_inv;
-
+				deltaHeI = absorbHeI * NHe_inv;
+				double absorbHeII = tauHeII / tausum * absorb;
+				if(absorbHeII > NHeII) {
+					absorbHeII = NHeII;
+					saturated_deposit_count ++;
+				}
+				deltaHeII = absorbHeII * NHe_inv;
+				absorb += (absorbHeI + absorbHeII);
 			}
-			if(!CFG_H_ONLY && NHe != 0.0) {
-				const double NHeI = (xHeI - psys.yGdepHeI[ipar]) * NHe;
-				if(NHeI > 0) {
-					const double NHeIcd = kernel * NHeI;
-					const double tauHeI = sigmaHeI * NHeIcd;
-					double absorbHeI = - TM * (expm1(-tauHeI));
-					const double deltaHeI = absorbHeI * NHe_inv;
-					if(absorbHeI > NHeI) {
-						absorbHeI = NHeI;
-						saturated_deposit_count ++;
-					}
-					absorb += absorbHeI;
-				}
 
-				const double NHeII = (xHeII - psys.yGdepHeII[ipar]) * NHe;
-				if(NHeII > 0) {
-					const double NHeIIcd = kernel * NHeII;
-					const double tauHeII = sigmaHeII * NHeIIcd;
-					double absorbHeII = - TM * (expm1(-tauHeII));
-					if(absorbHeII > NHeII) {
-						absorbHeII = NHeII;
-						saturated_deposit_count ++;
-					}
-					absorb += absorbHeII;
-					deltaHeII = absorbHeII * NHe_inv;
-
-				}
+			if(deltaHI < 0) {
+				ERROR("deltaHI < 0");
+			}
+			if(deltaHeI < 0) {
+				ERROR("deltaHeI < 0");
+			}
+			if(deltaHeII < 0) {
+				ERROR("deltaHeII < 0");
+			}
+			if(psys.heat[ipar] < 0.0) {
+				ERROR("heat < 0");
 			}
 
 			psys.yGdepHI[ipar] += deltaHI;
 			psys.heat[ipar] += heat_factor_HI * deltaHI;
 
-			psys.yGdepHeI[ipar] += deltaHeI;
-			psys.heat[ipar] += deltaHeI * heat_factor_HeI;
+			if(!CFG_H_ONLY && NHe != 0.0) {
+				psys.yGdepHeI[ipar] += deltaHeI;
+				psys.heat[ipar] += deltaHeI * heat_factor_HeI;
 
-			psys.yGdepHeII[ipar] += deltaHeII;
-			psys.heat[ipar] += deltaHeII * heat_factor_HeII;
+				psys.yGdepHeII[ipar] += deltaHeII;
+				psys.heat[ipar] += deltaHeII * heat_factor_HeII;
+			}
+			if(psys.heat[ipar] < 0.0) {
+				ERROR("heat < 0");
+			}
 
 			psys.hits[ipar]++;
 			unlock(ipar);
@@ -594,7 +622,9 @@ static void deposit(){
 						psys.tick, ipar, xHI, b, sml, kernel, sigmaHI, sigmaHeI, sigmaHeII, NHI, absorb);
 
 			TM -= absorb;
-
+			if(TM / r[i].Nph < -1e-1) {
+				ERROR("TM < 0 %g %g", TM, r[i].Nph);
+			}
 			/* cut off at around 10^-10 */
 			if(TM / r[i].Nph < 1e-10) {
 				/* point to the next intersection so that a few lines later we can use j - 1*/
@@ -669,6 +699,10 @@ static void update_pars() {
 		step.yGdepHeI = psys.yGdepHeI[ipar];
 		step.yGdepHeII = psys.yGdepHeII[ipar];
 
+		step.yGrecHII = psys.yGrecHII[ipar];
+		step.yGrecHeII = psys.yGrecHeII[ipar];
+		step.yGrecHeIII = psys.yGrecHeIII[ipar];
+
 		step.lambdaH = psys.lambdaH[ipar];
 		step.lambdaHeI = psys.lambdaHeI[ipar];
 		step.lambdaHeII = psys.lambdaHeII[ipar];
@@ -705,13 +739,13 @@ static void update_pars() {
 				);
 			d1++;
 		} else {
-			increase_recomb += step.dyGrecHII * NH;
-			increase_recomb += step.dyGrecHeII * NHe;
-			increase_recomb += step.dyGrecHeIII * NHe;
+			increase_recomb += (step.yGrecHII - psys.yGrecHII[ipar])* NH;
+			increase_recomb += (step.yGrecHeII - psys.yGrecHeII[ipar])* NHe;
+			increase_recomb += (step.yGrecHeIII - psys.yGrecHeIII[ipar])* NHe;
 
-			psys.yGrecHII[ipar] += step.dyGrecHII;
-			psys.yGrecHeII[ipar] += step.dyGrecHeII;
-			psys.yGrecHeIII[ipar] += step.dyGrecHeIII;
+			psys.yGrecHII[ipar] = step.yGrecHII;
+			psys.yGrecHeII[ipar] = step.yGrecHeII;
+			psys.yGrecHeIII[ipar] = step.yGrecHeIII;
 
 			psys.lambdaH[ipar] = step.lambdaH;
 			psys.lambdaHeI[ipar] = step.lambdaHeI;

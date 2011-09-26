@@ -105,7 +105,7 @@ void xs_init(const char * filename) {
 		MESSAGE("XS: %d cols, %d rows", xs.ncols, xs.nrows);
 	} else {
 		xs.ncols = 1;
-		xs.nrows = 1024;
+		xs.nrows = 16384;
 		xs.min = 1;
 		xs.max = 16;
 		xs.step = (xs.max - xs.min) / (xs.nrows - 1);

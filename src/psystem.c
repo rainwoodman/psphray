@@ -697,6 +697,16 @@ void psystem_stat(const char * component) {
 		psystem_stat_internal(xHI, psys.npar, 0, 1, max, min, mean);
 		free(xHI);
 	}
+	if(!strcmp(component, "xHeI")) {
+		float * xHeI = malloc(sizeof(float) * psys.npar);
+		intptr_t i;
+		#pragma omp parallel for private(i)
+		for(i = 0; i < psys.npar; i++) {
+			xHeI[i] = psys_xHeI(i);
+		}
+		psystem_stat_internal(xHeI, psys.npar, 0, 1, max, min, mean);
+		free(xHeI);
+	}
 	if(!strcmp(component, "yGrecHII")) {
 		psystem_stat_internal(psys.yGrecHII, psys.npar, 0, 1, max, min, mean);
 	}
@@ -704,7 +714,7 @@ void psystem_stat(const char * component) {
 		psystem_stat_internal(psys.yGrecHeII, psys.npar, 0, 1, max, min, mean);
 	}
 	if(!strcmp(component, "yGrecHeIII")) {
-		psystem_stat_internal(psys.yGrecHeII, psys.npar, 0, 1, max, min, mean);
+		psystem_stat_internal(psys.yGrecHeIII, psys.npar, 0, 1, max, min, mean);
 	}
 	if(!strcmp(component, "yGdepHI")) {
 		psystem_stat_internal(psys.yGdepHI, psys.npar, 0, 1, max, min, mean);

@@ -81,15 +81,27 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 /* from GABE's notes  */
 	if(!CFG_ON_THE_SPOT) {
 		dxdt[0] = -step->yGdepHI + seconds * (- gamma_HI * ye * xHI + alpha_HII_A * ye * xHII);
-		dxdt[1] = -step->yGdepHeI + seconds * (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
-		dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
 		dxdt[3] = seconds * alpha_HII_AB * ye * xHII;
-		dxdt[4] = seconds * alpha_HeII_AB * ye * xHeII;
-		dxdt[5] = seconds * alpha_HeIII_AB * ye * xHeIII;
+		if(CFG_H_ONLY) {
+			dxdt[1] = 0.0;
+			dxdt[2] = 0.0;
+			dxdt[4] = 0.0;
+			dxdt[5] = 0.0;
+		} else {
+			dxdt[1] = -step->yGdepHeI + seconds * (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
+			dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
+			dxdt[4] = seconds * alpha_HeII_AB * ye * xHeII;
+			dxdt[5] = seconds * alpha_HeIII_AB * ye * xHeIII;
+		}
 	} else {
 		dxdt[0] = -step->yGdepHI + seconds * (- gamma_HI * ye * xHI + alpha_HII_B * ye * xHII);
-		dxdt[1] = -step->yGdepHeI + seconds * (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
-		dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
+		if(CFG_H_ONLY) {
+			dxdt[1] = 0.0;
+			dxdt[2] = 0.0;
+		} else {
+			dxdt[1] = -step->yGdepHeI + seconds * (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
+			dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
+		}
 		dxdt[3] = 0;
 		dxdt[4] = 0;
 		dxdt[5] = 0;
@@ -104,7 +116,7 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 	//	MESSAGE("T = %g H=%g L=%g eta=%g psi=%g zeta=%g beta=%g xHI=%g\n", T, heat_mean, L, eta_HII, psi_HI, zeta_HI, beta, xHI);
 		dxdt[6] = step->heat - seconds * L;
 	}
-
+/*
 	if(dxdt[0] > 0.0 && xHI >= 1.0) {
 		dxdt[0] *= -1;
 		dxdt[1] *= -1;
@@ -114,7 +126,7 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 		dxdt[5] *= -1;
 		dxdt[6] *= -1;
 	}
-
+*/
 	int i;
 	for(i = 0; i < 7; i++) {
 		if(isnan(dxdt[i])) {
@@ -139,9 +151,9 @@ int step_evolve(Step * step) {
 	x[0] = step->lambdaH;
 	x[1] = step->lambdaHeI;
 	x[2] = step->lambdaHeII;
-	x[3] = 0;
-	x[4] = 0;
-	x[5] = 0;
+	x[3] = step->yGrecHII;
+	x[4] = step->yGrecHeII;
+	x[5] = step->yGrecHeIII;
 	x[6] = step->ie;
 
 	int i;
@@ -160,15 +172,16 @@ int step_evolve(Step * step) {
 	x[5] += dxdt[5];
 	x[6] += dxdt[6];
 
-	if(x[0] < 0) x[0] = 0;
-	if(x[0] > 1) x[0] = 1;
+	for(i = 0; i <= 5; i++) {
+		x[i] = fmax(0, fmin(1, x[i]));
+	}
 
 	step->lambdaH = x[0];
 	step->lambdaHeI = x[1];
 	step->lambdaHeII = x[2];
-	step->dyGrecHII = x[3];
-	step->dyGrecHeII = x[4];
-	step->dyGrecHeIII = x[5];
+	step->yGrecHII = x[3];
+	step->yGrecHeII = x[4];
+	step->yGrecHeIII = x[5];
 	step->ie = x[6];
 
 	return 1;
