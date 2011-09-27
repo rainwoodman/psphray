@@ -158,11 +158,11 @@ static const double tabfun_get(const TabFun * tabfun, const int id, const double
 */
 	ssize_t index = (value - tabfun->min) * tabfun->step_inv;
 	if(index < 0) {
-		index = 0;
 //		ERROR("temperature lower than the mininal.(logT= %lg)", logT);
+		return tabfun->data[id][0];
 	}
 	if(index >= tabfun->nrows - 1) {
-		index = tabfun->nrows - 2;
+		return tabfun->data[id][tabfun->nrows - 1];
 //		ERROR("temperature higher than the maximal.(logT= %lg)", logT);
 	}
 	float left = tabfun->data[0][index];
