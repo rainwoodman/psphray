@@ -467,8 +467,6 @@ static void deposit(){
 	const double t0 = omp_get_wtime();
 	intptr_t i;
 
-	const double U_CM2 = U_CM * U_CM;
-
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	const double scaling_fac2_inv = 1.0 / (scaling_fac * scaling_fac);
 	double spinlock_time = 0.0;
@@ -484,9 +482,9 @@ static void deposit(){
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
 		intptr_t j;
-		const double sigmaHI = xs_get(XS_HI, r[i].freq) * U_CM2;
-		const double sigmaHeI = xs_get(XS_HEI, r[i].freq) * U_CM2;
-		const double sigmaHeII = xs_get(XS_HEII, r[i].freq) * U_CM2;
+		const double sigmaHI = xs_get(XS_HI, r[i].freq);
+		const double sigmaHeI = xs_get(XS_HEI, r[i].freq);
+		const double sigmaHeII = xs_get(XS_HEII, r[i].freq);
 		const double dfreqHI = fdim(r[i].freq, C_HI_FREQ);
 		const double dfreqHeI = fdim(r[i].freq, C_HEI_FREQ);
 		const double dfreqHeII = fdim(r[i].freq, C_HEII_FREQ);
@@ -708,7 +706,6 @@ static void update_pars() {
 	intptr_t j;
 	size_t d1 = 0, d2 = 0;
 	double increase_recomb = 0;
-	const double nH_fac = C_HMF / (U_MPROTON / (U_CM * U_CM * U_CM));
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1.0):1.0;
 	const double scaling_fac3_inv = 1.0/(scaling_fac * scaling_fac * scaling_fac);
 	const double t0 = omp_get_wtime();
@@ -737,7 +734,7 @@ static void update_pars() {
 		step.lambdaHeII = psys.lambdaHeII[ipar];
 
 		step.yeMET = psys.yeMET[ipar];
-		step.nH = nH_fac * rho * scaling_fac3_inv;
+		step.nH = C_H_PER_MASS * rho * scaling_fac3_inv;
 		step.ie = psys.ie[ipar];
 		step.T = psys_T(ipar);
 		step.heat = psys.heat[ipar];

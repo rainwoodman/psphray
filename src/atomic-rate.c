@@ -5,6 +5,7 @@
 #include <math.h>
 #include <messages.h>
 #include <array.h>
+#include "config.h"
 
 typedef struct {
 	ARRAY_DEFINE_S(data, double *);
@@ -49,7 +50,7 @@ static const double tabfun_get(const TabFun * tabfun, const int id, const double
 static int tabfun_col_id(const TabFun * tabfun, const char * col);
 static void tabfun_init(TabFun * tabfun, const char * filename);
 static void tabfun_dump(const TabFun * tabfun, const char * filename);
-static int tabfun_ensure_col(TabFun * tabfun, char * col, double (*func)(double));
+static int tabfun_setup_col(TabFun * tabfun, char * col, double (*func)(double), double unit);
 
 /* analytical forms */
 static double verner(double freq) {
@@ -76,21 +77,21 @@ void ar_init(const char * filename) {
 	tabfun_init(&ar, filename);
 	MESSAGE("AR: %d cols, %d rows", ar.ncols, ar.nrows);
 
-	AR_HI_CI = tabfun_ensure_col(&ar, "HIci", NULL);
-	AR_HII_RC_A = tabfun_ensure_col(&ar, "HIIrcA", NULL);
-	AR_HII_RCC_A = tabfun_ensure_col(&ar, "HIIrccA", NULL);
-	AR_HII_RC_B = tabfun_ensure_col(&ar, "HIIrcB", NULL);
-	AR_HII_RCC_B = tabfun_ensure_col(&ar, "HIIrccB", NULL);
-	AR_HEI_CI = tabfun_ensure_col(&ar, "HeIci", NULL);
-	AR_HEII_CI = tabfun_ensure_col(&ar, "HeIIci", NULL);
-	AR_HEII_RC_A = tabfun_ensure_col(&ar, "HeIIrcA", NULL);
-	AR_HEII_RC_B = tabfun_ensure_col(&ar, "HeIIrcB", NULL);
-	AR_HEIII_RC_A = tabfun_ensure_col(&ar, "HeIIIrcA", NULL);
-	AR_HEIII_RC_B = tabfun_ensure_col(&ar, "HeIIIrcB", NULL);
-	AR_HI_CIC = tabfun_ensure_col(&ar, "HIcic", NULL);
-	AR_HI_CEC = tabfun_ensure_col(&ar, "HIcec", NULL);
-	AR_E_BREMC = tabfun_ensure_col(&ar, "Brem", bremsstrahlung_cen_1992);
-	AR_E_COMPC = tabfun_ensure_col(&ar, "Compton", compton_haiman_1996);
+	AR_HI_CI = tabfun_setup_col(&ar, "HIci", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HII_RC_A = tabfun_setup_col(&ar, "HIIrcA", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HII_RCC_A = tabfun_setup_col(&ar, "HIIrccA", NULL, U_ERG * U_CM * U_CM * U_CM / U_SEC);
+	AR_HII_RC_B = tabfun_setup_col(&ar, "HIIrcB", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HII_RCC_B = tabfun_setup_col(&ar, "HIIrccB", NULL, U_ERG * U_CM * U_CM * U_CM / U_SEC);
+	AR_HEI_CI = tabfun_setup_col(&ar, "HeIci", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HEII_CI = tabfun_setup_col(&ar, "HeIIci", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HEII_RC_A = tabfun_setup_col(&ar, "HeIIrcA", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HEII_RC_B = tabfun_setup_col(&ar, "HeIIrcB", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HEIII_RC_A = tabfun_setup_col(&ar, "HeIIIrcA", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HEIII_RC_B = tabfun_setup_col(&ar, "HeIIIrcB", NULL, U_CM * U_CM * U_CM / U_SEC);
+	AR_HI_CIC = tabfun_setup_col(&ar, "HIcic", NULL, U_ERG * (U_CM * U_CM * U_CM) / U_SEC);
+	AR_HI_CEC = tabfun_setup_col(&ar, "HIcec", NULL, U_ERG * (U_CM * U_CM * U_CM) / U_SEC);
+	AR_E_BREMC = tabfun_setup_col(&ar, "Brem", bremsstrahlung_cen_1992, U_ERG * (U_CM * U_CM * U_CM) / U_SEC);
+	AR_E_COMPC = tabfun_setup_col(&ar, "Compton", compton_haiman_1996, U_ERG / U_SEC);
 
 	AR_LOG_T = 0;
 }
@@ -120,9 +121,9 @@ void xs_init(const char * filename) {
 		}
 	}
 
-	XS_HI = tabfun_ensure_col(&xs, "HI", verner);
-	XS_HEI = tabfun_ensure_col(&xs, "HeI", osterbrok_HeI);
-	XS_HEII = tabfun_ensure_col(&xs, "HeII", osterbrok_HeII);
+	XS_HI = tabfun_setup_col(&xs, "HI", verner, U_CM * U_CM);
+	XS_HEI = tabfun_setup_col(&xs, "HeI", osterbrok_HeI, U_CM * U_CM);
+	XS_HEII = tabfun_setup_col(&xs, "HeII", osterbrok_HeII, U_CM * U_CM);
 	XS_FREQ = 0;
 }
 
@@ -130,10 +131,15 @@ const double xs_get(const int id, const double value) {
 	return tabfun_get(&xs, id, value);
 }
 
-static int tabfun_ensure_col(TabFun * tabfun, char * col, double (*func)(double)) {
+static int tabfun_setup_col(TabFun * tabfun, char * col, double (*func)(double), double unit) {
+/* if the col exists, scale them by the unit. if not, calculate from the given function func and scale by unit */
 	int i;
 	for(i = 0; i < tabfun->headers_length; i++) {
 		if(!strcasecmp(col, tabfun->headers[i])) {
+			int j;
+			for(j =0; j < tabfun->nrows; j++) {
+				tabfun->data[i][j] *= unit;
+			}
 			return i;
 		}
 	}
@@ -146,7 +152,7 @@ static int tabfun_ensure_col(TabFun * tabfun, char * col, double (*func)(double)
 	*ARRAY_APPEND(tabfun->data, double *) = malloc(sizeof(double) * tabfun->nrows);
 	int j;
 	for(j =0; j < tabfun->nrows; j++) {
-		tabfun->data[i][j] = func(tabfun->data[0][j]);
+		tabfun->data[i][j] = func(tabfun->data[0][j]) * unit;
 	}
 	return i;
 }

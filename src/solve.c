@@ -40,7 +40,6 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
  * eta is nH ** 2, psi_HI is nH **2, psi_HeI is nH ** 3 etc 
  * */
 #define FETCH_VARS \
-	const double seconds = step->time / U_SEC; \
 	const double xHI = lambdaH_to_xHI(x[0]); \
 	const double xHII = lambdaH_to_xHII(x[0]); \
 	const double xHeI = lambdaHe_to_xHeI(x[1], x[1]); \
@@ -80,27 +79,27 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 
 /* from GABE's notes  */
 	if(!CFG_ON_THE_SPOT) {
-		dxdt[0] = -step->yGdepHI + seconds * (- gamma_HI * ye * xHI + alpha_HII_A * ye * xHII);
-		dxdt[3] = seconds * alpha_HII_AB * ye * xHII;
+		dxdt[0] = -step->yGdepHI + step->time * (- gamma_HI * ye * xHI + alpha_HII_A * ye * xHII);
+		dxdt[3] = step->time * alpha_HII_AB * ye * xHII;
 		if(CFG_H_ONLY) {
 			dxdt[1] = 0.0;
 			dxdt[2] = 0.0;
 			dxdt[4] = 0.0;
 			dxdt[5] = 0.0;
 		} else {
-			dxdt[1] = -step->yGdepHeI + seconds * (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
-			dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
-			dxdt[4] = seconds * alpha_HeII_AB * ye * xHeII;
-			dxdt[5] = seconds * alpha_HeIII_AB * ye * xHeIII;
+			dxdt[1] = -step->yGdepHeI + step->time * (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
+			dxdt[2] = step->yGdepHeII + step->time * (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
+			dxdt[4] = step->time * alpha_HeII_AB * ye * xHeII;
+			dxdt[5] = step->time * alpha_HeIII_AB * ye * xHeIII;
 		}
 	} else {
-		dxdt[0] = -step->yGdepHI + seconds * (- gamma_HI * ye * xHI + alpha_HII_B * ye * xHII);
+		dxdt[0] = -step->yGdepHI + step->time * (- gamma_HI * ye * xHI + alpha_HII_B * ye * xHII);
 		if(CFG_H_ONLY) {
 			dxdt[1] = 0.0;
 			dxdt[2] = 0.0;
 		} else {
-			dxdt[1] = -step->yGdepHeI + seconds * (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
-			dxdt[2] = step->yGdepHeII + seconds * (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
+			dxdt[1] = -step->yGdepHeI + step->time * (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
+			dxdt[2] = step->yGdepHeII + step->time * (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
 		}
 		dxdt[3] = 0;
 		dxdt[4] = 0;
@@ -109,12 +108,12 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 	if(CFG_ADIABATIC | CFG_ISOTHERMAL) {
 		dxdt[6] = 0.0;
 	} else {
-		const double L = U_ERG * C_H_PER_MASS * (
+		const double L = C_H_PER_MASS * (
 			(zeta_HI + psi_HI) * ye * xHI + 
 			 (eta_HII * ye * xHII) +
 			 beta * ye * xHII + chi * ye);
 	//	MESSAGE("T = %g H=%g L=%g eta=%g psi=%g zeta=%g beta=%g xHI=%g\n", T, heat_mean, L, eta_HII, psi_HI, zeta_HI, beta, xHI);
-		dxdt[6] = step->heat - seconds * L;
+		dxdt[6] = step->heat - step->time * L;
 	}
 /*
 	if(dxdt[0] > 0.0 && xHI >= 1.0) {
