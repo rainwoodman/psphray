@@ -278,9 +278,9 @@ static void emit_rays() {
 	for(i = 0; i < psys.nsrcs; i++) {
 		/* treat two types the same essentially because they are both Ngamma_sec*/
 		if(psys.srcs[i].type == PSYS_SRC_POINT) {
-			weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
+			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
 		} else if(psys.srcs[i].type == PSYS_SRC_PLANE) {
-			weights[i] = psys.srcs[i].Ngamma_sec * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time / U_SEC;
+			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
 		}
 	}
 

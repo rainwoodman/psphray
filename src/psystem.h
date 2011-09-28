@@ -6,7 +6,7 @@
 typedef struct {
 	double pos[3];
 	double dir[3];
-	double Ngamma_sec;
+	double Ngamma_dot;
 	intptr_t lastemit;
 	int specid;
 	int type;

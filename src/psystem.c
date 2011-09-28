@@ -236,21 +236,21 @@ void psystem_switch_epoch(int i) {
 		double Lmax;
 		intptr_t imin = -1, imax = -1;
 		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
-			if(isrc == 0 || psys.srcs[isrc].Ngamma_sec > Lmax) {
-				Lmax = psys.srcs[isrc].Ngamma_sec;
+			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot > Lmax) {
+				Lmax = psys.srcs[isrc].Ngamma_dot ;
 				imax = isrc;
 			}
-			if(isrc == 0 || psys.srcs[isrc].Ngamma_sec < Lmin) {
-				Lmin = psys.srcs[isrc].Ngamma_sec;
+			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot < Lmin) {
+				Lmin = psys.srcs[isrc].Ngamma_dot;
 				imin = isrc;
 			}
 		}
 		MESSAGE("SOURCES: %lu, max=%g at (%g %g %g), min=%g at (%g %g %g)",
-			psys.nsrcs, Lmax, 
+			psys.nsrcs, Lmax * U_SEC, 
 			psys.srcs[imax].pos[0],
 			psys.srcs[imax].pos[1],
 			psys.srcs[imax].pos[2],
-			Lmin,
+			Lmin * U_SEC,
 			psys.srcs[imin].pos[0],
 			psys.srcs[imin].pos[1],
 			psys.srcs[imin].pos[2]);
@@ -495,11 +495,11 @@ static void psystem_read_source() {
 				}
 				psys.srcs[isrc].type = PSYS_SRC_PLANE;
 				psys.srcs[isrc].radius = radius;
-				psys.srcs[isrc].Ngamma_sec = L * M_PI * radius * radius / (U_CM * U_CM);
+				psys.srcs[isrc].Ngamma_dot = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
 				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
 			} else {
 				psys.srcs[isrc].type = PSYS_SRC_POINT;
-				psys.srcs[isrc].Ngamma_sec = L * 1e50;
+				psys.srcs[isrc].Ngamma_dot = L * 1e50 / U_SEC;
 			}
 			isrc ++;
 			if(isrc == psys.nsrcs) {
@@ -608,7 +608,7 @@ void psystem_write_output(int outputnum) {
 		free(pos);
 		double * ngammas = reader_alloc(r, "ngammas", 5);
 		for(i = 0; i < bh_size; i++) {
-			ngammas[i] = psys.srcs[i+bh_start].Ngamma_sec;
+			ngammas[i] = psys.srcs[i+bh_start].Ngamma_dot;
 		}
 		reader_write(r, "ngammas", 5, ngammas);
 		free(ngammas);
