@@ -16,6 +16,7 @@ raytrace.c \
 spectra.c \
 solve.c \
 peano.c \
+secion.c \
 lte.c \
 atomic-rate.c \
 loop.c \

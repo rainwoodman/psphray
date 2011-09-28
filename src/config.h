@@ -29,6 +29,7 @@ extern int CFG_ON_THE_SPOT;
 extern int CFG_COMOVING;
 extern int CFG_H_ONLY;
 extern int CFG_DUMP_HOTSPOTS;
+extern int CFG_SECONDARY_IONIZATION;
 extern int CFG_TRACE_ONLY;
 
 extern gsl_rng * RNG;
@@ -127,3 +128,10 @@ extern int LTE_FREQ_HEI;
 extern int LTE_FREQ_HEII;
 double lte_gen_freq(const int id, const double logT);
 
+extern int SECION_PHI_HI;
+extern int SECION_PHI_HEI;
+extern int SECION_EH;
+
+void secion_init();
+
+double secion_get(int id, double E, double log10x);

@@ -487,15 +487,16 @@ static void deposit(){
 		const double sigmaHI = xs_get(XS_HI, r[i].freq) * U_CM2;
 		const double sigmaHeI = xs_get(XS_HEI, r[i].freq) * U_CM2;
 		const double sigmaHeII = xs_get(XS_HEII, r[i].freq) * U_CM2;
-		const double heat_factor_HI = C_H_PER_MASS * fmax(0, r[i].freq - C_HI_FREQ) * U_RY_ENG;
-		const double heat_factor_HeI = C_HE_PER_MASS * fmax(0, r[i].freq - C_HEI_FREQ) * U_RY_ENG;
-		const double heat_factor_HeII = C_HE_PER_MASS * fmax(0, r[i].freq - C_HEII_FREQ) * U_RY_ENG;
+		const double dfreqHI = fdim(r[i].freq, C_HI_FREQ);
+		const double dfreqHeI = fdim(r[i].freq, C_HEI_FREQ);
+		const double dfreqHeII = fdim(r[i].freq, C_HEII_FREQ);
+		const double heat_factor_HI = C_H_PER_MASS * dfreqHI * U_RY_ENG;
+		const double heat_factor_HeI = C_HE_PER_MASS * dfreqHeI * U_RY_ENG;
+		const double heat_factor_HeII = C_HE_PER_MASS * dfreqHeII * U_RY_ENG;
 
 		total_deposit_count += r[i].x_length;
 
 		for(j = 0; j < r[i].x_length; j++) {
-
-			double absorb = 0.0;
 
 			/* find the first unlocked par in this queue that is close to the head this actually makes it slower*/
 			/*
@@ -560,8 +561,9 @@ static void deposit(){
 				continue;
 			}
 
-			absorb = -TM * expm1(-tausum);
-			double absorbHI = tauHI / tausum * absorb;
+			double absorb_est = -TM * expm1(-tausum);
+			double absorb = 0;
+			double absorbHI = tauHI / tausum * absorb_est;
 			if(absorbHI > NHI) {
 				absorbHI = NHI;
 				saturated_deposit_count ++;
@@ -571,13 +573,13 @@ static void deposit(){
 			if(!CFG_H_ONLY && NHe != 0.0) {
 				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
 				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
-				double absorbHeI = tauHeI / tausum * absorb;
+				double absorbHeI = tauHeI / tausum * absorb_est;
 				if(absorbHeI > NHeI) {
 					absorbHeI = NHeI;
 					saturated_deposit_count ++;
 				}
 				deltaHeI = absorbHeI * NHe_inv;
-				double absorbHeII = tauHeII / tausum * absorb;
+				double absorbHeII = tauHeII / tausum * absorb_est;
 				if(absorbHeII > NHeII) {
 					absorbHeII = NHeII;
 					saturated_deposit_count ++;
@@ -599,15 +601,42 @@ static void deposit(){
 				ERROR("heat < 0");
 			}
 
-			psys.yGdepHI[ipar] += deltaHI;
-			psys.heat[ipar] += heat_factor_HI * deltaHI;
-
-			if(!CFG_H_ONLY && NHe != 0.0) {
-				psys.yGdepHeI[ipar] += deltaHeI;
-				psys.heat[ipar] += deltaHeI * heat_factor_HeI;
-
-				psys.yGdepHeII[ipar] += deltaHeII;
-				psys.heat[ipar] += deltaHeII * heat_factor_HeII;
+			if(CFG_SECONDARY_IONIZATION) {
+				double x = psys_ye(ipar) * NH / (NH + NHe);
+				if(x > 1.0) x = 1.0;
+				psys.yGdepHI[ipar] += deltaHI;
+				if(x > 0.0) {
+					double log10x = log10(x);
+					psys.yGdepHI[ipar] +=
+						+ deltaHI * dfreqHI / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHI, x)
+						+ deltaHeI * dfreqHeI / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHeI, x);
+						+ deltaHeII * dfreqHeII / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHeII, x);
+					psys.heat[ipar] += heat_factor_HI * deltaHI * secion_get(SECION_EH, dfreqHeI, x);
+					if(!CFG_H_ONLY && NHe != 0.0) {
+						psys.yGdepHeI[ipar] += deltaHeI
+							+ deltaHI * dfreqHI / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHI, x)
+							+ deltaHeI * dfreqHeI / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHeI, x);
+							+ deltaHeII * dfreqHeII / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHeII, x);
+						psys.heat[ipar] += heat_factor_HeI * deltaHeI * secion_get(SECION_EH, dfreqHeI, x);
+							+ heat_factor_HeII * deltaHeII * secion_get(SECION_EH, dfreqHeII, x);
+						psys.yGdepHeII[ipar] += deltaHeII;
+					}
+				} else {
+					psys.heat[ipar] += heat_factor_HI * deltaHI;
+					if(!CFG_H_ONLY && NHe != 0.0) {
+						psys.heat[ipar] += heat_factor_HeI * deltaHeI;
+							+ heat_factor_HeII * deltaHeII;
+					}
+				}
+			} else {
+				psys.yGdepHI[ipar] += deltaHI;
+				psys.heat[ipar] += heat_factor_HI * deltaHI;
+				if(!CFG_H_ONLY && NHe != 0.0) {
+					psys.yGdepHeI[ipar] += deltaHeI;
+					psys.yGdepHeII[ipar] += deltaHeII;
+					psys.heat[ipar] += deltaHeI * heat_factor_HeI;
+					psys.heat[ipar] += deltaHeII * heat_factor_HeII;
+				}
 			}
 			if(psys.heat[ipar] < 0.0) {
 				ERROR("heat < 0");
