@@ -108,7 +108,7 @@ void xs_init(const char * filename) {
 		xs.ncols = 1;
 		xs.nrows = 16384;
 		xs.min = 1;
-		xs.max = 16;
+		xs.max = 100;
 		xs.step = (xs.max - xs.min) / (xs.nrows - 1);
 		xs.step_inv = 1.0 / xs.step;
 		ARRAY_RESIZE(xs.data, double * , xs.ncols);
