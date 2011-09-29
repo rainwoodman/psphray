@@ -124,6 +124,16 @@ static struct {
 		double subtotalHeIII;
 	} rec_photon_count;
 
+	struct {
+		double HI;
+		double HeI;
+	} secondary_ionization;
+	struct {
+		double HI;
+		double HeI;
+		double HeII;
+	} first_ionization;
+
 /* total number of photon travel out of box/ remain in pretruncated ray*/
 	double lost_photon_count_sum;
 /* total number of recombination photons */
@@ -190,6 +200,8 @@ void run_epoch() {
 			MESSAGE("PH STORAGE : Lost %g Rec %g ", 
 				stat.lost_photon_count_sum, stat.rec_photon_count_sum);
 			MESSAGE("Deposit: saturated = %lu, total=%lu", stat.saturated_deposit_count, stat.total_deposit_count);
+			MESSAGE("First:   %g %g %g", stat.first_ionization.HI, stat.first_ionization.HeI, stat.first_ionization.HeII);
+			MESSAGE("Secondary:   %g %g", stat.secondary_ionization.HI, stat.secondary_ionization.HeI);
 			MESSAGE("Evolve     : Error %lu Total %lu", 
 				stat.gsl_error_count, stat.evolve_count);
 			MESSAGE("Time : SpinLock %g", stat.spinlock_time);
@@ -471,8 +483,13 @@ static void deposit(){
 	const double scaling_fac2_inv = 1.0 / (scaling_fac * scaling_fac);
 	double spinlock_time = 0.0;
 	size_t saturated_deposit_count = 0;
+	double first_ionization_HI = 0;
+	double first_ionization_HeI = 0;
+	double first_ionization_HeII = 0;
+	double secondary_ionization_HI = 0;
+	double secondary_ionization_HeI = 0;
 	size_t total_deposit_count = 0;
-	#pragma omp parallel private(i) reduction(+: spinlock_time, total_deposit_count, saturated_deposit_count) 
+	#pragma omp parallel private(i) reduction(+: secondary_ionization_HI, secondary_ionization_HeI, first_ionization_HI, first_ionization_HeI, first_ionization_HeII, spinlock_time, total_deposit_count, saturated_deposit_count) 
 	#pragma omp single
 	for(i = 0; i < r_length; i++) {
 		if(r[i].x_length == 0) continue;
@@ -603,21 +620,27 @@ static void deposit(){
 				double x = psys_ye(ipar) * NH / (NH + NHe);
 				if(x > 1.0) x = 1.0;
 				psys.yGdepHI[ipar] += deltaHI;
+				first_ionization_HI += deltaHI * NH;
 				if(x > 0.0) {
 					double log10x = log10(x);
-					psys.yGdepHI[ipar] +=
-						+ deltaHI * dfreqHI / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHI, x)
+					double secion = deltaHI * dfreqHI / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHI, x)
 						+ deltaHeI * dfreqHeI / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHeI, x);
 						+ deltaHeII * dfreqHeII / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHeII, x);
+					psys.yGdepHI[ipar] += secion;
+					secondary_ionization_HI += secion * NH;
 					psys.heat[ipar] += heat_factor_HI * deltaHI * secion_get(SECION_EH, dfreqHeI, x);
 					if(!CFG_H_ONLY && NHe != 0.0) {
-						psys.yGdepHeI[ipar] += deltaHeI
-							+ deltaHI * dfreqHI / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHI, x)
+						double secion = 
+							deltaHI * dfreqHI / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHI, x)
 							+ deltaHeI * dfreqHeI / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHeI, x);
 							+ deltaHeII * dfreqHeII / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHeII, x);
+						psys.yGdepHeI[ipar] += deltaHeI + secion;
+						secondary_ionization_HeI += secion * NHe;
+						first_ionization_HeI += deltaHeI * NHe;
 						psys.heat[ipar] += heat_factor_HeI * deltaHeI * secion_get(SECION_EH, dfreqHeI, x);
 							+ heat_factor_HeII * deltaHeII * secion_get(SECION_EH, dfreqHeII, x);
 						psys.yGdepHeII[ipar] += deltaHeII;
+						first_ionization_HeII += deltaHeII * NHe;
 					}
 				} else {
 					psys.heat[ipar] += heat_factor_HI * deltaHI;
@@ -671,6 +694,11 @@ static void deposit(){
 	stat.deposit_time += (omp_get_wtime() - t0);
 	stat.total_deposit_count += total_deposit_count;
 	stat.saturated_deposit_count += saturated_deposit_count;
+	stat.secondary_ionization.HI += secondary_ionization_HI;
+	stat.secondary_ionization.HeI += secondary_ionization_HeI;
+	stat.first_ionization.HI += first_ionization_HI;
+	stat.first_ionization.HeI += first_ionization_HeI;
+	stat.first_ionization.HeII += first_ionization_HeII;
 }
 
 static void merge_pars() {
