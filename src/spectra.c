@@ -22,7 +22,8 @@ Spec * specs = NULL;
 int N_SPECS = 0;
 
 static double blackbody(double T, double freq) {
-	return freq * freq * freq / (expm1(freq * U_RY_ENG / (C_BOLTZMANN * T * U_KELVIN)));
+	/* should be freq ** 3, divided by a freq to obtain the photon number */
+	return freq * freq / (expm1(freq * U_RY_ENG / (C_BOLTZMANN * T * U_KELVIN)));
 }
 
 const int spec_get(const char * name) {
