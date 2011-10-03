@@ -28,5 +28,5 @@ units: {
 
 specs: {
   d6bh: "../test/d6bh.spec";
-  sun: { type="blackbody", T = 1e4}
+  sun: { type="blackbody", T = 1e4, min=(16, "ev"), max=(160, "ev")}
 };
