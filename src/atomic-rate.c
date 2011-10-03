@@ -34,13 +34,18 @@ int AR_HEII_RC_A = -1;
 int AR_HEII_RC_B = -1;
 int AR_HEIII_RC_A = -1;
 int AR_HEIII_RC_B = -1;
-int XS_FREQ = -1;
+int XS_ENG = -1;
 int XS_HI = -1;
 int XS_HEI = -1;
 int XS_HEII = -1;
 
 static TabFun ar = {0};
 static TabFun xs = {0};
+/* holding the low cuts of the xsections. the analytical form doesn't have this cut, because
+ * tabulated function can't do the sharp cut well. 100 here is just a number greater than
+ * the max possible number of crosssctions (which is 3 for now)*/
+static double xs_cut[100];
+
 
 extern float verner_hi_photo_cs_(float *);
 extern float osterbrok_hei_photo_cs_(float *);
@@ -53,16 +58,16 @@ static void tabfun_dump(const TabFun * tabfun, const char * filename);
 static int tabfun_setup_col(TabFun * tabfun, char * col, double (*func)(double), double unit);
 
 /* analytical forms */
-static double verner(double freq) {
-	float ryd = freq;
+static double verner(double eng) {
+	float ryd = eng / C_HI_ENERGY;
 	return verner_hi_photo_cs_(&ryd);
 }
-static double osterbrok_HeI(double freq) {
-	float ryd = freq;
+static double osterbrok_HeI(double eng) {
+	float ryd = eng / C_HI_ENERGY;
 	return osterbrok_hei_photo_cs_(&ryd);
 }
-static double osterbrok_HeII(double freq) {
-	float ryd = freq;
+static double osterbrok_HeII(double eng) {
+	float ryd = eng / C_HI_ENERGY;
 	return osterbrok_heii_photo_cs_(&ryd);
 }
 static double bremsstrahlung_cen_1992(double T) {
@@ -107,13 +112,13 @@ void xs_init(const char * filename) {
 	} else {
 		xs.ncols = 1;
 		xs.nrows = 16384;
-		xs.min = 1;
-		xs.max = 100;
+		xs.min = 1 * C_HI_ENERGY;
+		xs.max = 100 * C_HI_ENERGY;
 		xs.step = (xs.max - xs.min) / (xs.nrows - 1);
 		xs.step_inv = 1.0 / xs.step;
 		ARRAY_RESIZE(xs.data, double * , xs.ncols);
 		ARRAY_RESIZE(xs.headers, char * , xs.ncols);
-		xs.headers[0] = "freq";
+		xs.headers[0] = "eng";
 		xs.data[0] = malloc(sizeof(double)* xs.nrows);
 		int i;
 		for(i = 0; i < xs.nrows; i++) {
@@ -124,10 +129,16 @@ void xs_init(const char * filename) {
 	XS_HI = tabfun_setup_col(&xs, "HI", verner, U_CM * U_CM);
 	XS_HEI = tabfun_setup_col(&xs, "HeI", osterbrok_HeI, U_CM * U_CM);
 	XS_HEII = tabfun_setup_col(&xs, "HeII", osterbrok_HeII, U_CM * U_CM);
-	XS_FREQ = 0;
+	xs_cut[XS_HI] = C_HI_ENERGY;
+	xs_cut[XS_HEI] = C_HEI_ENERGY;
+	xs_cut[XS_HEII] = C_HEII_ENERGY;
+	XS_ENG = 0;
 }
 
 const double xs_get(const int id, const double value) {
+	if(value < xs_cut[id]) {
+		return 0.0;
+	}
 	return tabfun_get(&xs, id, value);
 }
 
@@ -171,11 +182,11 @@ static const double tabfun_get(const TabFun * tabfun, const int id, const double
 		return tabfun->data[id][tabfun->nrows - 1];
 //		ERROR("temperature higher than the maximal.(logT= %lg)", logT);
 	}
-	float left = tabfun->data[0][index];
-	float right = tabfun->data[0][index + 1];
+	double left = tabfun->data[0][index];
+	double right = tabfun->data[0][index + 1];
 	/* the first col is the temprature */
-	float leftwt = (right - value);
-	float rightwt = (value- left);
+	double leftwt = (right - value);
+	double rightwt = (value- left);
 	return (leftwt * tabfun->data[id][index] + rightwt * tabfun->data[id][index+1]) * tabfun->step_inv;
 }
 

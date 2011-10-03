@@ -6,6 +6,7 @@
 double U_CM = 0.0;
 double U_GRAM = 0.0;
 double U_SEC = 0.0;
+double U_HZ = 0.0;
 double U_M = 0.0;
 double U_KM = 0.0;
 double U_KPC = 0.0;
@@ -19,17 +20,19 @@ double U_KELVIN = 0.0;
 double U_J = 0.0;
 double U_ERG = 0.0;
 double U_EV = 0.0;
+double U_KEV = 0.0;
 double U_RY_ENG = 0.0;
 
 double C_BOLTZMANN = 0.0;
+double C_PLANCK = 0.0;
 double C_SPEED_LIGHT = 0.0;
 
 double C_H_PER_MASS = 0.0;
 double C_HE_PER_MASS = 0.0;
 
-double C_HI_FREQ = 0.0;
-double C_HEI_FREQ = 0.0;
-double C_HEII_FREQ = 0.0;
+double C_HI_ENERGY = 0.0;
+double C_HEI_ENERGY = 0.0;
+double C_HEII_ENERGY = 0.0;
 
 double U_MPROTON_OVER_C_BOLTZMANN = 0.0;
 double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
@@ -39,6 +42,8 @@ double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
 		double * value;
 	} u_list[] = {
 		{"h", &C_H},
+		{"hp", &C_PLANCK},
+		{"kb", &C_BOLTZMANN},
 		{"cm", &U_CM},
 		{"m", &U_M},
 		{"km", &U_KM},
@@ -51,6 +56,7 @@ double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
 		{"mproton", &U_MPROTON},
 		{"kelvin", &U_KELVIN},
 		{"ev", &U_EV},
+		{"kev", &U_KEV},
 		{NULL, NULL},
 	};
 double units_simple(char * simple);
@@ -62,6 +68,7 @@ double units_init() {
 
 	U_SEC = C_H / C_1_SECH;
 
+	U_HZ = 1.0 / U_SEC;
 	U_M = U_CM * 100;
 	U_KM = U_M * 1000;
 	U_KPC = U_M * 3.08568025e19;
@@ -72,18 +79,21 @@ double units_init() {
 	U_MPROTON = U_KG * 1.67262158e-27;
 	U_KELVIN = 1.0;
 	C_BOLTZMANN = 1.3806503e-23 * U_M * U_M * U_KG / U_SEC / U_SEC;
+	C_PLANCK = 6.626068e-34 * U_M * U_M * U_KG / U_SEC;
 
 	U_J = U_KG * U_M * U_M / (U_SEC * U_SEC);
 	U_EV = 1.602176487e-19 * U_J;
+	U_KEV = U_EV * 1000;
 	U_ERG = 1e-7 * U_J;
 	U_RY_ENG = 13.60569253 * U_EV;
 	C_H_PER_MASS = C_HMF / U_MPROTON;
 	C_HE_PER_MASS = C_HEMF / (4 * U_MPROTON);
 	C_SPEED_LIGHT = 3e8 * U_M / U_SEC;
 
-	C_HI_FREQ = 1;
-	C_HEI_FREQ = 24.587 / 13.6;
-	C_HEII_FREQ = 54.416 / 13.6;
+	C_HI_ENERGY = 13.60569253 * U_EV;
+	C_HEI_ENERGY = 24.587 * U_EV;
+	C_HEII_ENERGY = 54.416 * U_EV;
+
 	U_MPROTON_OVER_C_BOLTZMANN = U_MPROTON / C_BOLTZMANN;
 	C_BOLTZMANN_OVER_U_MPROTON = 1.0 / (U_MPROTON / C_BOLTZMANN);
 }

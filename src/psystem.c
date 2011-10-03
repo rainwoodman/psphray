@@ -142,7 +142,7 @@ static void setup_hotspots() {
 			int d;
 			double c[3], r;
 			for(d = 0; d < 3; d++) {
-				c[d] = config_setting_parse_units_elem(center, d);
+				config_setting_parse_units_elem(center, d, &c[d]);
 			}
 			r = config_setting_parse_units(radius);
 			intptr_t ipar;

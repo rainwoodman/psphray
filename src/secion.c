@@ -58,7 +58,7 @@ static double C[3][2] = {
 
 static double secion_get_Phi_factor(int j, double E, double x) {
 	if(j >= 2 || j < 0) ERROR("j has to be 0, 1, for HI and HEI respectively");
-	double gate = 28 * U_EV / U_RY_ENG;
+	double gate = 28 * U_EV;
 	int f1 = (E >= (gate-0.1)); /* working out discrete errors in the table */
 	double f2 = f1 * pow(gate / E, 0.4);
 	
@@ -69,14 +69,14 @@ static double secion_get_Phi_factor(int j, double E, double x) {
 }
 
 static double secion_get_Eh_factor(double E, double x) {
-	double gate = 11 * U_EV / U_RY_ENG;
+	double gate = 11 * U_EV;
 	int f1 = (E >= gate - 0.1);
 	double f2 = f1 * pow(gate / E, 0.7);
 	
 	double y1 = C[2][0] * pow(1 - pow(x, b[2][0]), c[2][0]);
 	double y2 = C[2][1] * pow(x, a[2][1]) * pow(1 - pow(x, b[2][1]), c[2][1]);
 
-	return (1 - y1 * f1 + y2 * f2);
+	return (1. - y1 * f1 + y2 * f2);
 }
 
 static double Phi_HI(double E, double logx) {
@@ -95,8 +95,8 @@ void secion_init() {
 	si.nrows1 = 4096;
 	si.nrows2 = 1024;
 	si.ncols = 3;
-	si.min1 = 10 * U_EV / U_RY_ENG;
-	si.max1 = 200 * U_EV / U_RY_ENG;
+	si.min1 = 10 * U_EV;
+	si.max1 = 200 * U_EV;
 	si.min2 = -8;
 	si.max2 = 0;
 	si.step1 = (si.max1 - si.min1) / si.nrows1;
@@ -118,7 +118,8 @@ void secion_init() {
 }
 
 double secion_get(int id, double E, double log10x) {
-	return tabfun2_get(&si, id, E, log10x);
+	double rt = tabfun2_get(&si, id, E, log10x);
+	return rt;
 }
 
 static int tabfun2_ensure_col(TabFun2 * tabfun, char * col, double (*func)(double , double)) {

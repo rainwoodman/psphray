@@ -41,7 +41,8 @@ void cfg_dump(char * filename);
 void cfg_dump_stream(FILE * file);
 
 double config_setting_parse_units(config_setting_t * e);
-double config_setting_parse_units_elem(config_setting_t * e, int elem);
+int config_setting_parse_units_elem(config_setting_t * e, int elem, double * rt);
+int config_setting_parse_units_member(config_setting_t * e, char * member, double * rt);
 config_setting_t * config_setting_ensure_member(config_setting_t * e, char * member, int type);
 config_setting_t * config_ensure(config_t * config, char * path, int type);
 
@@ -76,14 +77,15 @@ extern double C_OMEGA_M;
 extern double C_OMEGA_B;
 extern double C_H;
 extern double C_BOLTZMANN;
+extern double C_PLANCK;
 extern double C_SPEED_LIGHT;
 extern double U_MPROTON_OVER_C_BOLTZMANN;
 extern double C_BOLTZMANN_OVER_U_MPROTON;
 extern double C_H_PER_MASS;
 extern double C_HE_PER_MASS;
-extern double C_HI_FREQ;
-extern double C_HEI_FREQ;
-extern double C_HEII_FREQ;
+extern double C_HI_ENERGY;
+extern double C_HEI_ENERGY;
+extern double C_HEII_ENERGY;
 double z2t(double z);
 double t2z(double z);
 static inline double ieye2T(const double ie, const double ye) {
@@ -122,6 +124,8 @@ const double xs_get(const int id, const double freq);
 
 const int spec_get(const char * name);
 double spec_gen_freq(const int id);
+double spec_N_from_lum(const int id, double lum);
+double spec_lum_from_N(const int id, double lum);
 
 extern int LTE_FREQ_HI;
 extern int LTE_FREQ_HEI;

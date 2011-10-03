@@ -19,7 +19,7 @@
     real :: x
     real :: y
 
-    if (Ry < 1.) then
+    if (Ry < 0.5) then
        sigma = 0.0
        return
     endif
@@ -40,7 +40,7 @@
         real :: sigma !< cross section
         real :: scaled_freq
         real, parameter :: nu_HeI = 24.587
-        if (Ry * 13.6 < nu_HeI) then
+        if (2.0 * Ry * 13.6 < nu_HeI) then
            sigma = 0.0e0
            return
         end if
@@ -57,7 +57,7 @@
         real, intent(in) :: Ry !< frequency (Ry)
         real :: sigma !< cross section
         real, parameter :: nu_HeII = 54.416
-        if (Ry * 13.6 < nu_HeII) then
+        if (2.0 * Ry * 13.6 < nu_HeII) then
            sigma = 0.0e0
            return
         end if

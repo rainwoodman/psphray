@@ -363,6 +363,9 @@ static void emit_rays() {
 			r[i].Nph = weights[isrc];
 			r[i].freq = spec_gen_freq(psys.srcs[isrc].specid);
 			r[i].length = psys.srcs[isrc].ray_length_hint;
+			if(r[i].freq > 100000 * U_EV) {
+				ERROR("freq strangely large");
+			}
 			}
 			break;
 			case 0: /* from a HII recombination*/
@@ -502,12 +505,12 @@ static void deposit(){
 		const double sigmaHI = xs_get(XS_HI, r[i].freq);
 		const double sigmaHeI = xs_get(XS_HEI, r[i].freq);
 		const double sigmaHeII = xs_get(XS_HEII, r[i].freq);
-		const double dfreqHI = fdim(r[i].freq, C_HI_FREQ);
-		const double dfreqHeI = fdim(r[i].freq, C_HEI_FREQ);
-		const double dfreqHeII = fdim(r[i].freq, C_HEII_FREQ);
-		const double heat_factor_HI = C_H_PER_MASS * dfreqHI * U_RY_ENG;
-		const double heat_factor_HeI = C_HE_PER_MASS * dfreqHeI * U_RY_ENG;
-		const double heat_factor_HeII = C_HE_PER_MASS * dfreqHeII * U_RY_ENG;
+		const double dEHI = fdim(r[i].freq, C_HI_ENERGY);
+		const double dEHeI = fdim(r[i].freq, C_HEI_ENERGY);
+		const double dEHeII = fdim(r[i].freq, C_HEII_ENERGY);
+		const double heat_factor_HI = C_H_PER_MASS * dEHI;
+		const double heat_factor_HeI = C_HE_PER_MASS * dEHeI;
+		const double heat_factor_HeII = C_HE_PER_MASS * dEHeII;
 
 		total_deposit_count += r[i].x_length;
 
@@ -616,38 +619,31 @@ static void deposit(){
 				ERROR("heat < 0");
 			}
 
-			if(CFG_SECONDARY_IONIZATION) {
-				double x = psys_ye(ipar) * NH / (NH + NHe);
-				if(x > 1.0) x = 1.0;
+			double x = psys_ye(ipar) * NH / (NH + NHe);
+			if(x > 1.0) x = 1.0;
+			/* if x <= 0.0 secondary ionization has no effect */
+			if(CFG_SECONDARY_IONIZATION && x > 0.0) {
 				psys.yGdepHI[ipar] += deltaHI;
 				first_ionization_HI += deltaHI * NH;
-				if(x > 0.0) {
-					double log10x = log10(x);
-					double secion = deltaHI * dfreqHI / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHI, x)
-						+ deltaHeI * dfreqHeI / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHeI, x);
-						+ deltaHeII * dfreqHeII / C_HI_FREQ * secion_get(SECION_PHI_HI, dfreqHeII, x);
-					psys.yGdepHI[ipar] += secion;
-					secondary_ionization_HI += secion * NH;
-					psys.heat[ipar] += heat_factor_HI * deltaHI * secion_get(SECION_EH, dfreqHeI, x);
-					if(!CFG_H_ONLY && NHe != 0.0) {
-						double secion = 
-							deltaHI * dfreqHI / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHI, x)
-							+ deltaHeI * dfreqHeI / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHeI, x);
-							+ deltaHeII * dfreqHeII / C_HEI_FREQ * secion_get(SECION_PHI_HEI, dfreqHeII, x);
-						psys.yGdepHeI[ipar] += deltaHeI + secion;
-						secondary_ionization_HeI += secion * NHe;
-						first_ionization_HeI += deltaHeI * NHe;
-						psys.heat[ipar] += heat_factor_HeI * deltaHeI * secion_get(SECION_EH, dfreqHeI, x);
-							+ heat_factor_HeII * deltaHeII * secion_get(SECION_EH, dfreqHeII, x);
-						psys.yGdepHeII[ipar] += deltaHeII;
-						first_ionization_HeII += deltaHeII * NHe;
-					}
-				} else {
-					psys.heat[ipar] += heat_factor_HI * deltaHI;
-					if(!CFG_H_ONLY && NHe != 0.0) {
-						psys.heat[ipar] += heat_factor_HeI * deltaHeI;
-							+ heat_factor_HeII * deltaHeII;
-					}
+				double log10x = log10(x);
+				double secion = deltaHI * dEHI / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHI, log10x)
+					+ deltaHeI * dEHeI / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHeI, log10x);
+					+ deltaHeII * dEHeII / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHeII, log10x);
+				psys.yGdepHI[ipar] += secion;
+				secondary_ionization_HI += secion * NH;
+				psys.heat[ipar] += heat_factor_HI * deltaHI * secion_get(SECION_EH, dEHI, log10x);
+				if(!CFG_H_ONLY && NHe != 0.0) {
+					double secion = 
+						deltaHI * dEHI / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHI, log10x)
+						+ deltaHeI * dEHeI / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHeI, log10x);
+						+ deltaHeII * dEHeII / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHeII, log10x);
+					psys.yGdepHeI[ipar] += deltaHeI + secion;
+					secondary_ionization_HeI += secion * NHe;
+					first_ionization_HeI += deltaHeI * NHe;
+					psys.heat[ipar] += heat_factor_HeI * deltaHeI * secion_get(SECION_EH, dEHeI, log10x);
+						+ heat_factor_HeII * deltaHeII * secion_get(SECION_EH, dEHeII, log10x);
+					psys.yGdepHeII[ipar] += deltaHeII;
+					first_ionization_HeII += deltaHeII * NHe;
 				}
 			} else {
 				psys.yGdepHI[ipar] += deltaHI;
@@ -662,7 +658,6 @@ static void deposit(){
 			if(psys.heat[ipar] < 0.0) {
 				ERROR("heat < 0");
 			}
-
 			psys.hits[ipar]++;
 			unlock(ipar);
 

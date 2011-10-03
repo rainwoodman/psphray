@@ -169,6 +169,15 @@ double config_setting_parse_units(config_setting_t * e) {
 		return value;
 	}
 }
-double config_setting_parse_units_elem(config_setting_t * e, int elem) {
-	return config_setting_parse_units(config_setting_get_elem(e, elem));
+int config_setting_parse_units_elem(config_setting_t * e, int elem, double * rt) {
+	config_setting_t * t = config_setting_get_elem(e, elem);
+	if(!t) return 0;
+	*rt = config_setting_parse_units(t);
+	return 1;
+}
+int config_setting_parse_units_member(config_setting_t * e, char * memb, double * rt) {
+	config_setting_t * t = config_setting_get_member(e, memb);
+	if(!t) return 0;
+	*rt = config_setting_parse_units(t);
+	return 1;
 }

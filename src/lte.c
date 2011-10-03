@@ -27,9 +27,9 @@ struct {
 
 static void lte_fill(int id, double freq_th, double freq_max, int xsid);
 void lte_init() {
-	lte_fill(LTE_FREQ_HI, C_HI_FREQ, 16, XS_HI);
-	lte_fill(LTE_FREQ_HEI, C_HEI_FREQ, 16, XS_HEI);
-	lte_fill(LTE_FREQ_HEII, C_HEII_FREQ, 16, XS_HEII);
+	lte_fill(LTE_FREQ_HI, C_HI_ENERGY, 16 * C_HI_ENERGY, XS_HI);
+	lte_fill(LTE_FREQ_HEI, C_HEI_ENERGY, 16 * C_HEI_ENERGY, XS_HEI);
+	lte_fill(LTE_FREQ_HEII, C_HEII_ENERGY, 16 * C_HEII_ENERGY, XS_HEII);
 }
 double lte_gen_freq(const int id, const double logT) {
 	int n = (logT - lte[id].logT_min) / lte[id].logT_step;
@@ -62,7 +62,7 @@ static void lte_fill(int id, double freq_th, double freq_max, int xsid) {
 		for(j = 0; j < lte[id].Nfreq; j++) {
 			double freq = lte[id].freq[j];
 			double sigma = xs_get(xsid, freq);
-			f[j] = sigma * freq * freq * freq * exp( - (freq - lte[id].freq_min) * U_RY_ENG / kT);
+			f[j] = sigma * freq * freq * freq * exp( - (freq - lte[id].freq_min) / kT);
 		}
 		lte[id].dist[i] = gsl_ran_discrete_preproc(lte[id].Nfreq, f);
 	}

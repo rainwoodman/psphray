@@ -45,10 +45,10 @@ step.ie = 123;
 	for(i = 0; i < 10; i++) {
 		const double xHI = lambdaH_to_xHI(step.lambdaH);
 		const double xHII = lambdaH_to_xHII(step.lambdaH);
-		printf("%g %g %g %g %g %g \n", i * time,  step.ie, step.lambdaH, xHI, xHII, step.dyGrecHII);
+		printf("%g %g %g %g %g %g \n", i * time,  step.ie, step.lambdaH, xHI, xHII, step.yGrecHII);
 
 		step.heat = 0.0;
-		step.dyGrecHII = 0.0;
+		step.yGrecHII = 0.0;
 		step.time = time;
 		int code = step_evolve (&step);
 		if(!code) {
