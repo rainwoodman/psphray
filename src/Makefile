@@ -15,6 +15,7 @@ units.c \
 epochs.c \
 reader.c \
 psystem.c \
+sources.c \
 raytrace.c \
 spectra.c \
 solve.c \

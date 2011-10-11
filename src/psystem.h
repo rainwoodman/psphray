@@ -1,4 +1,5 @@
 #include <math.h>
+#include <array.h>
 #define HUGENUMBER 1e15
 #define PSYS_SRC_PLANE (0)
 #define PSYS_SRC_POINT (1)
@@ -17,6 +18,10 @@ typedef struct {
 	double radius;
 	double a[3];
 	double b[3];
+
+	/* luminosity history */
+	ARRAY_DEFINE_S(ticks, intptr_t);
+	ARRAY_DEFINE_S(Ngamma_dots, double);
 } Source;
 
 #define PF_NORMAL (0)

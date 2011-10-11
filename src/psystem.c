@@ -5,15 +5,12 @@
 #include <math.h>
 
 #include <messages.h>
-
 #include "config.h"
 #include "reader.h"
 #include "psystem.h"
 
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_heapsort.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_eigen.h>
 
 #define IDHASHBITS 24
 #define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
@@ -121,7 +118,7 @@ static void hilbert_reorder() {
 }
 
 static float dist(const float p1[3], const float p2[3]);
-static void psystem_read_source();
+void psystem_read_source();
 static void psystem_read_epoch(ReaderConstants * c);
 static void psystem_match_epoch(ReaderConstants * c);
 
@@ -421,106 +418,6 @@ static void psystem_match_epoch(ReaderConstants * c) {
 		distsum/ c->Ntot[0]);
 }
 
-void solve_u_v(double d[3], double u[3], double v[3]) {
-	double data[9] = {
-		d[0] * d[0], d[1] * d[0], d[2] * d[0],
-		d[0] * d[1], d[1] * d[1], d[2] * d[1],
-		d[0] * d[2], d[1] * d[2], d[2] * d[2],
-	};
-	gsl_matrix_view m = gsl_matrix_view_array(data, 3, 3);
-	gsl_vector * eval = gsl_vector_alloc(3);
-	gsl_matrix * evac = gsl_matrix_alloc(3, 3);
-	gsl_eigen_symmv_workspace * work = gsl_eigen_symmv_alloc(3);
-	gsl_eigen_symmv(&m.matrix, eval, evac, work);
-	gsl_eigen_symmv_sort(eval, evac, GSL_EIGEN_SORT_ABS_ASC);
-	gsl_vector_view u_view = gsl_matrix_column(evac, 0);
-	gsl_vector_view v_view = gsl_matrix_column(evac, 1);
-	int i;
-	for(i = 0; i < 3; i++) {
-		u[i] = gsl_vector_get(&u_view.vector, i);
-		v[i] = gsl_vector_get(&v_view.vector, i);
-	}
-	gsl_matrix_free(evac);
-	gsl_vector_free(eval);
-	gsl_eigen_symmv_free(work);
-}
-
-static void psystem_read_source() {
-	FILE * f = fopen(psys.epoch->source, "r");
-	if(f == NULL) {
-		ERROR("failed to open %s", psys.epoch->source);
-	}
-	int NR = 0;
-	int NF = 0;
-	char * line = NULL;
-	size_t len = 0;
-	intptr_t isrc = 0;
-	int stage = 0;
-	double x, y, z, dx, dy, dz, radius, L;
-	char spec[128];
-	char type[128];
-
-	while(0 <= getline(&line, &len, f)) {
-		if(line[0] == '#') {
-			NR++;
-			continue;
-		}
-		switch(stage) {
-		case 0:
-			if(1 != sscanf(line, "%ld", &psys.nsrcs)) {
-				ERROR("%s format error at %d", psys.epoch->source, NR);
-			} else {
-				psys.srcs = calloc(sizeof(Source), psys.nsrcs);
-				isrc = 0;
-				stage ++;
-			}
-			break;
-		case 1:
-			NF = sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %80s %80s %lf",
-				&x, &y, &z, &dx, &dy, &dz, 
-				&L, spec, type, &radius); 
-			if(NF != 9 && NF != 10) {
-				ERROR("%s format error at %d", psys.epoch->source, NR);
-			}
-			psys.srcs[isrc].pos[0] = x;
-			psys.srcs[isrc].pos[1] = y;
-			psys.srcs[isrc].pos[2] = z;
-			psys.srcs[isrc].dir[0] = dx;
-			psys.srcs[isrc].dir[1] = dy;
-			psys.srcs[isrc].dir[2] = dz;
-			psys.srcs[isrc].specid = spec_get(spec);
-			if(!strcmp(type, "plane")) {
-				if(NF != 10) {
-					ERROR("%s format error at %d, needs 10 fields", psys.epoch->source, NR);
-				}
-				psys.srcs[isrc].type = PSYS_SRC_PLANE;
-				psys.srcs[isrc].radius = radius;
-				psys.srcs[isrc].Ngamma_dot = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
-				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
-			} else {
-				if(L < 0) {
-					L = spec_N_from_lum(psys.srcs[isrc].specid, -L * C_SOLAR_LUM) * U_SEC / 1e50;
-				}
-				psys.srcs[isrc].type = PSYS_SRC_POINT;
-				psys.srcs[isrc].Ngamma_dot = L * 1e50 / U_SEC;
-			}
-			isrc ++;
-			if(isrc == psys.nsrcs) {
-				stage ++;
-			}
-			break;
-		case 2:
-			break;
-		}
-		NR++;
-		if(stage == 2) break;
-	}
-	if(isrc != psys.nsrcs) {
-		ERROR("%s expecting %lu, but has %lu sources, %lu", psys.epoch->source, psys.nsrcs, isrc, NR);
-	}
-	free(line);
-	fclose(f);
-}
 
 static float dist(const float p1[3], const float p2[3]) {
 	int d;
