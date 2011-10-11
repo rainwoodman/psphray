@@ -129,9 +129,12 @@ void xs_init(const char * filename) {
 	XS_HI = tabfun_setup_col(&xs, "HI", verner, U_CM * U_CM);
 	XS_HEI = tabfun_setup_col(&xs, "HeI", osterbrok_HeI, U_CM * U_CM);
 	XS_HEII = tabfun_setup_col(&xs, "HeII", osterbrok_HeII, U_CM * U_CM);
-	xs_cut[XS_HI] = C_HI_ENERGY;
-	xs_cut[XS_HEI] = C_HEI_ENERGY;
-	xs_cut[XS_HEII] = C_HEII_ENERGY;
+	/* deliberately not use the exact value because the input is
+     * less exact sometimes is ugly. aka we don't want to ionizize nothing
+     * when the spectra is a 13.6 ev mono. */
+	xs_cut[XS_HI] = 13.6 * U_EV; //C_HI_ENERGY;  
+	xs_cut[XS_HEI] = 24.5 * U_EV; //C_HEI_ENERGY;
+	xs_cut[XS_HEII] = 54.4 * U_EV; //C_HEII_ENERGY;
 	XS_ENG = 0;
 }
 
