@@ -1,3 +1,8 @@
+#ifndef __ARRAY_H__
+#include <stdlib.h>
+#include <string.h>
+#define __ARRAY_H__
+
 #define ARRAY_DEFINE(array, type) \
 type * array = NULL; \
 size_t array ## _length = 0; \
@@ -47,4 +52,4 @@ static inline void * __array_realloc0__(void * pt, size_t old, size_t new_, size
 	return pt;
 }
 
-
+#endif
