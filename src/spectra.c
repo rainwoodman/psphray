@@ -29,6 +29,9 @@ int N_SPECS = 0;
 static double blackbody(double T, double eng) {
 	return eng * eng * eng / (expm1(eng / (C_BOLTZMANN * T * U_KELVIN)));
 }
+static double powerlaw(double index, double eng, double eng0) {
+	return pow(eng/eng0, index);
+}
 
 const int spec_get(const char * name) {
 	int i;
@@ -88,7 +91,7 @@ void spec_init() {
 			specs[i].type = 1;
 			ARRAY_RESIZE(specs[i].eng, double, 1);
 			ARRAY_RESIZE(specs[i].lum, double, 1);
-			specs[i].eng[0] = config_setting_get_float(ele);
+			specs[i].eng[0] = config_setting_parse_units(ele);
 			specs[i].lum[0] = 1.0;
 		}
 	}
@@ -107,22 +110,25 @@ void spec_init() {
 			specs[i].lumwt[j] = specs[i].lum[j];
 			specs[i].Nwt[j] = specs[i].lum[j] / specs[i].eng[j];
 			if(j == 0) {
-				specs[i].lumwt[j] *= 2 * (specs[i].eng[j+1] - specs[i].eng[j]);
-				specs[i].Nwt[j] *= 2 * (specs[i].eng[j+1] - specs[i].eng[j]);
+				specs[i].lumwt[j] *=  (specs[i].eng[j+1] - specs[i].eng[j]);
+				specs[i].Nwt[j] *=  (specs[i].eng[j+1] - specs[i].eng[j]);
 			} else if(j == specs[i].lumwt_length - 1) {
-				specs[i].lumwt[j] *= 2 * (specs[i].eng[j] - specs[i].eng[j-1]);
-				specs[i].Nwt[j] *= 2 * (specs[i].eng[j] - specs[i].eng[j-1]);
+				specs[i].lumwt[j] *=  (specs[i].eng[j] - specs[i].eng[j-1]);
+				specs[i].Nwt[j] *=  (specs[i].eng[j] - specs[i].eng[j-1]);
 			} else {
-				specs[i].lumwt[j] *= (specs[i].eng[j + 1] - specs[i].eng[j-1]);
-				specs[i].Nwt[j] *= (specs[i].eng[j + 1] - specs[i].eng[j-1]);
+				specs[i].lumwt[j] *= 0.5 * (specs[i].eng[j + 1] - specs[i].eng[j-1]);
+				specs[i].Nwt[j] *= 0.5 * (specs[i].eng[j + 1] - specs[i].eng[j-1]);
 			}
 			lumwtsum += specs[i].lumwt[j];
 			Nwtsum += specs[i].Nwt[j];
 		}
 		specs[i].N_lum = Nwtsum / lumwtsum;
+		//newitem->N_lum = (index + 1) / index * ( 1.0 / engmin) *
+		//	 (1 - pow(engmax / engmin, index)) / ( 1 - pow(engmax / engmin, 1 + index));
 		specs[i].band_min = specs[i].eng[0];
 		specs[i].band_max  = specs[i].eng[specs[i].eng_length - 1];
 		specs[i].randist = gsl_ran_discrete_preproc(specs[i].Nwt_length, specs[i].Nwt);
+		MESSAGE("spectra %s, N / lum = %g", specs[i].name, specs[i].N_lum);
 	}
 }
 
@@ -139,7 +145,7 @@ static void spec_from_config_setting(Spec * newitem, config_setting_t * setting)
 	if(!config_setting_parse_units_member(setting, "max", &engmax)) {
 		ERROR("can't parse max in configfile");
 	}
-	const int nbins = 1024;
+	const int nbins = 65536;
 	ARRAY_RESIZE(newitem->eng, double, nbins);
 	ARRAY_RESIZE(newitem->lum, double, nbins);
 	newitem->band_min = engmin;
@@ -159,6 +165,16 @@ static void spec_from_config_setting(Spec * newitem, config_setting_t * setting)
 		for(i = 0; i < nbins; i++) {
 			newitem->lum[i] = blackbody(T, newitem->eng[i]);
 		}
+	} else if(!strcmp(type, "powerlaw")) {
+		double index;
+		if(!config_setting_lookup_float(setting, "index", &index)) {
+			ERROR("specify index in power law spectrum");
+		}
+		for(i = 0; i < nbins; i++) {
+			newitem->lum[i] = powerlaw(index, newitem->eng[i], engmin);
+		}
+	} else {
+		ERROR("spectra type %s unknown", type);
 	}
 
 }

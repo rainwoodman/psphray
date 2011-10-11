@@ -86,6 +86,8 @@ extern double C_HE_PER_MASS;
 extern double C_HI_ENERGY;
 extern double C_HEI_ENERGY;
 extern double C_HEII_ENERGY;
+extern double C_SOLAR_LUM;
+
 double z2t(double z);
 double t2z(double z);
 static inline double ieye2T(const double ie, const double ye) {

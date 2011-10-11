@@ -498,6 +498,9 @@ static void psystem_read_source() {
 				psys.srcs[isrc].Ngamma_dot = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
 				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
 			} else {
+				if(L < 0) {
+					L = spec_N_from_lum(psys.srcs[isrc].specid, -L * C_SOLAR_LUM) * U_SEC / 1e50;
+				}
 				psys.srcs[isrc].type = PSYS_SRC_POINT;
 				psys.srcs[isrc].Ngamma_dot = L * 1e50 / U_SEC;
 			}
