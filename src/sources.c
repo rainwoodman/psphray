@@ -12,7 +12,44 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_eigen.h>
 
-void solve_u_v(double d[3], double u[3], double v[3]) {
+static void solve_u_v(double d[3], double u[3], double v[3]);
+static void psystem_read_source_file(char * filename);
+
+void psystem_read_source() {
+	if(psys.epoch->source) {
+		const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
+		if(psys.srcs) free(psys.srcs);
+		psystem_read_source_file(psys.epoch->source);
+		intptr_t isrc;
+		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
+			psys.srcs[isrc].ray_length_hint = C_SPEED_LIGHT / scaling_fac * psys.tick_time;
+		}
+		double Lmin;
+		double Lmax;
+		intptr_t imin = -1, imax = -1;
+		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
+			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot > Lmax) {
+				Lmax = psys.srcs[isrc].Ngamma_dot ;
+				imax = isrc;
+			}
+			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot < Lmin) {
+				Lmin = psys.srcs[isrc].Ngamma_dot;
+				imin = isrc;
+			}
+		}
+		MESSAGE("SOURCES: %lu, max=%g at (%g %g %g), min=%g at (%g %g %g)",
+			psys.nsrcs, Lmax * U_SEC, 
+			psys.srcs[imax].pos[0],
+			psys.srcs[imax].pos[1],
+			psys.srcs[imax].pos[2],
+			Lmin * U_SEC,
+			psys.srcs[imin].pos[0],
+			psys.srcs[imin].pos[1],
+			psys.srcs[imin].pos[2]);
+	}
+}
+
+static void solve_u_v(double d[3], double u[3], double v[3]) {
 	double data[9] = {
 		d[0] * d[0], d[1] * d[0], d[2] * d[0],
 		d[0] * d[1], d[1] * d[1], d[2] * d[1],
@@ -36,8 +73,8 @@ void solve_u_v(double d[3], double u[3], double v[3]) {
 	gsl_eigen_symmv_free(work);
 }
 
-void psystem_read_source() {
-	FILE * f = fopen(psys.epoch->source, "r");
+static void psystem_read_source_file(char * filename) {
+	FILE * f = fopen(filename, "r");
 	if(f == NULL) {
 		ERROR("failed to open %s", psys.epoch->source);
 	}

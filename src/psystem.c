@@ -221,38 +221,7 @@ void psystem_switch_epoch(int i) {
 	/* free r0 here, because we need c till now*/
 	reader_destroy(r0);
 
-	if(psys.epoch->source) {
-		const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
-		if(psys.srcs) free(psys.srcs);
-		psystem_read_source();
-		intptr_t isrc;
-		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
-			psys.srcs[isrc].ray_length_hint = C_SPEED_LIGHT / scaling_fac * psys.tick_time;
-		}
-		double Lmin;
-		double Lmax;
-		intptr_t imin = -1, imax = -1;
-		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
-			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot > Lmax) {
-				Lmax = psys.srcs[isrc].Ngamma_dot ;
-				imax = isrc;
-			}
-			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot < Lmin) {
-				Lmin = psys.srcs[isrc].Ngamma_dot;
-				imin = isrc;
-			}
-		}
-		MESSAGE("SOURCES: %lu, max=%g at (%g %g %g), min=%g at (%g %g %g)",
-			psys.nsrcs, Lmax * U_SEC, 
-			psys.srcs[imax].pos[0],
-			psys.srcs[imax].pos[1],
-			psys.srcs[imax].pos[2],
-			Lmin * U_SEC,
-			psys.srcs[imin].pos[0],
-			psys.srcs[imin].pos[1],
-			psys.srcs[imin].pos[2]);
-	}
-
+	psystem_read_source();
 }
 
 static void psystem_read_epoch(ReaderConstants * c) {
