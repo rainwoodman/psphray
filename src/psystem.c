@@ -477,7 +477,7 @@ void psystem_write_output(int outputnum) {
 		free(pos);
 		double * ngammas = reader_alloc(r, "ngammas", 5);
 		for(i = 0; i < bh_size; i++) {
-			ngammas[i] = psys.srcs[i+bh_start].Ngamma_dot;
+			ngammas[i] = psys_Ngamma_dot(i+bh_start);
 		}
 		reader_write(r, "ngammas", 5, ngammas);
 		free(ngammas);

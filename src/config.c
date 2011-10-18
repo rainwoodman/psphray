@@ -116,7 +116,8 @@ void cfg_init(char * filename) {
 
 	lte_init();
 	spec_init();
-	secion_init();
+	if(CFG_SECONDARY_IONIZATION)
+		secion_init();
 
 	epochs_init();
 }

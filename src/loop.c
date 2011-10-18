@@ -287,7 +287,7 @@ static void emit_rays() {
 	}
 	MAX_REC_RAY_LENGTH = max_rec_length;
 
-	psystem_get_source_weights(weights);
+	psystem_weight_srcs(weights);
 
 	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
 	intptr_t j = 0;

@@ -5,7 +5,7 @@
 #include <math.h>
 
 #include <messages.h>
-
+#include <array.h>
 #include "config.h"
 #include "reader.h"
 #include "psystem.h"
@@ -28,12 +28,12 @@ void psystem_read_source() {
 		double Lmax;
 		intptr_t imin = -1, imax = -1;
 		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
-			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot > Lmax) {
-				Lmax = psys.srcs[isrc].Ngamma_dot ;
+			if(isrc == 0 || psys_Ngamma_dot(isrc) > Lmax) {
+				Lmax = psys_Ngamma_dot(isrc);
 				imax = isrc;
 			}
-			if(isrc == 0 || psys.srcs[isrc].Ngamma_dot < Lmin) {
-				Lmin = psys.srcs[isrc].Ngamma_dot;
+			if(isrc == 0 || psys_Ngamma_dot(isrc) < Lmin) {
+				Lmin = psys_Ngamma_dot(isrc);
 				imin = isrc;
 			}
 		}
@@ -49,14 +49,21 @@ void psystem_read_source() {
 	}
 }
 
-void psystem_get_source_weights(double weights[]) {
+static void advance_cursor(intptr_t i) {
+	if(psys.srcs[i].cursor == psys.srcs[i].ticks_length -1) return;
+	if(psys.srcs[i].ticks[psys.srcs[i].cursor + 1] <= psys.tick) {
+		psys.srcs[i].cursor++;
+	}
+}
+void psystem_weight_srcs(double weights[]) {
 	intptr_t i;
 	for(i = 0; i < psys.nsrcs; i++) {
+		advance_cursor(i);
 		/* treat two types the same essentially because they are both Ngamma_sec*/
 		if(psys.srcs[i].type == PSYS_SRC_POINT) {
-			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
+			weights[i] = psys_Ngamma_dot(i) * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
 		} else if(psys.srcs[i].type == PSYS_SRC_PLANE) {
-			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
+			weights[i] = psys_Ngamma_dot(i) * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
 		}
 	}
 }
@@ -129,20 +136,25 @@ static void psystem_read_source_file(char * filename) {
 			psys.srcs[isrc].dir[1] = dy;
 			psys.srcs[isrc].dir[2] = dz;
 			psys.srcs[isrc].specid = spec_get(spec);
+			ARRAY_RESIZE(psys.srcs[isrc].ticks, intptr_t, 1);
+			ARRAY_RESIZE(psys.srcs[isrc].Ngamma_dots, double, 1);
+			psys.srcs[isrc].cursor = 0;
 			if(!strcmp(type, "plane")) {
 				if(NF != 10) {
 					ERROR("%s format error at %d, needs 10 fields", psys.epoch->source, NR);
 				}
 				psys.srcs[isrc].type = PSYS_SRC_PLANE;
 				psys.srcs[isrc].radius = radius;
-				psys.srcs[isrc].Ngamma_dot = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
+				psys.srcs[isrc].ticks[0] = 0;
+				psys.srcs[isrc].Ngamma_dots[0] = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
 				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
 			} else {
 				if(L < 0) {
 					L = spec_N_from_lum(psys.srcs[isrc].specid, -L * C_SOLAR_LUM) * U_SEC / 1e50;
 				}
 				psys.srcs[isrc].type = PSYS_SRC_POINT;
-				psys.srcs[isrc].Ngamma_dot = L * 1e50 / U_SEC;
+				psys.srcs[isrc].ticks[0] = 0;
+				psys.srcs[isrc].Ngamma_dots[0] = L * 1e50 / U_SEC;
 			}
 			isrc ++;
 			if(isrc == psys.nsrcs) {

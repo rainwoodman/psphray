@@ -7,7 +7,6 @@
 typedef struct {
 	double pos[3];
 	double dir[3];
-	double Ngamma_dot;
 	intptr_t lastemit;
 	int specid;
 	int type;
@@ -22,6 +21,7 @@ typedef struct {
 	/* luminosity history */
 	ARRAY_DEFINE_S(ticks, intptr_t);
 	ARRAY_DEFINE_S(Ngamma_dots, double);
+	intptr_t cursor;
 } Source;
 
 #define PF_NORMAL (0)
@@ -183,5 +183,10 @@ static inline const double psys_ye(const intptr_t i) {
 static inline const double psys_T(const intptr_t i) {
 	return ieye2T(psys.ie[i], psys_ye(i));
 }
+
+static inline double psys_Ngamma_dot(intptr_t i) {
+	return psys.srcs[i].Ngamma_dots[psys.srcs[i].cursor];
+}
+void psystem_weight_srcs(double weights[]);
 
 void psystem_get_source_weights(double weights[]);
