@@ -183,3 +183,5 @@ static inline const double psys_ye(const intptr_t i) {
 static inline const double psys_T(const intptr_t i) {
 	return ieye2T(psys.ie[i], psys_ye(i));
 }
+
+void psystem_get_source_weights(double weights[]);

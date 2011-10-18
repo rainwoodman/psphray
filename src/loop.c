@@ -287,14 +287,7 @@ static void emit_rays() {
 	}
 	MAX_REC_RAY_LENGTH = max_rec_length;
 
-	for(i = 0; i < psys.nsrcs; i++) {
-		/* treat two types the same essentially because they are both Ngamma_sec*/
-		if(psys.srcs[i].type == PSYS_SRC_POINT) {
-			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
-		} else if(psys.srcs[i].type == PSYS_SRC_PLANE) {
-			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
-		}
-	}
+	psystem_get_source_weights(weights);
 
 	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
 	intptr_t j = 0;

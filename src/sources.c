@@ -49,6 +49,18 @@ void psystem_read_source() {
 	}
 }
 
+void psystem_get_source_weights(double weights[]) {
+	intptr_t i;
+	for(i = 0; i < psys.nsrcs; i++) {
+		/* treat two types the same essentially because they are both Ngamma_sec*/
+		if(psys.srcs[i].type == PSYS_SRC_POINT) {
+			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
+		} else if(psys.srcs[i].type == PSYS_SRC_PLANE) {
+			weights[i] = psys.srcs[i].Ngamma_dot * (psys.tick - psys.srcs[i].lastemit) * psys.tick_time;
+		}
+	}
+}
+
 static void solve_u_v(double d[3], double u[3], double v[3]) {
 	double data[9] = {
 		d[0] * d[0], d[1] * d[0], d[2] * d[0],
