@@ -140,7 +140,6 @@
 
  */
 
-#include <config.h>
 #include <stdio.h>              /* used for NULL, also fprintf(stderr,...) */
 #include <stdlib.h>             /* used for malloc's */
 #include <math.h>
@@ -231,7 +230,7 @@ gsl_ran_discrete_preproc(size_t Kevents, const double *ProbArray)
     /* Make sure elements of ProbArray[] are positive.
      * Won't enforce that sum is unity; instead will just normalize
      */
-
+    
     for (k=0; k<Kevents; ++k) {
         if (ProbArray[k] < 0) {
           GSL_ERROR_VAL ("probabilities must be non-negative",
@@ -378,7 +377,7 @@ gsl_ran_discrete(const gsl_rng *r, const gsl_ran_discrete_t *g)
 
 void gsl_ran_discrete_free(gsl_ran_discrete_t *g)
 {
-    RETURN_IF_NULL (g);
+    if(g == NULL) return;
     free((char *)(g->A));
     free((char *)(g->F));
     free((char *)g);
