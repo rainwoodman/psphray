@@ -13,13 +13,14 @@
 #include <gsl/gsl_eigen.h>
 
 static void solve_u_v(double d[3], double u[3], double v[3]);
-static void psystem_read_source_file(char * filename);
+static void psystem_read_source_file(const char * filename);
+static void psystem_read_source_file2(const char * filename);
 
 void psystem_read_source() {
 	if(psys.epoch->source) {
 		const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 		if(psys.srcs) free(psys.srcs);
-		psystem_read_source_file(psys.epoch->source);
+		psystem_read_source_file2(psys.epoch->source);
 		intptr_t isrc;
 		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
 			psys.srcs[isrc].ray_length_hint = C_SPEED_LIGHT / scaling_fac * psys.tick_time;
@@ -50,9 +51,12 @@ void psystem_read_source() {
 }
 
 static void advance_cursor(intptr_t i) {
-	if(psys.srcs[i].cursor == psys.srcs[i].ticks_length -1) return;
-	if(psys.srcs[i].ticks[psys.srcs[i].cursor + 1] <= psys.tick) {
+	while( psys.srcs[i].cursor < psys.srcs[i].ticks_length - 1
+	    && psys.srcs[i].ticks[psys.srcs[i].cursor + 1] <= psys.tick
+	) {
 		psys.srcs[i].cursor++;
+		MESSAGE("advance source %ld cursor to %ld, tick = %ld",
+			i, psys.srcs[i].cursor, psys.tick);
 	}
 }
 void psystem_weight_srcs(double weights[]) {
@@ -92,7 +96,7 @@ static void solve_u_v(double d[3], double u[3], double v[3]) {
 	gsl_eigen_symmv_free(work);
 }
 
-static void psystem_read_source_file(char * filename) {
+static void psystem_read_source_file(const char * filename) {
 	FILE * f = fopen(filename, "r");
 	if(f == NULL) {
 		ERROR("failed to open %s", psys.epoch->source);
@@ -172,4 +176,157 @@ static void psystem_read_source_file(char * filename) {
 	}
 	free(line);
 	fclose(f);
+}
+static void psystem_read_source_file2(const char * filename) {
+	FILE * f = fopen(filename, "r");
+	if(f == NULL) {
+		ERROR("failed to open %s", psys.epoch->source);
+	}
+	int NR = 0;
+	int NF = 0;
+	char * line = NULL;
+	size_t len = 0;
+	intptr_t isrc = 0;
+	int stage = 0;
+	size_t Nsamples;
+	intptr_t isample;
+	double x, y, z, dx, dy, dz, radius, L, time;
+	char spec[128];
+	char type[128];
+
+	char timefmtstr[128];
+	char locationfmtstr[128] = "absolute";
+	int timefmt = 0;
+	int locationfmt = 0;
+	while(0 <= getline(&line, &len, f)) {
+		if(line[0] == '#') {
+			NR++;
+			continue;
+		}
+		switch(stage) {
+		case 0:
+			if(1 >= sscanf(line, "%ld %80s %80s", &psys.nsrcs, timefmtstr, locationfmtstr)) {
+				fclose(f);
+				free(line);
+				/* maybe this is a verion 1 file? */
+				psystem_read_source_file(filename);
+				return;
+			} else {
+				if(!strcmp(timefmtstr, "time_q")) 
+					timefmt = 0;
+				else if(!strcmp(timefmtstr, "a")) 
+					timefmt = 0;
+				else if(!strcmp(timefmtstr, "redshift")) 
+					timefmt = 1;
+				else if(!strcmp(timefmtstr, "z")) 
+					timefmt = 1;
+				else if(!strcmp(timefmtstr, "myr")) 
+					timefmt = 2;
+				else if(!strcmp(timefmtstr, "tick")) 
+					timefmt = 3;
+				else if(!strcmp(locationfmtstr, "absolute")) {
+					locationfmt = 0;
+				} else {
+					ERROR("time fmt str %s unknown", timefmtstr);
+				}
+				if(!strcmp(locationfmtstr, "relative")) {
+					locationfmt = 1;
+				}
+				psys.srcs = calloc(sizeof(Source), psys.nsrcs);
+				isrc = 0;
+				stage ++;
+			}
+			break;
+		case 1:
+			NF = sscanf(line, "%ld %80s %80s %lf", &Nsamples, spec, type, &radius);
+			if(NF == 3 && !strcmp(type, "plane")) {
+				ERROR("%s format error at %d, needs radius for plane source", psys.epoch->source, NR);
+			}
+			ARRAY_RESIZE(psys.srcs[isrc].ticks, intptr_t, Nsamples);
+			ARRAY_RESIZE(psys.srcs[isrc].Ngamma_dots, double, Nsamples);
+			psys.srcs[isrc].cursor = 0;
+			psys.srcs[isrc].specid = spec_get(spec);
+			if(!strcmp(type, "plane")) {
+				psys.srcs[isrc].type = PSYS_SRC_PLANE;
+				psys.srcs[isrc].radius = radius;
+			} else {
+				psys.srcs[isrc].type = PSYS_SRC_POINT;
+
+			}
+			stage++;
+			isample = 0;
+			break;
+		case 2:
+			NF = sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf",
+				&time, &x, &y, &z, &dx, &dy, &dz, &L ); 
+			if(NF != 8) {
+				ERROR("%s format error at %d", psys.epoch->source, NR);
+			}
+			intptr_t tick;
+
+			switch(timefmt) {
+				case 0:
+					time = z2t(1 / (1 + time));
+					tick = (time * U_MYR - psys.epoch->age) / psys.tick_time;
+				case 1:
+					time = z2t(time);
+					tick = (time * U_MYR - psys.epoch->age) / psys.tick_time;
+				break;
+				case 2:
+					tick = (time * U_MYR) / psys.tick_time;
+				break;
+				case 3:
+					tick = time;
+				break;
+			}
+			psys.srcs[isrc].ticks[isample] = tick;
+
+			switch(locationfmt) {
+				case 0:
+				break;
+				case 1:
+				x = psys.boxsize * x;
+				y = psys.boxsize * y;
+				z = psys.boxsize * z;
+				break;
+			}
+
+			if(psys.srcs[isrc].type == PSYS_SRC_PLANE) {
+				psys.srcs[isrc].Ngamma_dots[isample] = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
+				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
+			}
+			if(psys.srcs[isrc].type == PSYS_SRC_POINT) {
+				if(L < 0) {
+					L = spec_N_from_lum(psys.srcs[isrc].specid, -L * C_SOLAR_LUM) * U_SEC / 1e50;
+				}
+				psys.srcs[isrc].Ngamma_dots[isample] = L * 1e50 / U_SEC;
+			}
+			psys.srcs[isrc].pos[0] = x;
+			psys.srcs[isrc].pos[1] = y;
+			psys.srcs[isrc].pos[2] = z;
+			psys.srcs[isrc].dir[0] = dx;
+			psys.srcs[isrc].dir[1] = dy;
+			psys.srcs[isrc].dir[2] = dz;
+			isample ++;
+			if(isample == Nsamples) {
+				if(isrc == psys.nsrcs) {
+					stage ++;
+				} else {
+					stage --;
+					isrc++;
+				}
+			}
+			break;
+		case 3:
+			break;
+		}
+		NR++;
+		if(stage == 3) break;
+	}
+	if(isrc != psys.nsrcs) {
+		ERROR("%s expecting %lu, but has %lu sources, %lu", psys.epoch->source, psys.nsrcs, isrc, NR);
+	}
+	free(line);
+	fclose(f);
+
 }
