@@ -97,8 +97,8 @@
  * elements between them.  Since neither stack ever grows, we do an
  * extra O(K) pass through the data to determine how many smalls and
  * bigs there are to begin with and allocate appropriately.  In all
- * there are 2*K*sizeof(double) transient bytes of memory that are
- * used than returned, and K*(sizeof(int)+sizeof(double)) bytes used
+ * there are 2*K*sizeof(float) transient bytes of memory that are
+ * used than returned, and K*(sizeof(int)+sizeof(float)) bytes used
  * in the lookup table.
    
  * Walker spoke of using two random numbers (an integer 0..K-1, and a
@@ -114,8 +114,8 @@
  * preprocessing with a call to:
 
  *    gsl_rng *r;
- *    gsl_ran_discrete_t *f;
- *    f = gsl_ran_discrete_preproc(K,P);
+ *    gsl_ran_discretef_t *f;
+ *    f = gsl_ran_discretef_preproc(K,P);
    
  * Then, whenever a random index 0..K-1 is desired, use
 
@@ -146,6 +146,7 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include "discrete.h"
 #define DEBUG 0
 #define KNUTH_CONVENTION 1      /* Saves a few steps of arithmetic
                                  * in the call to gsl_ran_discrete()
@@ -209,15 +210,15 @@ static void free_stack(gsl_stack_t *s)
 
 /*** Begin Walker's Algorithm ***/
 
-gsl_ran_discrete_t *
-gsl_ran_discrete_preproc0(size_t Kevents, const double *ProbArray, double * ProbTotal)
+gsl_ran_discretef_t *
+gsl_ran_discretef_preproc0(size_t Kevents, const float *ProbArray, float * ProbTotal)
 {
     size_t k,b,s;
-    gsl_ran_discrete_t *g;
+    gsl_ran_discretef_t *g;
     size_t nBigs, nSmalls;
     gsl_stack_t *Bigs;
     gsl_stack_t *Smalls;
-    double *E;
+    float *E;
     double pTotal = 0.0, mean, d;
     
     if (Kevents < 1) {
@@ -237,12 +238,12 @@ gsl_ran_discrete_preproc0(size_t Kevents, const double *ProbArray, double * Prob
 
 	if(ProbTotal) *ProbTotal = pTotal;
     /* Begin setting up the main "object" (just a struct, no steroids) */
-    g = (gsl_ran_discrete_t *)malloc(sizeof(gsl_ran_discrete_t));
+    g = (gsl_ran_discretef_t *)malloc(sizeof(gsl_ran_discretef_t));
     g->K = Kevents;
-    g->F = (double *)malloc(sizeof(double)*Kevents);
+    g->F = (float *)malloc(sizeof(float)*Kevents);
     g->A = (size_t *)malloc(sizeof(size_t)*Kevents);
 
-    E = (double *)malloc(sizeof(double)*Kevents);
+    E = (float *)malloc(sizeof(float)*Kevents);
 
     if (E==NULL) {
       GSL_ERROR_VAL ("Cannot allocate memory for randevent", GSL_ENOMEM, 0);
@@ -347,17 +348,17 @@ gsl_ran_discrete_preproc0(size_t Kevents, const double *ProbArray, double * Prob
     return g;
 }
 
-gsl_ran_discrete_t *
-gsl_ran_discrete_preproc(size_t Kevents, const double *ProbArray) 
+gsl_ran_discretef_t *
+gsl_ran_discretef_preproc(size_t Kevents, const float *ProbArray) 
 {
-	return gsl_ran_discrete_preproc0(Kevents, ProbArray, NULL);
+	return gsl_ran_discretef_preproc0(Kevents, ProbArray, NULL);
 }
 
 size_t
-gsl_ran_discrete(const gsl_rng *r, const gsl_ran_discrete_t *g)
+gsl_ran_discretef(const gsl_rng *r, const gsl_ran_discretef_t *g)
 {
     size_t c=0;
-    double u,f;
+    float u,f;
     u = gsl_rng_uniform(r);
 #if KNUTH_CONVENTION
     c = (u*(g->K));
@@ -378,7 +379,7 @@ gsl_ran_discrete(const gsl_rng *r, const gsl_ran_discrete_t *g)
     }
 }
 
-void gsl_ran_discrete_free(gsl_ran_discrete_t *g)
+void gsl_ran_discretef_free(gsl_ran_discretef_t *g)
 {
     if(g == NULL) return;
     free((char *)(g->A));
@@ -386,11 +387,11 @@ void gsl_ran_discrete_free(gsl_ran_discrete_t *g)
     free((char *)g);
 }
 
-double
-gsl_ran_discrete_pdf(size_t k, const gsl_ran_discrete_t *g)
+float
+gsl_ran_discretef_pdf(size_t k, const gsl_ran_discretef_t *g)
 {
     size_t i,K;
-    double f,p=0;
+    float f,p=0;
     K= g->K;
     if (k>K) return 0;
     for (i=0; i<K; ++i) {

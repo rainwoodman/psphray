@@ -275,18 +275,7 @@ static void emit_rays() {
 	double weights[psys.nsrcs];
 	intptr_t i;
 	double max_rec_length = psys.boxsize * 2;
-/*
-	for(i = 0; i < r_length; i++) {
-		double length = r[i].length + C_SPEED_LIGHT / scaling_fac * psys.tick_time;
-		if(r[i].type == -1) {
-			psys.srcs[r[i].isrc].ray_length_hint = fmax(length, psys.srcs[r[i].isrc].ray_length_hint);
-			MAX_SRC_RAY_LENGTH = fmax(MAX_SRC_RAY_LENGTH, length);
-		}
-		if(r[i].type >= 0) {
-			max_rec_length = fmax(max_rec_length, length);
-		}
 
-	} */
 	MAX_REC_RAY_LENGTH = max_rec_length;
 
 	psystem_weight_srcs(weights);
@@ -304,26 +293,17 @@ static void emit_rays() {
 	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && x_length > 0) {
 		int species;
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
-			double *f = malloc(sizeof(double) * x_length);
-			#pragma omp parallel for private(i)
-			for(i = 0; i < x_length; i++) {
-				const intptr_t ipar = x[i].ipar;
-				f[i] = fmax(0.0, psys.yGrec[species][ipar]);
-			}
-
-			ran_discrete_omp_t * rec_ran = ran_discrete_omp_preproc(x_length, f);
-
+			ran_discrete_omp_t * rec_ran = ran_discrete_omp_preproc(psys.npar, psys.yGrec[species]);
 			intptr_t k;
 			for(k = 0; k < psys.epoch->nrec; k++) {
-				int i = ran_discrete_omp(RNG, rec_ran);
+				intptr_t ipar = ran_discrete_omp(RNG, rec_ran);
 				struct r_t * p = &r[j];
 				p->type = species;
-				p->ipar = x[i].ipar;
+				p->ipar = ipar;
 				j++;
 			}
 
 			ran_discrete_omp_free(rec_ran);
-			free(f);
 		}
 	}
 
@@ -678,8 +658,13 @@ static void deposit(){
 		// if we terminated the ray sooner then it is safe to do this
 		// if the ray terminated too early we shall use a longer length
 		// next time.
-//		ARRAY_RESIZE(r[i].x, Xtype, j);
-//		r[i].length = r[i].x[j - 1].d;
+		// if the ray is a src ray we do not terminate it 
+		// because src ray drives the evolution of the particle histories
+		// for rec ray it is safe to preterminate.
+		if(r[i].type >= 0) {
+			ARRAY_RESIZE(r[i].x, Xtype, j);
+			r[i].length = r[i].x[j - 1].d;
+		}
 		stat.lost_photon_count_sum += TM;
 		}
 	}
