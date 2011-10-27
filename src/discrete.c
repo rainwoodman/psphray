@@ -210,7 +210,7 @@ static void free_stack(gsl_stack_t *s)
 /*** Begin Walker's Algorithm ***/
 
 gsl_ran_discrete_t *
-gsl_ran_discrete_preproc(size_t Kevents, const double *ProbArray)
+gsl_ran_discrete_preproc0(size_t Kevents, const double *ProbArray, double * ProbTotal)
 {
     size_t k,b,s;
     gsl_ran_discrete_t *g;
@@ -232,13 +232,10 @@ gsl_ran_discrete_preproc(size_t Kevents, const double *ProbArray)
      */
     
     for (k=0; k<Kevents; ++k) {
-        if (ProbArray[k] < 0) {
-          GSL_ERROR_VAL ("probabilities must be non-negative",
-                            GSL_EINVAL, 0) ;
-        }
-        pTotal += ProbArray[k];
+        pTotal += fmax(0, ProbArray[k]);
     }
 
+	if(ProbTotal) *ProbTotal = pTotal;
     /* Begin setting up the main "object" (just a struct, no steroids) */
     g = (gsl_ran_discrete_t *)malloc(sizeof(gsl_ran_discrete_t));
     g->K = Kevents;
@@ -252,7 +249,7 @@ gsl_ran_discrete_preproc(size_t Kevents, const double *ProbArray)
     }
 
     for (k=0; k<Kevents; ++k) {
-        E[k] = ProbArray[k]/pTotal;
+        E[k] = fmax(0, ProbArray[k]) / pTotal;
     }
 
     /* Now create the Bigs and the Smalls */
@@ -348,6 +345,12 @@ gsl_ran_discrete_preproc(size_t Kevents, const double *ProbArray)
     free((char *)E);
 
     return g;
+}
+
+gsl_ran_discrete_t *
+gsl_ran_discrete_preproc(size_t Kevents, const double *ProbArray) 
+{
+	return gsl_ran_discrete_preproc0(Kevents, ProbArray, NULL);
 }
 
 size_t

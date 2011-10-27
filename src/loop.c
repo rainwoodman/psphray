@@ -15,6 +15,7 @@
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include "ompdiscrete.h"
 //#ifdef _OPENMP
 #include <omp.h>
 //#endif
@@ -273,7 +274,8 @@ static void emit_rays() {
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	double weights[psys.nsrcs];
 	intptr_t i;
-	double max_rec_length = 0.0;
+	double max_rec_length = psys.boxsize * 2;
+/*
 	for(i = 0; i < r_length; i++) {
 		double length = r[i].length + C_SPEED_LIGHT / scaling_fac * psys.tick_time;
 		if(r[i].type == -1) {
@@ -284,7 +286,7 @@ static void emit_rays() {
 			max_rec_length = fmax(max_rec_length, length);
 		}
 
-	}
+	} */
 	MAX_REC_RAY_LENGTH = max_rec_length;
 
 	psystem_weight_srcs(weights);
@@ -302,23 +304,26 @@ static void emit_rays() {
 	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && x_length > 0) {
 		int species;
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
-			double f[x_length];
+			double *f = malloc(sizeof(double) * x_length);
 			#pragma omp parallel for private(i)
 			for(i = 0; i < x_length; i++) {
 				const intptr_t ipar = x[i].ipar;
 				f[i] = fmax(0.0, psys.yGrec[species][ipar]);
 			}
 
-			gsl_ran_discrete_t * rec_ran = gsl_ran_discrete_preproc(x_length, f);
+			ran_discrete_omp_t * rec_ran = ran_discrete_omp_preproc(x_length, f);
+
 			intptr_t k;
 			for(k = 0; k < psys.epoch->nrec; k++) {
-				int i = gsl_ran_discrete(RNG, rec_ran);
+				int i = ran_discrete_omp(RNG, rec_ran);
 				struct r_t * p = &r[j];
 				p->type = species;
 				p->ipar = x[i].ipar;
 				j++;
 			}
-			gsl_ran_discrete_free(rec_ran);
+
+			ran_discrete_omp_free(rec_ran);
+			free(f);
 		}
 	}
 
@@ -355,7 +360,7 @@ static void emit_rays() {
 			}
 			r[i].Nph = weights[isrc];
 			r[i].freq = spec_gen_freq(psys.srcs[isrc].specid);
-			r[i].length = psys.srcs[isrc].ray_length_hint;
+			r[i].length = psys.boxsize * 2; //psys.srcs[isrc].ray_length_hint;
 			if(r[i].freq > 100000 * U_EV) {
 				ERROR("freq strangely large");
 			}
@@ -673,8 +678,8 @@ static void deposit(){
 		// if we terminated the ray sooner then it is safe to do this
 		// if the ray terminated too early we shall use a longer length
 		// next time.
-		ARRAY_RESIZE(r[i].x, Xtype, j);
-		r[i].length = r[i].x[j - 1].d;
+//		ARRAY_RESIZE(r[i].x, Xtype, j);
+//		r[i].length = r[i].x[j - 1].d;
 		stat.lost_photon_count_sum += TM;
 		}
 	}
