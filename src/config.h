@@ -31,6 +31,7 @@ extern int CFG_H_ONLY;
 extern int CFG_DUMP_HOTSPOTS;
 extern int CFG_SECONDARY_IONIZATION;
 extern int CFG_TRACE_ONLY;
+extern int CFG_OCTTREE_PPC;
 
 extern gsl_rng * RNG;
 extern Epoch * EPOCHS;

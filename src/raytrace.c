@@ -37,12 +37,11 @@ static inline int split(const intptr_t icell);
 static inline int hit(const float s[3], const float dir[3], const float dist, const intptr_t icell);
 
 Raytrace rt = {0};
-const size_t PPC = 16;
 
 void rt_switch_epoch(int i) {
 	if(i == 0) {
 		rt.next = malloc(sizeof(intptr_t) * psys.npar);
-		rt.pool_size = psys.npar / PPC;
+		rt.pool_size = psys.npar / CFG_OCTTREE_PPC;
 		rt.pool = malloc(sizeof(Cell) * rt.pool_size);
 	}
 tryagain:
@@ -243,7 +242,7 @@ static inline int full(const intptr_t icell) {
 	if(icell < 0 || icell >= rt.pool_used) {
 		ERROR("icell over range");
 	}
-	return rt.pool[icell].npar >= PPC;
+	return rt.pool[icell].npar >= CFG_OCTTREE_PPC;
 }
 static inline intptr_t parent(const intptr_t icell) {
 	return rt.pool[icell].parent;

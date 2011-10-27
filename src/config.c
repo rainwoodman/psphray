@@ -24,6 +24,7 @@ int CFG_DUMP_HOTSPOTS = CONFIG_FALSE;
 int CFG_H_ONLY = CONFIG_FALSE;
 int CFG_TRACE_ONLY = CONFIG_FALSE;
 int CFG_SECONDARY_IONIZATION = CONFIG_TRUE;
+int CFG_OCTTREE_PPC = 8;
 
 int64_t CFG_SEED = 123456;
 double C_1_CMH = 3.0835455558318480e+21;
@@ -61,6 +62,8 @@ void cfg_init(char * filename) {
 	config_ensure_bool   (CFG, "psphray.dumpHotspots", CFG_DUMP_HOTSPOTS);
 	config_ensure_bool   (CFG, "psphray.traceOnly", CFG_TRACE_ONLY);
 	config_ensure_bool   (CFG, "psphray.secondaryIonization", CFG_SECONDARY_IONIZATION);
+	config_ensure        (CFG, "psphray.octtree", CONFIG_TYPE_GROUP);
+	config_ensure_int64  (CFG, "psphray.octtree.particlesPerCell", CFG_OCTTREE_PPC);
 
 	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
 	config_ensure_bool   (CFG, "cosmology.comoving", CFG_COMOVING);
