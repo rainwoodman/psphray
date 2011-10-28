@@ -154,6 +154,7 @@ static struct {
 	double raytrace_time;
 	double update_time;
 	double emit_time;
+	double merge_time;
 } stat;
 
 void init() {
@@ -281,29 +282,46 @@ static void emit_rays() {
 	psystem_weight_srcs(weights);
 
 	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
-	intptr_t j = 0;
+	intptr_t iray = 0;
 	for(i = 0; i < psys.epoch->nray; i++) {
 		const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
-		r[j].isrc = isrc;
+		r[iray].isrc = isrc;
 		/* src ray */
-		r[j].type = -1;
-		j++;
+		r[iray].type = -1;
+		iray++;
 	}
 
 	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && x_length > 0) {
 		int species;
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
-			ran_discrete_omp_t * rec_ran = ran_discrete_omp_preproc(psys.npar, psys.yGrec[species]);
+			float yGrec_tot[psys.epoch->nray];
+			memset(yGrec_tot, 0, sizeof(float ) * psys.epoch->nray);
+			gsl_ran_discretef_t * ran_rec[psys.epoch->nray];
+			memset(ran_rec, 0, sizeof(gsl_ran_discretef_t *) * psys.epoch->nray);
+			#pragma omp parallel for private(i)
+			for(i = 0; i < psys.epoch->nray; i++) {
+				intptr_t j;
+				float yGrec[r[i].x_length];
+				for(j = 0; j < r[i].x_length; j++) {
+					yGrec[j] = psys.yGrec[species][r[i].x[j].ipar];
+				}
+				ran_rec[i] = gsl_ran_discretef_preproc0(r[i].x_length, yGrec, &yGrec_tot[i]);
+			}
+			gsl_ran_discretef_t * ran_rec_root = gsl_ran_discretef_preproc(psys.epoch->nray, yGrec_tot);
 			intptr_t k;
 			for(k = 0; k < psys.epoch->nrec; k++) {
-				intptr_t ipar = ran_discrete_omp(RNG, rec_ran);
-				struct r_t * p = &r[j];
+				intptr_t j = gsl_ran_discretef(RNG, ran_rec_root);
+				intptr_t ix = gsl_ran_discretef(RNG, ran_rec[j]);
+				struct r_t * p = &r[iray];
 				p->type = species;
-				p->ipar = ipar;
-				j++;
+				p->ipar = r[j].x[ix].ipar;
+				iray++;
 			}
 
-			ran_discrete_omp_free(rec_ran);
+			gsl_ran_discretef_free(ran_rec_root);
+			for(i = 0; i < psys.epoch->nray; i++) {
+				gsl_ran_discretef_free(ran_rec[i]);
+			}
 		}
 	}
 
@@ -680,6 +698,7 @@ static void deposit(){
 }
 
 static void merge_pars() {
+	const double t0 = omp_get_wtime();
 	intptr_t i;
 	/* now merge the list */
 	size_t x_length_est = 0;
@@ -706,6 +725,7 @@ static void merge_pars() {
 			}
 		}
 	}
+	stat.merge_time += omp_get_wtime() - t0;
 }
 
 static void update_pars() {
