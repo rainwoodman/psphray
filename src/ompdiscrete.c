@@ -34,11 +34,6 @@ ran_discrete_omp_t * ran_discrete_omp_preproc (size_t Kevents, const float *Prob
 		#pragma omp barrier
 		#pragma omp master 
 		{
-			int i;
-			for(i = 0; i < g->nthreads; i++) {
-				printf("%g ", ptotal[i]);
-			}
-			printf("\n");
 			g->ranroot = gsl_ran_discretef_preproc(g->nthreads, ptotal);
 			free(ptotal);
 		}
