@@ -124,7 +124,7 @@ static void psystem_match_epoch(ReaderConstants * c);
 
 static void setup_hotspots() {
 	intptr_t ipar;
-	#pragma omp parallel for private(ipar)
+//	#pragma omp parallel for private(ipar)
 	for(ipar = 0; ipar < psys.npar; ipar++) {
 		psys.flag[ipar] &= ~PF_HOTSPOT;
 	}
@@ -537,11 +537,14 @@ static void psystem_stat_internal(void * field, size_t npar, int type, int dim, 
 			_sum[d] += value[d];
 		}
 	}
+	#pragma omp barrier
 	#pragma omp critical
-	for(d = 0; d < dim; d++) {
-		if(mx[d] < _mx[d]) mx[d] = _mx[d];
-		if(mn[d] > _mn[d]) mn[d] = _mn[d];
-		sum[d] += _sum[d];
+	{
+		for(d = 0; d < dim; d++) {
+			if(mx[d] < _mx[d]) mx[d] = _mx[d];
+			if(mn[d] > _mn[d]) mn[d] = _mn[d];
+			sum[d] += _sum[d];
+		}
 	}
 	}
 	for(d = 0; d < dim; d++) {
