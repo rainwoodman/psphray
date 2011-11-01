@@ -28,6 +28,7 @@ extern int CFG_ISOTHERMAL;
 extern int CFG_ON_THE_SPOT;
 extern int CFG_COMOVING;
 extern int CFG_H_ONLY;
+extern int CFG_NO_PHOTON;
 extern int CFG_DUMP_HOTSPOTS;
 extern int CFG_SECONDARY_IONIZATION;
 extern int CFG_TRACE_ONLY;

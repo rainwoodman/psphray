@@ -23,6 +23,7 @@ int CFG_COMOVING = CONFIG_TRUE;
 int CFG_DUMP_HOTSPOTS = CONFIG_FALSE;
 int CFG_H_ONLY = CONFIG_FALSE;
 int CFG_TRACE_ONLY = CONFIG_FALSE;
+int CFG_NO_PHOTON = CONFIG_FALSE;
 int CFG_SECONDARY_IONIZATION = CONFIG_TRUE;
 int CFG_OCTTREE_PPC = 8;
 
@@ -61,6 +62,7 @@ void cfg_init(char * filename) {
 	config_ensure_bool   (CFG, "psphray.adiabatic", CFG_ADIABATIC);
 	config_ensure_bool   (CFG, "psphray.dumpHotspots", CFG_DUMP_HOTSPOTS);
 	config_ensure_bool   (CFG, "psphray.traceOnly", CFG_TRACE_ONLY);
+	config_ensure_bool   (CFG, "psphray.noPhoton", CFG_NO_PHOTON);
 	config_ensure_bool   (CFG, "psphray.secondaryIonization", CFG_SECONDARY_IONIZATION);
 	config_ensure        (CFG, "psphray.octtree", CONFIG_TYPE_GROUP);
 	config_ensure_int64  (CFG, "psphray.octtree.particlesPerCell", CFG_OCTTREE_PPC);
@@ -86,6 +88,7 @@ void cfg_init(char * filename) {
 	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
 	config_lookup_bool(CFG, "psphray.dumpHotspots", &CFG_DUMP_HOTSPOTS);
 	config_lookup_bool(CFG, "psphray.traceOnly", &CFG_TRACE_ONLY);
+	config_lookup_bool(CFG, "psphray.noPhoton", &CFG_NO_PHOTON);
 	config_lookup_bool(CFG, "psphray.HOnly", &CFG_H_ONLY);
 	config_lookup_bool(CFG, "psphray.secondaryIonization", &CFG_SECONDARY_IONIZATION);
 	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
