@@ -101,6 +101,7 @@ static void psystem_read_source_file(const char * filename) {
 	if(f == NULL) {
 		ERROR("failed to open %s", psys.epoch->source);
 	}
+	MESSAGE("reading a version 1 source file");
 	int NR = 0;
 	int NF = 0;
 	char * line = NULL;
@@ -150,7 +151,7 @@ static void psystem_read_source_file(const char * filename) {
 				psys.srcs[isrc].type = PSYS_SRC_PLANE;
 				psys.srcs[isrc].radius = radius;
 				psys.srcs[isrc].ticks[0] = 0;
-				psys.srcs[isrc].Ngamma_dots[0] = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
+				psys.srcs[isrc].Ngamma_dots[0] = L * M_PI * radius * radius / (U_CM * U_CM * U_SEC);
 				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
 			} else {
 				if(L < 0) {
@@ -205,7 +206,7 @@ static void psystem_read_source_file2(const char * filename) {
 		}
 		switch(stage) {
 		case 0:
-			if(1 >= sscanf(line, "%ld %80s %80s", &psys.nsrcs, timefmtstr, locationfmtstr)) {
+			if(1 == sscanf(line, "%ld %80s %80s", &psys.nsrcs, timefmtstr, locationfmtstr)) {
 				fclose(f);
 				free(line);
 				/* maybe this is a verion 1 file? */
@@ -292,7 +293,7 @@ static void psystem_read_source_file2(const char * filename) {
 			}
 
 			if(psys.srcs[isrc].type == PSYS_SRC_PLANE) {
-				psys.srcs[isrc].Ngamma_dots[isample] = L * M_PI * radius * radius / (U_CM * U_CM / U_SEC);
+				psys.srcs[isrc].Ngamma_dots[isample] = L * M_PI * radius * radius / (U_CM * U_CM * U_SEC);
 				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
 			}
 			if(psys.srcs[isrc].type == PSYS_SRC_POINT) {
