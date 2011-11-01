@@ -282,40 +282,49 @@ static void emit_rays() {
 	psystem_weight_srcs(weights);
 
 	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
-	intptr_t iray = 0;
+	r_length = 0;
 	for(i = 0; i < psys.epoch->nray; i++) {
 		const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
-		r[iray].isrc = isrc;
+		r[r_length].isrc = isrc;
 		/* src ray */
-		r[iray].type = -1;
-		iray++;
+		r[r_length].type = -1;
+		r_length ++;
 	}
 
-	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && x_length > 0) {
+	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && psys.tick > 1) {
 		int species;
+		float * yGrec_tot = malloc(sizeof(float) * psys.epoch->nray);
+
+		gsl_ran_discretef_t ** ran_rec 
+			= malloc(sizeof(gsl_ran_discretef_t * ) * psys.epoch->nray);
+
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
-			float yGrec_tot[psys.epoch->nray];
 			memset(yGrec_tot, 0, sizeof(float ) * psys.epoch->nray);
-			gsl_ran_discretef_t * ran_rec[psys.epoch->nray];
 			memset(ran_rec, 0, sizeof(gsl_ran_discretef_t *) * psys.epoch->nray);
 			#pragma omp parallel for private(i)
 			for(i = 0; i < psys.epoch->nray; i++) {
 				intptr_t j;
-				float yGrec[r[i].x_length];
+				float * yGrec = malloc(sizeof(float) * r[i].x_length);
 				for(j = 0; j < r[i].x_length; j++) {
 					yGrec[j] = psys.yGrec[species][r[i].x[j].ipar];
 				}
 				ran_rec[i] = gsl_ran_discretef_preproc0(r[i].x_length, yGrec, &yGrec_tot[i]);
+				free(yGrec);
 			}
 			gsl_ran_discretef_t * ran_rec_root = gsl_ran_discretef_preproc(psys.epoch->nray, yGrec_tot);
 			intptr_t k;
 			for(k = 0; k < psys.epoch->nrec; k++) {
 				intptr_t j = gsl_ran_discretef(RNG, ran_rec_root);
+				if(ran_rec[j] == NULL) continue;
+				/* unfortunately sampled a bad ray*/
 				intptr_t ix = gsl_ran_discretef(RNG, ran_rec[j]);
-				struct r_t * p = &r[iray];
+				struct r_t * p = &r[r_length];
 				p->type = species;
 				p->ipar = r[j].x[ix].ipar;
-				iray++;
+				r_length ++;
+				if(r_length > r_size) {
+					ERROR("r_length > = r_size %ld %ld", r_length, r_size);
+				}
 			}
 
 			gsl_ran_discretef_free(ran_rec_root);
@@ -323,6 +332,8 @@ static void emit_rays() {
 				gsl_ran_discretef_free(ran_rec[i]);
 			}
 		}
+		free(ran_rec);
+		free(yGrec_tot);
 	}
 
 	/* sort the rays by type and ipar/isrc so that
@@ -497,6 +508,7 @@ static void deposit(){
 		{
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
+		if(CFG_NO_PHOTON) TM = 0.0;
 		intptr_t j;
 		const double sigmaHI = xs_get(XS_HI, r[i].freq);
 		const double sigmaHeI = xs_get(XS_HEI, r[i].freq);
@@ -513,19 +525,20 @@ static void deposit(){
 		for(j = 0; j < r[i].x_length; j++) {
 
 			/* find the first unlocked par in this queue that is close to the head this actually makes it slower*/
-			/*
-			intptr_t k = 0;
+			int got_lock = 0;
+			intptr_t k = j;
 			for(k = j; k < r[i].x_length; k++) {
 				if(psys.sml[r[i].x[j].ipar] + r[i].x[j].d < r[i].x[k].d) break;
-				if(!locked(r[i].x[k].ipar)) {
+				if(lock(r[i].x[k].ipar, 1000)) {
 					if(j != k) {
 						const Xtype tmp = r[i].x[j];
 						r[i].x[j] = r[i].x[k];
 						r[i].x[k] = tmp;
 					}
+					got_lock = 1;
 					break;
 				}
-			} */
+			}
 
 			const intptr_t ipar = r[i].x[j].ipar;
 			const double b = r[i].x[j].b;
@@ -540,11 +553,6 @@ static void deposit(){
 			const double xHeII = psys_xHeII(ipar);
 			const double kernel = sph_depth(b * sml_inv) * (sml_inv * sml_inv) * scaling_fac2_inv;
 
-			volatile double t0 = omp_get_wtime();
-			while(!lock(ipar, 100000000)) continue;
-			spinlock_time += (omp_get_wtime() - t0);
-
-			const double NHI = fdim(xHI, psys.yGdepHI[ipar]) * NH;
 			double deltaHI = 0.0;
 			double deltaHeI = 0.0;
 			double deltaHeII = 0.0;
@@ -552,6 +560,14 @@ static void deposit(){
 			double tauHI = 0.0;
 			double tauHeI = 0.0;
 			double tauHeII = 0.0;
+
+			if(!got_lock) {
+				volatile double t0 = omp_get_wtime();
+				while(!lock(ipar, 100000000)) continue;
+				spinlock_time += (omp_get_wtime() - t0);
+			}
+
+			const double NHI = fdim(xHI, psys.yGdepHI[ipar]) * NH;
 
 			const double NHIcd = kernel * NHI;
 
