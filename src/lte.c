@@ -35,6 +35,7 @@ double lte_gen_freq(const int id, const double logT) {
 	int n = (logT - lte[id].logT_min) / lte[id].logT_step;
 	if(n < 0) n = 0;
 	if(n >= lte[id].NlogT) n = lte[id].NlogT - 1;
+	printf("%d\n", n);
 	return lte[id].freq[gsl_ran_discrete(RNG, lte[id].dist[n])];
 }
 
@@ -56,7 +57,7 @@ static void lte_fill(int id, double freq_th, double freq_max, int xsid) {
 	}
 	for(i = 0; i < lte[id].NlogT; i++) {
 		double logT = lte[id].logT_min + lte[id].logT_step * i;
-		double T = exp(logT);
+		double T = exp10(logT);
 		double f[lte[id].Nfreq];
 		double kT = C_BOLTZMANN * T;
 		for(j = 0; j < lte[id].Nfreq; j++) {
