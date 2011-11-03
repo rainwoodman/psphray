@@ -35,7 +35,6 @@ double lte_gen_freq(const int id, const double logT) {
 	int n = (logT - lte[id].logT_min) / lte[id].logT_step;
 	if(n < 0) n = 0;
 	if(n >= lte[id].NlogT) n = lte[id].NlogT - 1;
-	printf("%d\n", n);
 	return lte[id].freq[gsl_ran_discrete(RNG, lte[id].dist[n])];
 }
 
