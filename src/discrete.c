@@ -358,7 +358,7 @@ size_t
 gsl_ran_discretef(const gsl_rng *r, const gsl_ran_discretef_t *g)
 {
     size_t c=0;
-    float u,f;
+    double u,f;
     u = gsl_rng_uniform(r);
 #if KNUTH_CONVENTION
     c = (u*(g->K));
@@ -366,6 +366,7 @@ gsl_ran_discretef(const gsl_rng *r, const gsl_ran_discretef_t *g)
     u *= g->K;
     c = u;
     u -= c;
+    if(c == g->K) c--;
 #endif
     f = (g->F)[c];
     /* fprintf(stderr,"c,f,u: %d %.4f %f\n",c,f,u); */

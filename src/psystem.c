@@ -272,15 +272,19 @@ static void psystem_read_epoch(ReaderConstants * c) {
 			const double xHII = 1.0 - xHI[ipar];
 			psys_set_lambdaH(nread + ipar, xHI[ipar], xHII);
 
-			const double yeMET = psys.yeMET[nread + ipar] - xHII;
-			psys.yeMET[nread + ipar] = (yeMET < 0.0)?0.0:yeMET;
+			double yeMET = fdim(psys.yeMET[nread + ipar], xHII);
+			if(!CFG_H_ONLY) {
+				double xHeII = yeMET * C_HMF / (1 - C_HMF) * 4;
+				double xHeIII = fdim(xHeII, 1.0);
+				xHeIII = fmin(1.0, xHeII);
+				xHeII = fmin(1.0, xHeII);
+				psys_set_lambdaHe(nread + ipar, 1.0 - xHeII - xHeIII, xHeII, xHeIII);
+				yeMET = fdim(yeMET, (xHeII + xHeIII) * (1 - C_HMF) / C_HMF * 0.25);
+			}
+			psys.yeMET[nread + ipar] = yeMET;
 		}
 
 		free(xHI);
-		/* initialize He to fully neutral, for now */
-		for(ipar = 0; ipar < npar_file; ipar++) {
-			psys_set_lambdaHe(nread + ipar, 1.0, 0.0, 0.0);
-		}
 
 		if(reader_itemsize(r, "id") == 4) {
 			unsigned int * id = reader_alloc(r, "id", 0);
@@ -425,6 +429,7 @@ void psystem_write_output(int outputnum) {
 		reader_create(r, filename);
 		ReaderConstants * c = reader_constants(r);
 		c->hasHe = 1;
+		c->hasgammaHI = 1;
 		c->Ntot[0] = psys.npar;
 		c->N[0] = gas_size;
 		c->Ntot[5] = psys.nsrcs;
@@ -448,20 +453,24 @@ void psystem_write_output(int outputnum) {
 		float * ye = reader_alloc(r, "ye", 0);
 		float * xHeI = reader_alloc(r, "xHeI", 0);
 		float * xHeII = reader_alloc(r, "xHeII", 0);
+		float * yGrecHII = reader_alloc(r, "gammaHI", 0);
 		for(i = 0; i < gas_size; i++) {
-			xHI[i] = psys_xHI(i);
-			xHeI[i] = psys_xHeI(i);
-			xHeII[i] = psys_xHeII(i);
-			ye[i] = psys_ye(i);
+			xHI[i] = psys_xHI(gas_start + i);
+			xHeI[i] = psys_xHeI(gas_start + i);
+			xHeII[i] = psys_xHeII(gas_start + i);
+			ye[i] = psys_ye(gas_start + i);
+			yGrecHII[i] = psys.yGrecHII[gas_start + i];
 		}
 		reader_write(r, "xHI", 0, xHI);
 		reader_write(r, "xHeI", 0, xHeI);
 		reader_write(r, "xHeII", 0, xHeII);
 		reader_write(r, "ye", 0, ye);
+		reader_write(r, "gammaHI", 0, yGrecHII);
 		free(xHeI);
 		free(xHeII);
 		free(xHI);
 		free(ye);
+		free(yGrecHII);
 		reader_write(r, "ie", 0, &psys.ie[gas_start]);
 		reader_write(r, "lasthit", 0, &psys.lasthit[gas_start]);
 		reader_write(r, "hits", 0, &psys.hits[gas_start]);

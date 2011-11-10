@@ -32,6 +32,9 @@ void lte_init() {
 	lte_fill(LTE_FREQ_HEII, C_HEII_ENERGY, 16 * C_HEII_ENERGY, XS_HEII);
 }
 double lte_gen_freq(const int id, const double logT) {
+	if(CFG_DISABLE_LTE) {
+		return lte[id].freq_min;
+	}
 	int n = (logT - lte[id].logT_min) / lte[id].logT_step;
 	if(n < 0) n = 0;
 	if(n >= lte[id].NlogT) n = lte[id].NlogT - 1;

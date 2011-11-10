@@ -56,15 +56,15 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
 	const double gamma_HI = ar_get(AR_HI_CI, logT) * nH; \
 	const double alpha_HII_A = ar_get(AR_HII_RC_A, logT) * nH; \
 	const double alpha_HII_B = ar_get(AR_HII_RC_B, logT) * nH; \
-	const double alpha_HII_AB = alpha_HII_A - alpha_HII_B; \
+	const double alpha_HII_AB = fdim(alpha_HII_A, alpha_HII_B); \
 	const double gamma_HeI = ar_get(AR_HEI_CI, logT) * nH; \
 	const double gamma_HeII = ar_get(AR_HEII_CI, logT) * nH; \
 	const double alpha_HeII_A = ar_get(AR_HEII_RC_A, logT) * nH; \
 	const double alpha_HeII_B = ar_get(AR_HEII_RC_B, logT) * nH; \
-	const double alpha_HeII_AB = alpha_HeII_A - alpha_HeII_B; \
+	const double alpha_HeII_AB = fdim(alpha_HeII_A, alpha_HeII_B); \
 	const double alpha_HeIII_A = ar_get(AR_HEIII_RC_A, logT) * nH; \
 	const double alpha_HeIII_B = ar_get(AR_HEIII_RC_B, logT) * nH; \
-	const double alpha_HeIII_AB = alpha_HeIII_A - alpha_HeIII_B; \
+	const double alpha_HeIII_AB = fdim(alpha_HeIII_A, alpha_HeIII_B); \
 	const double eta_HII = (CFG_ON_THE_SPOT?ar_get(AR_HII_RCC_B, logT):ar_get(AR_HII_RCC_A, logT)) * nH; \
 	const double psi_HI = ar_get(AR_HI_CEC, logT) * nH; \
 	const double zeta_HI = ar_get(AR_HI_CIC, logT) * nH; \
@@ -74,6 +74,8 @@ int step_evolve_numerical (double Gamma, double gamma, double alpha, double y, d
 \
 
 static int function(double t, const double x[], double dxdt[], Step * step){
+
+	int i;
 
 	FETCH_VARS;
 
@@ -115,20 +117,8 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 	//	MESSAGE("T = %g H=%g L=%g eta=%g psi=%g zeta=%g beta=%g xHI=%g\n", T, heat_mean, L, eta_HII, psi_HI, zeta_HI, beta, xHI);
 		dxdt[6] = step->heat - step->time * L;
 	}
-/*
-	if(dxdt[0] > 0.0 && xHI >= 1.0) {
-		dxdt[0] *= -1;
-		dxdt[1] *= -1;
-		dxdt[2] *= -1;
-		dxdt[3] *= -1;
-		dxdt[4] *= -1;
-		dxdt[5] *= -1;
-		dxdt[6] *= -1;
-	}
-*/
-	int i;
 	for(i = 0; i < 7; i++) {
-		if(isnan(dxdt[i])) {
+		if(isinf(dxdt[i]) || isnan(dxdt[i])) {
 			ERROR("nan found in dxdt[%d]", i);
 		}
 	}
@@ -155,25 +145,53 @@ int step_evolve(Step * step) {
 	x[5] = step->yGrecHeIII;
 	x[6] = step->ie;
 
-	int i;
-	for(i = 0 ; i < 7; i++) {
-		if(isnan(x[i])) {
-			ERROR("nan found in x[%d]", i);
+	FETCH_VARS;
+
+	double rectime = 1.0 / (alpha_HII_A);
+	if(!CFG_H_ONLY) {
+		rectime = fmin(rectime, 1.0 / alpha_HeII_A);
+		rectime = fmin(rectime, 1.0 / alpha_HeIII_A);
+	}
+	double internal_step = fmin(rectime / 200, step->time);
+	int nsteps = step->time / internal_step;
+	if(nsteps > 100000) nsteps = 100000;
+	internal_step = step->time / nsteps;
+
+	step->time = internal_step;
+	if(nsteps > 1) step->refined = 1;
+	int k;
+	for(k = 0; k < nsteps; k ++) {
+		t = k * internal_step;
+		int i;
+		for(i = 0 ; i < 7; i++) {
+			if(isinf(x[i]) || isnan(x[i])) {
+				ERROR("nan found in x[%d]", i);
+			}
+		}
+
+		function(t, x, dxdt, step);
+
+		x[0] += dxdt[0];
+		x[1] += dxdt[1];
+		x[2] += dxdt[2];
+		x[3] += dxdt[3];
+		x[4] += dxdt[4];
+		x[5] += dxdt[5];
+		x[6] += dxdt[6];
+		for(i = 0 ; i < 7; i++) {
+			if(isinf(x[i]) || isnan(x[i])) {
+				ERROR("nan2 found in x[%d]", i);
+			}
+		}
+		for(i = 0 ; i < 3; i++) {
+			x[i] = fmax(0, x[i]);
+			x[i] = fmin(1, x[i]);
 		}
 	}
-	function(t, x, dxdt, step);
 
-	x[0] += dxdt[0];
-	x[1] += dxdt[1];
-	x[2] += dxdt[2];
-	x[3] += dxdt[3];
-	x[4] += dxdt[4];
-	x[5] += dxdt[5];
-	x[6] += dxdt[6];
-
-	for(i = 0; i <= 5; i++) {
-		x[i] = fmax(0, fmin(1, x[i]));
-	}
+//	for(i = 0; i <= 5; i++) {
+//		x[i] = fmax(0, fmin(1, x[i]));
+//	}
 
 	step->lambdaH = x[0];
 	step->lambdaHeI = x[1];

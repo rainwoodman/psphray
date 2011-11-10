@@ -465,16 +465,17 @@ static void _get_constants(const struct header_t * h, struct constants_t * c) {
 		c->mass[i] = h->mass[i];
 	}
 
-c->OmegaM = h->OmegaM;
-c->OmegaL = h->OmegaL;
-c->time = h->time;
+c->hasgammaHI = h->flag_gammaHI;
+c->hasHe = h->flag_Helium;
 c->redshift = h->redshift;
-c->Nfiles = h->Nfiles;
-c->h = h->h;
 c->boxsize = h->boxsize;
 
-c->hasHe = h->flag_Helium;
+c->OmegaM = h->OmegaM;
+c->OmegaL = h->OmegaL;
+c->h = h->h;
 c->OmegaB = h->OmegaB;
+c->time = h->time;
+c->Nfiles = h->Nfiles;
 
 }
 
@@ -489,16 +490,17 @@ static void _set_constants(struct header_t * h, const struct constants_t * c) {
 		h->mass[i] = c->mass[i];
 	}
 
-h->OmegaM = c->OmegaM;
-h->OmegaL = c->OmegaL;
-h->time = c->time;
+h->flag_gammaHI = c->hasgammaHI;
+h->flag_Helium = c->hasHe;
 h->redshift = c->redshift;
-h->Nfiles = c->Nfiles;
-h->h = c->h;
 h->boxsize = c->boxsize;
 
-h->flag_Helium = c->hasHe;
+h->OmegaM = c->OmegaM;
+h->OmegaL = c->OmegaL;
+h->h = c->h;
 h->OmegaB = c->OmegaB;
+h->time = c->time;
+h->Nfiles = c->Nfiles;
 
 }
 

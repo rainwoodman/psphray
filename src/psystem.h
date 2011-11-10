@@ -96,6 +96,7 @@ typedef struct _Step {
 	double yGrecHII;
 	double yGrecHeII;
 	double yGrecHeIII;
+	int refined; /* if the time step is too large and a refining is done in the intergrator */
 } Step;
 
 
@@ -181,7 +182,7 @@ static inline const double psys_ye(const intptr_t i) {
 	return lambda_to_ye(psys.lambdaH[i], psys.lambdaHeI[i], psys.lambdaHeII[i]);
 }
 static inline const double psys_T(const intptr_t i) {
-	return ieye2T(psys.ie[i], psys_ye(i));
+	return (CFG_FAKE_TEMPERATURE>0)?CFG_FAKE_TEMPERATURE:ieye2T(psys.ie[i], psys_ye(i));
 }
 
 static inline double psys_Ngamma_dot(intptr_t i) {

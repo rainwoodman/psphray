@@ -8,7 +8,7 @@ typedef struct {
 	size_t ngas;
 	size_t nticks;
 	size_t nray;
-	size_t nrec;
+	ssize_t nrec;
 
 	const char * source;
 	const char * snapshot;
@@ -33,6 +33,8 @@ extern int CFG_DUMP_HOTSPOTS;
 extern int CFG_SECONDARY_IONIZATION;
 extern int CFG_TRACE_ONLY;
 extern int CFG_OCTTREE_PPC;
+extern int CFG_DISABLE_LTE;
+extern double CFG_FAKE_TEMPERATURE;
 
 extern gsl_rng * RNG;
 extern Epoch * EPOCHS;

@@ -16,13 +16,26 @@ int main(int argc, char* argv[]) {
 
 	CFG_ISOTHERMAL=1;
 	CFG_ADIABATIC=0;
-	CFG_ON_THE_SPOT=1;
-	double RC, CI;
+	CFG_ON_THE_SPOT=0;
+	CFG_SECONDARY_IONIZATION = 0;
+	Step step = {0};
+step.T = 1e4;
+step.lambdaH = 1.0;
+step.nH = 1.786e67;
+step.yeMET= 0;
+step.ie = 1e4;
+step.yGdepHI = 0.000001;
+
+	double RC, CI, RCB;
+	RC=ar_get(AR_HII_RC_A, log10(step.T));
+	RCB = ar_get(AR_HII_RC_B, log10(step.T));
+	CI=ar_get(AR_HI_CI, log10(step.T));
 	printf("1e4K, ie= %g, check=%g\n", Tye2ie(1e4, 0), ieye2T(Tye2ie(1e4, 0), 0));
-	printf("1e4K, RC_A = %g RC_B = %g, CI = %g\n", 
-		RC=ar_get(AR_HII_RC_A, log10(1e4)), 
-		ar_get(AR_HII_RC_B, log10(1e4)),
-		CI=ar_get(AR_HI_CI, log10(1e4))
+	printf("%g K, RC_A = %g RC_B = %g, CI = %g\n", 
+		step.T,
+		RC / (U_CM * U_CM * U_CM / U_SEC),
+		RCB / (U_CM * U_CM * U_CM / U_SEC),
+		CI / (U_CM * U_CM * U_CM / U_SEC)
 	);
 	double P, Q, R;
 	P = RC;
@@ -32,23 +45,18 @@ int main(int argc, char* argv[]) {
 	
 	printf("analytical limite=%g\n", P / q);
 		
-	Step step = {0};
 
-step.T = 1e4 + 100;
-step.lambdaH = 1.569;
-step.nH = 1e-3;
-step.yeMET=0;
-step.ie = 123;
-
-	double time = 5000.0 * U_MYR;
+	printf("recomb time = %g myr\n", 1.0 / (step.nH * RCB) / U_MYR);
+	double time = 0.001 * U_MYR;
 	intptr_t i;
-	for(i = 0; i < 10; i++) {
+	step.time = time;
+	for(i = 0; i < 11; i++) {
 		const double xHI = lambdaH_to_xHI(step.lambdaH);
 		const double xHII = lambdaH_to_xHII(step.lambdaH);
-		printf("%g %g %g %g %g %g \n", i * time,  step.ie, step.lambdaH, xHI, xHII, step.yGrecHII);
+		printf("%g %g %g %g\n", i * time / U_MYR,  xHI, xHII, step.yGrecHII);
 
-		step.heat = 0.0;
-		step.yGrecHII = 0.0;
+//		step.heat = 0.0;
+//		step.yGrecHII = 0.0;
 		step.time = time;
 		int code = step_evolve (&step);
 		if(!code) {

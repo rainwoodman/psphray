@@ -5,7 +5,7 @@ OPT= -O3 -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort
 LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc 
-LIBS += -ljemalloc
+#LIBS += -ljemalloc
 LIBS = -lconfig -lgfortran -lgsl -lgslcblas -limf -liomp5 -lpthread
 include Makefile.local
 
@@ -67,6 +67,12 @@ test-solve: $(OBJS) test-solve.o
 	$(LD) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 test-bitmask: $(OBJS) test-bitmask.o
+	$(LD) -g -fopenmp -O3 $(LDFLAGS) -o $@  $^ $(LIBS)
+
+test-lte: $(OBJS) test-lte.o
+	$(LD) -g -fopenmp -O3 $(LDFLAGS) -o $@  $^ $(LIBS)
+
+test-spectra: $(OBJS) test-spectra.o
 	$(LD) -g -fopenmp -O3 $(LDFLAGS) -o $@  $^ $(LIBS)
 
 clean:

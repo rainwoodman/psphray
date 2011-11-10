@@ -26,6 +26,8 @@ int CFG_TRACE_ONLY = CONFIG_FALSE;
 int CFG_NO_PHOTON = CONFIG_FALSE;
 int CFG_SECONDARY_IONIZATION = CONFIG_TRUE;
 int CFG_OCTTREE_PPC = 8;
+int CFG_DISABLE_LTE = CONFIG_FALSE;
+double CFG_FAKE_TEMPERATURE = -1;
 
 int64_t CFG_SEED = 123456;
 double C_1_CMH = 3.0835455558318480e+21;
@@ -63,9 +65,11 @@ void cfg_init(char * filename) {
 	config_ensure_bool   (CFG, "psphray.dumpHotspots", CFG_DUMP_HOTSPOTS);
 	config_ensure_bool   (CFG, "psphray.traceOnly", CFG_TRACE_ONLY);
 	config_ensure_bool   (CFG, "psphray.noPhoton", CFG_NO_PHOTON);
+	config_ensure_bool   (CFG, "psphray.disableLTE", CFG_DISABLE_LTE);
 	config_ensure_bool   (CFG, "psphray.secondaryIonization", CFG_SECONDARY_IONIZATION);
 	config_ensure        (CFG, "psphray.octtree", CONFIG_TYPE_GROUP);
 	config_ensure_int64  (CFG, "psphray.octtree.particlesPerCell", CFG_OCTTREE_PPC);
+	config_ensure_float  (CFG, "psphray.fakeTemperature", CFG_FAKE_TEMPERATURE);
 
 	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
 	config_ensure_bool   (CFG, "cosmology.comoving", CFG_COMOVING);
@@ -92,6 +96,8 @@ void cfg_init(char * filename) {
 	config_lookup_bool(CFG, "psphray.HOnly", &CFG_H_ONLY);
 	config_lookup_bool(CFG, "psphray.secondaryIonization", &CFG_SECONDARY_IONIZATION);
 	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
+	config_lookup_bool(CFG, "psphray.disableLTE", &CFG_DISABLE_LTE);
+	config_lookup_float(CFG, "psphray.fakeTemperature", &CFG_FAKE_TEMPERATURE);
 
 	config_lookup_int64(CFG, "psphray.seed", &CFG_SEED);
 	RNG = gsl_rng_alloc(gsl_rng_mt19937);

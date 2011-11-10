@@ -15,7 +15,6 @@
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-#include "ompdiscrete.h"
 //#ifdef _OPENMP
 #include <omp.h>
 //#endif
@@ -76,6 +75,7 @@ static void update_pars();
 
 ARRAY_DEFINE(r, struct r_t);
 ARRAY_DEFINE(x, Xtype);
+static size_t x_src_length;
 
 static double MAX_SRC_RAY_LENGTH = 0.0;
 static double MAX_REC_RAY_LENGTH = 0.0;
@@ -90,7 +90,7 @@ static inline int lock(intptr_t idx, size_t timeout) {
 		c++;
 		if(c >= timeout) return 0;
 	}
-	return !(__sync_val_compare_and_swap(p, 0, 1));
+	return __sync_bool_compare_and_swap(p, 0, 1);
 }
 static inline int locked(intptr_t idx) {
 	idx = bitmask_shuffle(idx);
@@ -142,9 +142,11 @@ static struct {
 
 	size_t saturated_deposit_count;
 	size_t total_deposit_count;
+	size_t disordered_count;
 	size_t gsl_error_count;
 	size_t evolve_count;
 	size_t tick_subtotal;
+	size_t fast_recombination_count;
 
 	FILE * parlogfile;
 	FILE * hitlogfile;
@@ -201,11 +203,11 @@ void run_epoch() {
 				stat.src_photon_count.total, stat.rec_photon_count.total);
 			MESSAGE("PH STORAGE : Lost %g Rec %g ", 
 				stat.lost_photon_count_sum, stat.rec_photon_count_sum);
-			MESSAGE("Deposit: saturated = %lu, total=%lu", stat.saturated_deposit_count, stat.total_deposit_count);
+			MESSAGE("Deposit: saturated = %lu, disordered= %lu,  total=%lu", stat.saturated_deposit_count, stat.disordered_count, stat.total_deposit_count);
 			MESSAGE("First:   %g %g %g", stat.first_ionization.HI, stat.first_ionization.HeI, stat.first_ionization.HeII);
 			MESSAGE("Secondary:   %g %g", stat.secondary_ionization.HI, stat.secondary_ionization.HeI);
-			MESSAGE("Evolve     : Error %lu Total %lu", 
-				stat.gsl_error_count, stat.evolve_count);
+			MESSAGE("Evolve     : Error %lu FastRec %lu Total %lu", 
+				stat.gsl_error_count, stat.fast_recombination_count, stat.evolve_count);
 			MESSAGE("Time : SpinLock %g", stat.spinlock_time);
 
 			stat.src_ray_count.subtotal = 0;
@@ -275,13 +277,14 @@ static void emit_rays() {
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	double weights[psys.nsrcs];
 	intptr_t i;
-	double max_rec_length = psys.boxsize * 2;
+	double max_rec_length = psys.boxsize * 2 * 0.1;
 
 	MAX_REC_RAY_LENGTH = max_rec_length;
 
 	psystem_weight_srcs(weights);
 
 	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
+	size_t old_r_length = r_length;
 	r_length = 0;
 	for(i = 0; i < psys.epoch->nray; i++) {
 		const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
@@ -293,47 +296,40 @@ static void emit_rays() {
 
 	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && psys.tick > 1) {
 		int species;
-		float * yGrec_tot = malloc(sizeof(float) * psys.epoch->nray);
-
-		gsl_ran_discretef_t ** ran_rec 
-			= malloc(sizeof(gsl_ran_discretef_t * ) * psys.epoch->nray);
-
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
-			memset(yGrec_tot, 0, sizeof(float ) * psys.epoch->nray);
-			memset(ran_rec, 0, sizeof(gsl_ran_discretef_t *) * psys.epoch->nray);
-			#pragma omp parallel for private(i)
-			for(i = 0; i < psys.epoch->nray; i++) {
+			if(psys.epoch->nrec > 0) {
+				double * weights = malloc(sizeof(double) * x_src_length);
 				intptr_t j;
-				float * yGrec = malloc(sizeof(float) * r[i].x_length);
-				for(j = 0; j < r[i].x_length; j++) {
-					yGrec[j] = psys.yGrec[species][r[i].x[j].ipar];
+				for(j = 0; j < x_src_length; j++) {
+					intptr_t ipar = x[j].ipar;
+					double x = psys_xHI(ipar);
+					if(x == 0) x = 1e-10;
+					weights[j] = psys.yGrec[species][ipar] / x;
 				}
-				ran_rec[i] = gsl_ran_discretef_preproc0(r[i].x_length, yGrec, &yGrec_tot[i]);
-				free(yGrec);
-			}
-			gsl_ran_discretef_t * ran_rec_root = gsl_ran_discretef_preproc(psys.epoch->nray, yGrec_tot);
-			intptr_t k;
-			for(k = 0; k < psys.epoch->nrec; k++) {
-				intptr_t j = gsl_ran_discretef(RNG, ran_rec_root);
-				if(ran_rec[j] == NULL) continue;
-				/* unfortunately sampled a bad ray*/
-				intptr_t ix = gsl_ran_discretef(RNG, ran_rec[j]);
-				struct r_t * p = &r[r_length];
-				p->type = species;
-				p->ipar = r[j].x[ix].ipar;
-				r_length ++;
-				if(r_length > r_size) {
-					ERROR("r_length > = r_size %ld %ld", r_length, r_size);
+				gsl_ran_discrete_t * ran_rec = gsl_ran_discrete_preproc(x_src_length, weights);
+				free(weights);
+				intptr_t k;
+				for(k = 0; k < psys.epoch->nrec; k++) {
+					intptr_t ix = gsl_ran_discrete(RNG, ran_rec);
+					struct r_t * p = ARRAY_APPEND_REUSE(r, struct r_t);
+					p->type = species;
+					p->ipar = x[ix].ipar;
 				}
-			}
 
-			gsl_ran_discretef_free(ran_rec_root);
-			for(i = 0; i < psys.epoch->nray; i++) {
-				gsl_ran_discretef_free(ran_rec[i]);
+				gsl_ran_discrete_free(ran_rec);
+			} else {
+				intptr_t j;
+				for(j = 0; j < x_src_length; j++) {
+					intptr_t ipar = x[j].ipar;
+					double x = psys_xHI(ipar);
+					if(psys.yGrec[species][ipar] > 0.1 * x) {
+						struct r_t * p = ARRAY_APPEND_REUSE(r, struct r_t);
+						p->type = species;
+						p->ipar = ipar;
+					}
+				}
 			}
 		}
-		free(ran_rec);
-		free(yGrec_tot);
 	}
 
 	/* sort the rays by type and ipar/isrc so that
@@ -383,7 +379,7 @@ static void emit_rays() {
 			for(d = 0; d < 3; d++) {
 				r[i].s[d] = psys.pos[ipar][d];
 			}
-			const double T = ieye2T(psys.ie[ipar], psys_ye(ipar));
+			const double T = psys_T(ipar);
 			const double logT = log10(T);
 			if(r[i].type == 0) {
 				r[i].Nph = psys.yGrecHII[ipar] * psys_NH(ipar);
@@ -395,6 +391,7 @@ static void emit_rays() {
 				r[i].Nph = psys.yGrecHeIII[ipar] * psys_NHe(ipar);
 				r[i].freq = lte_gen_freq(LTE_FREQ_HEII, logT);
 			}
+			if(r[i].Nph < 0) ERROR("Nph =%g < 0, ipar= %ld", r[i].Nph, ipar);
 			r[i].length = max_rec_length;
 			gsl_ran_dir_3d(RNG, &dx, &dy, &dz);
 			r[i].dir[0] = dx;
@@ -441,25 +438,26 @@ static void emit_rays() {
 				stat.rec_photon_count.subtotal += r[i].Nph;
 
 				stat.rec_photon_count_sum -= r[i].Nph;
-				if(r[i].Nph > 0.0) {
-					if(r[i].type == 0) {
-						stat.rec_photon_count.subtotalHII += r[i].Nph;
-						psys.yGrecHII[ipar] -= r[i].Nph / psys_NH(ipar);
-						if(psys.yGrecHII[ipar] < 0) {
-							psys.yGrecHII[ipar] = 0;
-						}
-					} else if(r[i].type == 1) {
-						stat.rec_photon_count.subtotalHeII += r[i].Nph;
-						psys.yGrecHeII[ipar] -= r[i].Nph / psys_NHe(ipar);
-						if(psys.yGrecHeII[ipar] < 0) {
-							psys.yGrecHeII[ipar] = 0;
-						}
-					} else if(r[i].type == 2) {
-						stat.rec_photon_count.subtotalHeIII += r[i].Nph;
-						psys.yGrecHeIII[ipar] -= r[i].Nph / psys_NHe(ipar);
-						if(psys.yGrecHeIII[ipar] < 0) {
-							psys.yGrecHeIII[ipar] = 0;
-						}
+				if(r[i].Nph < 0.0) {
+					WARNING("r[%ld].Nph = %g < 0.0", i, r[i].Nph);
+				}
+				if(r[i].type == 0) {
+					stat.rec_photon_count.subtotalHII += r[i].Nph;
+					psys.yGrecHII[ipar] -= r[i].Nph / psys_NH(ipar);
+					if(psys.yGrecHII[ipar] < 0) {
+						psys.yGrecHII[ipar] = 0;
+					}
+				} else if(r[i].type == 1) {
+					stat.rec_photon_count.subtotalHeII += r[i].Nph;
+					psys.yGrecHeII[ipar] -= r[i].Nph / psys_NHe(ipar);
+					if(psys.yGrecHeII[ipar] < 0) {
+						psys.yGrecHeII[ipar] = 0;
+					}
+				} else if(r[i].type == 2) {
+					stat.rec_photon_count.subtotalHeIII += r[i].Nph;
+					psys.yGrecHeIII[ipar] -= r[i].Nph / psys_NHe(ipar);
+					if(psys.yGrecHeIII[ipar] < 0) {
+						psys.yGrecHeIII[ipar] = 0;
 					}
 				}
 			}
@@ -499,7 +497,8 @@ static void deposit(){
 	double secondary_ionization_HI = 0;
 	double secondary_ionization_HeI = 0;
 	size_t total_deposit_count = 0;
-	#pragma omp parallel private(i) reduction(+: secondary_ionization_HI, secondary_ionization_HeI, first_ionization_HI, first_ionization_HeI, first_ionization_HeII, spinlock_time, total_deposit_count, saturated_deposit_count) 
+	size_t disordered_count = 0;
+	#pragma omp parallel private(i) reduction(+: secondary_ionization_HI, secondary_ionization_HeI, first_ionization_HI, first_ionization_HeI, first_ionization_HeII, spinlock_time, total_deposit_count, saturated_deposit_count, disordered_count) 
 	#pragma omp single
 	for(i = 0; i < r_length; i++) {
 		if(r[i].x_length == 0) continue;
@@ -508,7 +507,7 @@ static void deposit(){
 		{
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
-		if(CFG_NO_PHOTON) TM = 0.0;
+		if(CFG_NO_PHOTON && r[i].type < 0) TM = 0.0;
 		intptr_t j;
 		const double sigmaHI = xs_get(XS_HI, r[i].freq);
 		const double sigmaHeI = xs_get(XS_HEI, r[i].freq);
@@ -524,22 +523,23 @@ static void deposit(){
 
 		for(j = 0; j < r[i].x_length; j++) {
 
-			/* find the first unlocked par in this queue that is close to the head this actually makes it slower*/
+			/* find the first unlocked par in this queue that is close to the head */
+            /* this may actually make it slower for simple tests */
 			int got_lock = 0;
 			intptr_t k = j;
 			for(k = j; k < r[i].x_length; k++) {
 				if(psys.sml[r[i].x[j].ipar] + r[i].x[j].d < r[i].x[k].d) break;
-				if(lock(r[i].x[k].ipar, 1000)) {
+				if(lock(r[i].x[k].ipar, 10)) {
 					if(j != k) {
 						const Xtype tmp = r[i].x[j];
 						r[i].x[j] = r[i].x[k];
 						r[i].x[k] = tmp;
+						disordered_count ++;
 					}
 					got_lock = 1;
 					break;
 				}
 			}
-
 			const intptr_t ipar = r[i].x[j].ipar;
 			const double b = r[i].x[j].b;
 			const double sml = psys.sml[ipar];
@@ -561,11 +561,13 @@ static void deposit(){
 			double tauHeI = 0.0;
 			double tauHeII = 0.0;
 
+			volatile double t0 = omp_get_wtime();
 			if(!got_lock) {
-				volatile double t0 = omp_get_wtime();
-				while(!lock(ipar, 100000000)) continue;
-				spinlock_time += (omp_get_wtime() - t0);
+				while(!lock(ipar, 1000000)) {
+					continue;
+				}
 			}
+			spinlock_time += (omp_get_wtime() - t0);
 
 			const double NHI = fdim(xHI, psys.yGdepHI[ipar]) * NH;
 
@@ -619,6 +621,8 @@ static void deposit(){
 			}
 
 			if(deltaHI < 0) {
+				WARNING("absorbHI = %g NH_inv=%g NHI=%g\n tauHI=%g absorb_est=%g", absorbHI, NH_inv, NHI, tauHI, absorb_est);
+				WARNING("tausum = %g, TM=%g nph %g", tausum, TM, r[i].Nph);
 				ERROR("deltaHI < 0");
 			}
 			if(deltaHeI < 0) {
@@ -683,7 +687,7 @@ static void deposit(){
 				ERROR("TM < 0 %g %g", TM, r[i].Nph);
 			}
 			/* cut off at around 10^-10 */
-			if(TM / r[i].Nph < 1e-10) {
+			if(TM < 0.0 || TM / r[i].Nph < 1e-10) {
 				/* point to the next intersection so that a few lines later we can use j - 1*/
 				j++;
 				break;
@@ -711,6 +715,7 @@ static void deposit(){
 	stat.first_ionization.HI += first_ionization_HI;
 	stat.first_ionization.HeI += first_ionization_HeI;
 	stat.first_ionization.HeII += first_ionization_HeII;
+	stat.disordered_count += disordered_count;
 }
 
 static void merge_pars() {
@@ -736,9 +741,13 @@ static void merge_pars() {
 		intptr_t j;
 		for(j = 0; j < r[i].x_length; j++) {
 			intptr_t ipar = r[i].x[j].ipar;
-			if(bitmask_test_and_clear(active, ipar)) {
+			if(bitmask_test(active, ipar)) {
 				* (ARRAY_APPEND(x, Xtype)) = r[i].x[j];
+				bitmask_clear_unsafe(active, ipar);
 			}
+		}
+		if(i <= psys.epoch->nray) {
+			x_src_length = x_length;
 		}
 	}
 	stat.merge_time += omp_get_wtime() - t0;
@@ -807,6 +816,9 @@ static void update_pars() {
 				);
 			d1++;
 		} else {
+			if(step.refined){
+				stat.fast_recombination_count++;
+			}
 			increase_recomb += (step.yGrecHII - psys.yGrecHII[ipar])* NH;
 			increase_recomb += (step.yGrecHeII - psys.yGrecHeII[ipar])* NHe;
 			increase_recomb += (step.yGrecHeIII - psys.yGrecHeIII[ipar])* NHe;
@@ -815,9 +827,9 @@ static void update_pars() {
 			psys.yGrecHeII[ipar] = step.yGrecHeII;
 			psys.yGrecHeIII[ipar] = step.yGrecHeIII;
 
-			psys.lambdaH[ipar] = step.lambdaH;
-			psys.lambdaHeI[ipar] = step.lambdaHeI;
-			psys.lambdaHeII[ipar] = step.lambdaHeII;
+			psys.lambdaH[ipar] = fmax(0, fmin(1, step.lambdaH));
+			psys.lambdaHeI[ipar] = fmax(0, fmin(1, step.lambdaHeI));
+			psys.lambdaHeII[ipar] = fmax(0, fmin(1 - psys.lambdaHeI[ipar], step.lambdaHeII));
 
 			if(!CFG_ADIABATIC)
 				psys.ie[ipar] = step.ie;
