@@ -60,7 +60,13 @@ static inline void bitmask_set(bitmask_t * mask, intptr_t idx) {
 	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
 	__sync_or_and_fetch(&mask->data[idx >> LOG2_BLOCK], bit);
 }
+static inline void bitmask_set_unsafe(bitmask_t * mask, intptr_t idx) {
+	idx = bitmask_shuffle(idx);
+	int offset = idx & BLOCK_1;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
+	mask->data[idx >> LOG2_BLOCK] |= bit;
 
+}
 static inline void bitmask_clear(bitmask_t * mask, intptr_t idx) {
 	idx = bitmask_shuffle(idx);
 	int offset = idx & BLOCK_1;
@@ -68,18 +74,25 @@ static inline void bitmask_clear(bitmask_t * mask, intptr_t idx) {
 	__sync_and_and_fetch(&mask->data[idx >> LOG2_BLOCK], ~bit);
 }
 
+static inline void bitmask_clear_unsafe(bitmask_t * mask, intptr_t idx) {
+	idx = bitmask_shuffle(idx);
+	int offset = idx & BLOCK_1;
+	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
+	mask->data[idx >> LOG2_BLOCK] &= ~bit;
+}
+
 static inline int bitmask_test_and_clear(bitmask_t * mask, intptr_t idx) {
 	idx = bitmask_shuffle(idx);
 	int offset = idx & BLOCK_1;
 	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
-	return __sync_fetch_and_and(&mask->data[idx >> LOG2_BLOCK], ~bit) & bit;
+	return (__sync_fetch_and_and(&mask->data[idx >> LOG2_BLOCK], ~bit) & bit) != 0;
 }
 
 static inline int bitmask_test_and_set(bitmask_t * mask, intptr_t idx) {
 	idx = bitmask_shuffle(idx);
 	int offset = idx & BLOCK_1;
 	BLOCK_TYPE bit = ((BLOCK_TYPE)1) << offset;
-	return __sync_fetch_and_or(&mask->data[idx >> LOG2_BLOCK], bit) & bit;
+	return (__sync_fetch_and_or(&mask->data[idx >> LOG2_BLOCK], bit) & bit) != 0;
 }
 
 static inline int bitmask_aquire(bitmask_t * mask, intptr_t idx, intptr_t timeout) {

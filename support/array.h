@@ -39,6 +39,10 @@ size_t array ## _size;
 	(array ## _length = array ## _length + 1, \
 	&(ARRAY_ENSURE(array, type, array ## _length)[array ## _length - 1]))
 
+#define ARRAY_APPEND_REUSE(array, type) \
+	(array ## _length = array ## _length + 1, \
+	&(ARRAY_ENSURE0(array, type, array ## _length)[array ## _length - 1]))
+
 #define ARRAY_FREE(array) \
 	(free(array), array ## _length = 0, array ## _size = 0, array = NULL, array)
 static inline size_t __array_roundup__(size_t old, size_t new_) {
