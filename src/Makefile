@@ -1,7 +1,7 @@
 CC = gcc
 LD = gcc
 CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support 
-OPT= -O3 -fopenmp
+OPT= -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort
 LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc 
@@ -11,6 +11,7 @@ include Makefile.local
 
 SOURCES = \
 config.c \
+tabfun.c \
 units.c \
 epochs.c \
 reader.c \

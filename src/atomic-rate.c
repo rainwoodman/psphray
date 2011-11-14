@@ -7,16 +7,7 @@
 #include <array.h>
 #include "config.h"
 
-typedef struct {
-	ARRAY_DEFINE_S(data, double *);
-	ARRAY_DEFINE_S(headers, char *);
-	int nrows;
-	int ncols;
-	double min; 
-	double max; 
-	double step;
-	double step_inv;
-} TabFun;
+#include "tabfun.h"
 
 int AR_LOG_T = -1;
 int AR_HI_CI = -1;
@@ -50,12 +41,6 @@ static double xs_cut[100];
 extern float verner_hi_photo_cs_(float *);
 extern float osterbrok_hei_photo_cs_(float *);
 extern float osterbrok_heii_photo_cs_(float *);
-
-static const double tabfun_get(const TabFun * tabfun, const int id, const double value);
-static int tabfun_col_id(const TabFun * tabfun, const char * col);
-static void tabfun_init(TabFun * tabfun, const char * filename);
-static void tabfun_dump(const TabFun * tabfun, const char * filename);
-static int tabfun_setup_col(TabFun * tabfun, char * col, double (*func)(double), double unit);
 
 /* analytical forms */
 static double verner(double eng) {
@@ -143,143 +128,5 @@ const double xs_get(const int id, const double value) {
 		return 0.0;
 	}
 	return tabfun_get(&xs, id, value);
-}
-
-static int tabfun_setup_col(TabFun * tabfun, char * col, double (*func)(double), double unit) {
-/* if the col exists, scale them by the unit. if not, calculate from the given function func and scale by unit */
-	int i;
-	for(i = 0; i < tabfun->headers_length; i++) {
-		if(!strcasecmp(col, tabfun->headers[i])) {
-			int j;
-			for(j =0; j < tabfun->nrows; j++) {
-				tabfun->data[i][j] *= unit;
-			}
-			return i;
-		}
-	}
-	if(func == NULL) {
-		ERROR("column %s unknown and no hard coded analytical form", col);
-	} else {
-		MESSAGE("using analytical form of column %s", col);
-	}
-	*ARRAY_APPEND(tabfun->headers, char*) = strdup(col);
-	*ARRAY_APPEND(tabfun->data, double *) = malloc(sizeof(double) * tabfun->nrows);
-	int j;
-	for(j =0; j < tabfun->nrows; j++) {
-		tabfun->data[i][j] = func(tabfun->data[0][j]) * unit;
-	}
-	return i;
-}
-
-static const double tabfun_get(const TabFun * tabfun, const int id, const double value) {
-/*
-	if(isnan(logT) || isinf(logT)) 
-		ERROR("temperature non-positive: logT = %lg", logT);
-*/
-	ssize_t index = (value - tabfun->min) * tabfun->step_inv;
-	if(index < 0) {
-//		ERROR("temperature lower than the mininal.(logT= %lg)", logT);
-		return tabfun->data[id][0];
-	}
-	if(index >= tabfun->nrows - 1) {
-		return tabfun->data[id][tabfun->nrows - 1];
-//		ERROR("temperature higher than the maximal.(logT= %lg)", logT);
-	}
-	double left = tabfun->data[0][index];
-	double right = tabfun->data[0][index + 1];
-	/* the first col is the temprature */
-	double leftwt = (right - value);
-	double rightwt = (value- left);
-	return (leftwt * tabfun->data[id][index] + rightwt * tabfun->data[id][index+1]) * tabfun->step_inv;
-}
-
-static void tabfun_init(TabFun * tabfun, const char * filename) {
-	FILE * fp = fopen(filename, "r");
-	if(fp == NULL) {
-		ERROR("atomic rates %s no access", filename);
-	}
-	int NR = 0;
-	char * line = NULL;
-	size_t size = 0;
-	size_t len;
-	int stage = 0;
-	int irow = 0;
-	char * p;
-	int i;
-	while(0 <= (len = getline(&line, &size, fp))) {
-		if(line[0] == '#') {
-			NR++;
-			continue;
-		}
-		switch(stage) {
-		case 0:
-			if(4 != sscanf(line, "%lf %lf %d %lf", 
-					&tabfun->min, &tabfun->max, &tabfun->nrows, &tabfun->step)) {
-				ERROR("expecting header logTmin logTmax nrows stepsize, at %s, %d", filename, NR);
-			}
-			tabfun->step_inv = 1.0 / tabfun->step;
-			stage++;
-		break;
-		case 1:
-			p = line;
-			tabfun->ncols = len / 14;
-			ARRAY_RESIZE(tabfun->data, double * , tabfun->ncols);
-			ARRAY_RESIZE(tabfun->headers, char * , tabfun->ncols);
-			for(i = 0; i < tabfun->ncols; i++) {
-				p = line + i * 14;
-				tabfun->data[i] = malloc(sizeof(double) * tabfun->nrows);
-				char * q = p + 14 - 1;
-				while(*q == ' ' && q >= p) {
-					*q = 0;
-					q--;
-				}
-				while(*p == ' ') p++;
-				tabfun->headers[i] = strdup(p);
-			}
-			stage++;
-		break;
-		case 2:
-			/* skip the next line citing the source of the data */
-			stage++;
-			irow = 0;
-		break;
-		case 3:
-			p = line;
-			for(i = 0; i < tabfun->ncols; i++) {
-				p = line + i * 14;
-				if(p > line + len) {
-					ERROR("file %s line %d is too short", filename, NR);
-				}
-				p[14 - 1] = 0;
-				tabfun->data[i][irow] = atof(p);
-			}
-			irow ++;
-			if(irow == tabfun->nrows) stage++;
-		break;
-		}
-		NR++;
-		if(stage == 4) break;
-	}
-	free(line);
-	fclose(fp);
-}
-
-static void tabfun_dump(const TabFun * tabfun, const char * filename) {
-	FILE * fp = fopen(filename, "w");
-	fprintf(fp, "%-.5E %-.5E %-d %-.5E\n", tabfun->min, tabfun->max, tabfun->nrows, tabfun->step);
-	int i;
-	for( i = 0; i < tabfun->headers_length; i++) {
-		fprintf(fp, " %-14s", tabfun->headers[i]);
-	}
-	fprintf(fp, "\n");
-	fprintf(fp, "\n");
-	int irow;
-	for(irow = 0; irow < tabfun->nrows; irow++) {
-		for( i = 0; i < tabfun->headers_length; i++) {
-			fprintf(fp, "%- 14.5E", tabfun->data[i][irow]);
-		}
-		fprintf(fp, "\n");
-	}
-	fclose(fp);
 }
 

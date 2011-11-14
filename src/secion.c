@@ -5,6 +5,7 @@
 #include <messages.h>
 #include "config.h"
 #include <array.h>
+#include "tabfun.h"
 
 int SECION_PHI_HI;
 int SECION_PHI_HEI;
@@ -15,24 +16,6 @@ int SECION_EH;
 /* Also we take the energy in Rydbergs */
 /* Notice the thresholds has been reduced by 0.1 to account for discrete erros in the tabulator,
  * making sure at 28 and 11ev the values are not overly artifitially reduced due to the discontinuety */
-typedef struct {
-	ARRAY_DEFINE_S(data, double *);
-	ARRAY_DEFINE_S(headers, char *);
-	int nrows1;
-	int nrows2;
-	int ncols;
-	double min1; 
-	double min2; 
-	double max1; 
-	double max2; 
-	double step1;
-	double step2;
-	double step1_inv;
-	double step2_inv;
-	ARRAY_DEFINE_S(x, double);
-	ARRAY_DEFINE_S(y, double);
-} TabFun2;
-
 static TabFun2 si = {};
 
 static double a[3][2] = {
@@ -88,8 +71,6 @@ static double Phi_HeI(double E, double logx) {
 static double Eh(double E, double logx) {
 	return secion_get_Eh_factor(E, pow(10, logx));
 }
-static int tabfun2_ensure_col(TabFun2 * tabfun, char * col, double (*func)(double , double));
-static double tabfun2_get(TabFun2 * tabfun, int id, double x, double y);
 
 void secion_init() {
 	si.nrows1 = 4096;
@@ -122,75 +103,3 @@ double secion_get(int id, double E, double log10x) {
 	return rt;
 }
 
-static int tabfun2_ensure_col(TabFun2 * tabfun, char * col, double (*func)(double , double)) {
-	int i, j;
-	for(i = 0; i < tabfun->headers_length; i++) {
-		if(!strcasecmp(col, tabfun->headers[i])) {
-			return i;
-		}
-	}
-	if(func == NULL) {
-		ERROR("column %s unknown and no hard coded analytical form", col);
-	} else {
-		MESSAGE("using analytical form of column %s", col);
-	}
-	*ARRAY_APPEND(tabfun->headers, char*) = strdup(col);
-	*ARRAY_APPEND(tabfun->data, double *) = malloc(sizeof(double) * tabfun->nrows1 * tabfun->nrows2);
-	for(i =0; i < tabfun->nrows1; i++) {
-		for(j =0; j < tabfun->nrows2; j++) {
-		tabfun->data[tabfun->headers_length - 1][i * tabfun->nrows2 + j] = func(tabfun->x[i], tabfun->y[j]);
-		}
-	}
-	return tabfun->headers_length - 1;
-}
-static double tabfun2_get(TabFun2 * tabfun, int id, double x, double y) {
-	int xind = (x - tabfun->min1) * tabfun->step1_inv;
-	int yind = (y - tabfun->min2) * tabfun->step2_inv;
-	int linoffset = -1;
-	if(xind < 0) {
-		linoffset = 0;
-	}
-	if(xind >= tabfun->nrows1 - 1) {
-		linoffset = (tabfun->nrows1 - 1) * tabfun->nrows2;
-	}
-	if(linoffset != -1) {
-		if(yind < 0) return tabfun->data[id][linoffset + 0];
-		if(yind >= tabfun->nrows2 - 1) {
-			return tabfun->data[id][linoffset + tabfun->nrows2 - 1];
-		}
-		double left = tabfun->y[yind];
-		double right = tabfun->y[yind+ 1];
-		/* the first id is the temprature */
-		double leftwt = (right - y);
-		double rightwt = (y- left);
-		return (leftwt * tabfun->data[id][linoffset + yind] + rightwt * tabfun->data[id][linoffset + yind+1]) * tabfun->step2_inv;
-	}
-	int lin = -1;
-	if(yind < 0) {
-		lin = 0;
-	}
-	if(yind >= tabfun->nrows2 - 1) {
-		lin = tabfun->nrows2 - 1;
-	}
-	if(lin != -1) {
-		double left = tabfun->x[xind];
-		double right = tabfun->x[xind+ 1];
-		/* the first id is the temprature */
-		double leftwt = (right - x);
-		double rightwt = (x - left);
-		return (leftwt * tabfun->data[id][xind * tabfun->nrows2 + lin] + rightwt * tabfun->data[id][(xind + 1) * tabfun->nrows2 + lin]) * tabfun->step1_inv;
-	}
-	
-	/* otherwise safe to do a bilinear */
-	double x1 = tabfun->x[xind];
-	double x2 = tabfun->x[xind + 1];
-	double y1 = tabfun->y[yind];
-	double y2 = tabfun->y[yind + 1];
-	double fac = tabfun->step1_inv * tabfun->step2_inv;
-	double f11 = tabfun->data[id][xind * tabfun->nrows2 + yind];
-	double f12 = tabfun->data[id][xind * tabfun->nrows2 + yind + 1];
-	double f21 = tabfun->data[id][(xind + 1)* tabfun->nrows2 + yind];
-	double f22 = tabfun->data[id][(xind + 1)* tabfun->nrows2 + yind + 1];
-	return fac * (f11 * (x2 - x) * (y2 - y) + f21 * (x - x1) * (y2 - y)
-			+ f12 * (x2 - x) * (y - y1) + f22 * (x - x1) * (y - y1));
-}
