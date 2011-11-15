@@ -298,9 +298,9 @@ static void emit_rays() {
 		int species;
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
 			if(psys.epoch->nrec > 0) {
-				double * weights = malloc(sizeof(double) * x_src_length);
+				double * weights = malloc(sizeof(double) * x_length);
 				intptr_t j;
-				for(j = 0; j < x_src_length; j++) {
+				for(j = 0; j < x_length; j++) {
 					intptr_t ipar = x[j].ipar;
 					double x = psys_xHI(ipar);
 					if(x == 0) x = 1e-10;
@@ -319,7 +319,7 @@ static void emit_rays() {
 				gsl_ran_discrete_free(ran_rec);
 			} else {
 				intptr_t j;
-				for(j = 0; j < x_src_length; j++) {
+				for(j = 0; j < x_length; j++) {
 					intptr_t ipar = x[j].ipar;
 					double x = psys_xHI(ipar);
 					if(psys.yGrec[species][ipar] > 0.1 * x) {
@@ -444,6 +444,9 @@ static void emit_rays() {
 				if(r[i].type == 0) {
 					stat.rec_photon_count.subtotalHII += r[i].Nph;
 					psys.yGrecHII[ipar] -= r[i].Nph / psys_NH(ipar);
+					if(psys.yGrecHII[ipar] > 1.0) {
+						ERROR("ygrecHII[%ld] =%g > 0", ipar, psys.yGrecHII[ipar]);
+					}
 					if(psys.yGrecHII[ipar] < 0) {
 						psys.yGrecHII[ipar] = 0;
 					}
@@ -499,11 +502,9 @@ static void deposit(){
 	size_t total_deposit_count = 0;
 	size_t disordered_count = 0;
 	#pragma omp parallel private(i) reduction(+: secondary_ionization_HI, secondary_ionization_HeI, first_ionization_HI, first_ionization_HeI, first_ionization_HeII, spinlock_time, total_deposit_count, saturated_deposit_count, disordered_count) 
-	#pragma omp single
+	#pragma omp for schedule(dynamic, 1)
 	for(i = 0; i < r_length; i++) {
-		if(r[i].x_length == 0) continue;
-		if(r[i].Nph == 0) continue;
-		#pragma omp task untied
+		if(r[i].x_length != 0 && r[i].Nph != 0)
 		{
 		double Tau = 0.0;
 		double TM = r[i].Nph; /*transmission*/
@@ -525,6 +526,7 @@ static void deposit(){
 
 			/* find the first unlocked par in this queue that is close to the head */
             /* this may actually make it slower for simple tests */
+/*
 			int got_lock = 0;
 			intptr_t k = j;
 			for(k = j; k < r[i].x_length; k++) {
@@ -540,6 +542,7 @@ static void deposit(){
 					break;
 				}
 			}
+*/
 			const intptr_t ipar = r[i].x[j].ipar;
 			const double b = r[i].x[j].b;
 			const double sml = psys.sml[ipar];
@@ -561,6 +564,7 @@ static void deposit(){
 			double tauHeI = 0.0;
 			double tauHeII = 0.0;
 
+/*
 			volatile double t0 = omp_get_wtime();
 			if(!got_lock) {
 				while(!lock(ipar, 1000000)) {
@@ -568,8 +572,9 @@ static void deposit(){
 				}
 			}
 			spinlock_time += (omp_get_wtime() - t0);
-
-			const double NHI = fdim(xHI, psys.yGdepHI[ipar]) * NH;
+*/
+			//const double NHI = fdim(xHI, psys.yGdepHI[ipar]) * NH;
+			const double NHI = xHI * NH;
 
 			const double NHIcd = kernel * NHI;
 
@@ -577,19 +582,21 @@ static void deposit(){
 			tausum += tauHI;
 
 			if(!CFG_H_ONLY && NHe != 0.0) {
-				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
+//				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
+				const double NHeI = xHeI * NHe;
 				const double NHeIcd = kernel * NHeI;
 				tauHeI = sigmaHeI * NHeIcd;
 				tausum += tauHeI;
 
-				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
+//				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
+				const double NHeII = xHeII * NHe;
 				const double NHeIIcd = kernel * NHeII;
 				tauHeII = sigmaHeII * NHeIIcd;
 				tausum += tauHeII;
 			}
 
 			if(tausum == 0.0) {
-				unlock(ipar);
+//				unlock(ipar);
 				continue;
 			}
 
@@ -603,8 +610,10 @@ static void deposit(){
 			deltaHI = absorbHI * NH_inv;
 			absorb = absorbHI;
 			if(!CFG_H_ONLY && NHe != 0.0) {
-				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
-				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
+//				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
+				const double NHeI = xHeI * NHe;
+//				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
+				const double NHeII = xHeII * NHe;
 				double absorbHeI = tauHeI / tausum * absorb_est;
 				if(absorbHeI > NHeI) {
 					absorbHeI = NHeI;
@@ -639,43 +648,56 @@ static void deposit(){
 			if(x > 1.0) x = 1.0;
 			/* if x <= 0.0 secondary ionization has no effect */
 			if(CFG_SECONDARY_IONIZATION && x > 0.0) {
+#pragma omp atomic
 				psys.yGdepHI[ipar] += deltaHI;
 				first_ionization_HI += deltaHI * NH;
 				double log10x = log10(x);
 				double secion = deltaHI * dEHI / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHI, log10x)
 					+ deltaHeI * dEHeI / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHeI, log10x);
 					+ deltaHeII * dEHeII / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHeII, log10x);
+#pragma omp atomic
 				psys.yGdepHI[ipar] += secion;
 				secondary_ionization_HI += secion * NH;
+#pragma omp atomic
 				psys.heat[ipar] += heat_factor_HI * deltaHI * secion_get(SECION_EH, dEHI, log10x);
 				if(!CFG_H_ONLY && NHe != 0.0) {
 					double secion = 
 						deltaHI * dEHI / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHI, log10x)
 						+ deltaHeI * dEHeI / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHeI, log10x);
 						+ deltaHeII * dEHeII / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHeII, log10x);
+#pragma omp atomic
 					psys.yGdepHeI[ipar] += deltaHeI + secion;
 					secondary_ionization_HeI += secion * NHe;
 					first_ionization_HeI += deltaHeI * NHe;
+#pragma omp atomic
 					psys.heat[ipar] += heat_factor_HeI * deltaHeI * secion_get(SECION_EH, dEHeI, log10x);
 						+ heat_factor_HeII * deltaHeII * secion_get(SECION_EH, dEHeII, log10x);
+#pragma omp atomic
 					psys.yGdepHeII[ipar] += deltaHeII;
 					first_ionization_HeII += deltaHeII * NHe;
 				}
 			} else {
+#pragma omp atomic
 				psys.yGdepHI[ipar] += deltaHI;
+#pragma omp atomic
 				psys.heat[ipar] += heat_factor_HI * deltaHI;
 				if(!CFG_H_ONLY && NHe != 0.0) {
+#pragma omp atomic
 					psys.yGdepHeI[ipar] += deltaHeI;
+#pragma omp atomic
 					psys.yGdepHeII[ipar] += deltaHeII;
+#pragma omp atomic
 					psys.heat[ipar] += deltaHeI * heat_factor_HeI;
+#pragma omp atomic
 					psys.heat[ipar] += deltaHeII * heat_factor_HeII;
 				}
 			}
 			if(psys.heat[ipar] < 0.0) {
 				ERROR("heat < 0");
 			}
+#pragma omp atomic
 			psys.hits[ipar]++;
-			unlock(ipar);
+//		 unlock(ipar);
 
 
 			maybe_write_particle(ipar, stat.hitlogfile, 
@@ -699,10 +721,11 @@ static void deposit(){
 		// if the ray is a src ray we do not terminate it 
 		// because src ray drives the evolution of the particle histories
 		// for rec ray it is safe to preterminate.
-		if(r[i].type >= 0) {
+//      see if we cut all 
+//		if(r[i].type >= 0) {
 			ARRAY_RESIZE(r[i].x, Xtype, j);
 			r[i].length = r[i].x[j - 1].d;
-		}
+//		}
 		stat.lost_photon_count_sum += TM;
 		}
 	}
@@ -790,6 +813,7 @@ static void update_pars() {
 		step.T = psys_T(ipar);
 		step.heat = psys.heat[ipar];
 
+		step.ipar = ipar;
 		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		maybe_write_particle(ipar, stat.parlogfile, "%lu %lu %g %g %g %g %g %g %g\n",
 				psys.tick, ipar, step.time, step.T, step.lambdaH, step.nH, step.yGdepHI, step.ie, step.heat);
