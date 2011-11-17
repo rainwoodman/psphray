@@ -67,7 +67,7 @@ static int intptr_t_compare(const intptr_t * p1, const intptr_t * p2) {
 static void * permute (const size_t * p, void * data, const size_t ele_bytes, const size_t stride, const size_t n)
 {
 	void * out = malloc(stride * n);
-	size_t i;
+	intptr_t i;
 	#pragma omp parallel for private(i)
 	for(i = 0; i < n; i++) {
 		if(p[i] > n ) ERROR("p[i] out of range check peano key");

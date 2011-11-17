@@ -12,12 +12,12 @@
 #include "config.h"
 #include "psystem.h"
 #include "reader.h"
+#include "stat.h"
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-//#ifdef _OPENMP
+
 #include <omp.h>
-//#endif
 struct r_t {
 	float s[3];
 	float dir[3];
@@ -34,16 +34,6 @@ struct r_t {
 	ARRAY_DEFINE_S(x, Xtype)
 };
 
-static inline FILE * fopen_printf(const char * fmt, char * mode, ...) {
-	va_list va;
-	va_start(va, mode);
-	char * str = NULL;
-	vasprintf(&str, fmt, va);
-	FILE * rt = fopen(str, mode);
-	free(str);
-	va_end(va);
-	return rt;
-}
 static void maybe_write_particle(const intptr_t ipar, FILE * fp, const char * fmt, ...) {
 	if(CFG_DUMP_HOTSPOTS) {
 		va_list va;
@@ -81,83 +71,6 @@ static double MAX_SRC_RAY_LENGTH = 0.0;
 static double MAX_REC_RAY_LENGTH = 0.0;
 
 bitmask_t * active = NULL;
-int64_t * locks = NULL;
-static inline int lock(intptr_t idx, size_t timeout) {
-	idx = bitmask_shuffle(idx);
-	volatile int64_t * p = locks + idx;
-	size_t c;
-	while(*p) {
-		c++;
-		if(c >= timeout) return 0;
-	}
-	return __sync_bool_compare_and_swap(p, 0, 1);
-}
-static inline int locked(intptr_t idx) {
-	idx = bitmask_shuffle(idx);
-	volatile int64_t * p = locks + idx;
-	return *p;
-}
-
-static inline void unlock(intptr_t idx) {
-	idx = bitmask_shuffle(idx);
-	volatile int64_t * p = locks + idx;
-	*p = 0;
-//	(__sync_val_compare_and_swap(p, 1, 0));
-}
-static struct {
-	struct {
-		size_t total;
-		size_t subtotal;
-	} src_ray_count;
-	struct {
-		size_t total;
-		size_t subtotal;
-	} rec_ray_count;
-	struct {
-		double total;
-		double subtotal;
-	} src_photon_count;
-	struct {
-		double total;
-		double subtotal;
-		double subtotalHII;
-		double subtotalHeII;
-		double subtotalHeIII;
-	} rec_photon_count;
-
-	struct {
-		double HI;
-		double HeI;
-	} secondary_ionization;
-	struct {
-		double HI;
-		double HeI;
-		double HeII;
-	} first_ionization;
-
-/* total number of photon travel out of box/ remain in pretruncated ray*/
-	double lost_photon_count_sum;
-/* total number of recombination photons */
-	double rec_photon_count_sum;
-
-	size_t saturated_deposit_count;
-	size_t total_deposit_count;
-	size_t disordered_count;
-	size_t gsl_error_count;
-	size_t evolve_count;
-	size_t tick_subtotal;
-	size_t fast_recombination_count;
-
-	FILE * parlogfile;
-	FILE * hitlogfile;
-
-	double spinlock_time;
-	double deposit_time;
-	double raytrace_time;
-	double update_time;
-	double emit_time;
-	double merge_time;
-} stat;
 
 void init() {
 }
@@ -166,7 +79,6 @@ void run_epoch() {
 
 	active = bitmask_alloc(psys.npar);
 	bitmask_clear_all(active);
-	locks = calloc(psys.npar + 0xffff, sizeof(int64_t));
 	memset(&stat, 0, sizeof(stat));
 
 	double t0 = omp_get_wtime();
@@ -174,11 +86,7 @@ void run_epoch() {
 
 	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray + (CFG_ON_THE_SPOT?0:(psys.epoch->nrec * (CFG_H_ONLY?1:3))));
 
-
-	if(CFG_DUMP_HOTSPOTS) {
-		stat.parlogfile = fopen_printf("parlogfile-%03d", "w", psys.epoch - EPOCHS);
-		stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", psys.epoch - EPOCHS);
-	}
+	stat_restart();
 
 	psystem_stat("xHI");
 	psystem_stat("ye");
@@ -187,36 +95,8 @@ void run_epoch() {
 	psystem_stat("T");
 	while(1) {
 		if(!CFG_TRACE_ONLY && istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
-			stat.src_ray_count.total += stat.src_ray_count.subtotal;
-			stat.rec_ray_count.total += stat.rec_ray_count.subtotal;
-			stat.src_photon_count.total += stat.src_photon_count.subtotal;
-			stat.rec_photon_count.total += stat.rec_photon_count.subtotal;
-
 			MESSAGE("-----tick: %lu -------", psys.tick);
-			MESSAGE("SRC(subtot): Ray %lu Photon %g Length %g", 
-				stat.src_photon_count.subtotal, stat.src_ray_count.subtotal, MAX_SRC_RAY_LENGTH);
-			MESSAGE("REC(subtot): Ray %lu Photon %g Length %g", 
-				stat.rec_photon_count.subtotal, stat.rec_ray_count.subtotal, MAX_REC_RAY_LENGTH);
-			MESSAGE("REC(subtot): HII %g, HeII %g HeIII %g", 
-				stat.rec_photon_count.subtotalHII, stat.rec_photon_count.subtotalHeII, stat.rec_photon_count.subtotalHeIII);
-			MESSAGE("PH EMISSION: Src %g Rec %g",
-				stat.src_photon_count.total, stat.rec_photon_count.total);
-			MESSAGE("PH STORAGE : Lost %g Rec %g ", 
-				stat.lost_photon_count_sum, stat.rec_photon_count_sum);
-			MESSAGE("Deposit: saturated = %lu, disordered= %lu,  total=%lu", stat.saturated_deposit_count, stat.disordered_count, stat.total_deposit_count);
-			MESSAGE("First:   %g %g %g", stat.first_ionization.HI, stat.first_ionization.HeI, stat.first_ionization.HeII);
-			MESSAGE("Secondary:   %g %g", stat.secondary_ionization.HI, stat.secondary_ionization.HeI);
-			MESSAGE("Evolve     : Error %lu FastRec %lu Total %lu", 
-				stat.gsl_error_count, stat.fast_recombination_count, stat.evolve_count);
-			MESSAGE("Time : SpinLock %g", stat.spinlock_time);
-
-			stat.src_ray_count.subtotal = 0;
-			stat.rec_ray_count.subtotal = 0;
-			stat.src_photon_count.subtotal = 0;
-			stat.rec_photon_count.subtotal = 0;
-			stat.rec_photon_count.subtotalHII = 0;
-			stat.rec_photon_count.subtotalHeII = 0;
-			stat.rec_photon_count.subtotalHeIII = 0;
+			stat_subtotal();
 
 			psystem_stat("T");
 			psystem_stat("xHI");
@@ -224,23 +104,24 @@ void run_epoch() {
 			psystem_stat("heat");
 			psystem_stat("ye");
 			psystem_stat("ie");
+			psystem_stat("yGdepHI");
+			psystem_stat("yGdepHeI");
+			psystem_stat("yGdepHeII");
 			psystem_stat("yGrecHII");
 			psystem_stat("yGrecHeII");
 			psystem_stat("yGrecHeIII");
 
 			psystem_write_output(istep + 1);
 
-			MESSAGE("Real Time: emit %g raytrace %g deposit %g update %g total %g",
-				stat.emit_time, stat.raytrace_time, stat.deposit_time, stat.update_time, omp_get_wtime() - t0);
-			MESSAGE("-----end of tick: %lu -------", psys.tick);
 			istep++;
-			stat.tick_subtotal = 0;
+			MESSAGE("-----end of tick: %lu -------", psys.tick);
 		}
 		if(psys.tick == psys.epoch->nticks) break;
 
 		stat.tick_subtotal++;
 		psys.tick++;
 
+		double t0 = omp_get_wtime();
 		emit_rays();
 
 		/* trace rays */
@@ -254,6 +135,7 @@ void run_epoch() {
 
 		if(!CFG_TRACE_ONLY)
 		update_pars(); 
+		stat.total_time += omp_get_wtime() - t0;
 	}
 
 	ARRAY_FREE(x);
@@ -263,12 +145,8 @@ void run_epoch() {
 	}
 	ARRAY_FREE(r);
 
-	free(locks);
 	free(active);
-	if(CFG_DUMP_HOTSPOTS) {
-		fclose(stat.parlogfile);
-		fclose(stat.hitlogfile);
-	}
+	stat_stop();
 }
 
 
@@ -298,9 +176,9 @@ static void emit_rays() {
 		int species;
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
 			if(psys.epoch->nrec > 0) {
-				double * weights = malloc(sizeof(double) * x_length);
+				double * weights = malloc(sizeof(double) * x_src_length);
 				intptr_t j;
-				for(j = 0; j < x_length; j++) {
+				for(j = 0; j < x_src_length; j++) {
 					intptr_t ipar = x[j].ipar;
 					double x = psys_xHI(ipar);
 					if(x == 0) x = 1e-10;
@@ -319,10 +197,9 @@ static void emit_rays() {
 				gsl_ran_discrete_free(ran_rec);
 			} else {
 				intptr_t j;
-				for(j = 0; j < x_length; j++) {
+				for(j = 0; j < x_src_length; j++) {
 					intptr_t ipar = x[j].ipar;
-					double x = psys_xHI(ipar);
-					if(psys.yGrec[species][ipar] > 0.1 * x) {
+					if(psys.yGrec[species][ipar] > CFG_RECOMBINE_THRESHOLD) {
 						struct r_t * p = ARRAY_APPEND_REUSE(r, struct r_t);
 						p->type = species;
 						p->ipar = ipar;
@@ -492,6 +369,7 @@ static void deposit(){
 
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 	const double scaling_fac2_inv = 1.0 / (scaling_fac * scaling_fac);
+	const double scaling_fac3_inv = 1.0 / (scaling_fac * scaling_fac * scaling_fac);
 	double spinlock_time = 0.0;
 	size_t saturated_deposit_count = 0;
 	double first_ionization_HI = 0;
@@ -524,37 +402,26 @@ static void deposit(){
 
 		for(j = 0; j < r[i].x_length; j++) {
 
-			/* find the first unlocked par in this queue that is close to the head */
-            /* this may actually make it slower for simple tests */
-/*
-			int got_lock = 0;
-			intptr_t k = j;
-			for(k = j; k < r[i].x_length; k++) {
-				if(psys.sml[r[i].x[j].ipar] + r[i].x[j].d < r[i].x[k].d) break;
-				if(lock(r[i].x[k].ipar, 10)) {
-					if(j != k) {
-						const Xtype tmp = r[i].x[j];
-						r[i].x[j] = r[i].x[k];
-						r[i].x[k] = tmp;
-						disordered_count ++;
-					}
-					got_lock = 1;
-					break;
-				}
-			}
-*/
 			const intptr_t ipar = r[i].x[j].ipar;
 			const double b = r[i].x[j].b;
 			const double sml = psys.sml[ipar];
 			const double sml_inv = 1.0 / sml;
-			const double NH = psys_NH(ipar);
+			double NH = psys_NH(ipar);
+			double NHe = psys_NHe(ipar);
+			double rho = psys.rho[ipar] * scaling_fac3_inv;
+			if (CFG_ENABLE_EOS) {
+				const double x = eos_get_cloud_fraction(rho);
+				rho *= (1 - x);
+				NH *= (1 - x);
+				NHe *= (1 - x);
+			}
 			const double NH_inv = 1.0 / NH;
-			const double NHe = psys_NHe(ipar);
 			const double NHe_inv = 1.0 / NHe;
 			const double xHI = psys_xHI(ipar);
 			const double xHeI = psys_xHeI(ipar);
 			const double xHeII = psys_xHeII(ipar);
 			const double kernel = sph_depth(b * sml_inv) * (sml_inv * sml_inv) * scaling_fac2_inv;
+
 
 			double deltaHI = 0.0;
 			double deltaHeI = 0.0;
@@ -564,16 +431,6 @@ static void deposit(){
 			double tauHeI = 0.0;
 			double tauHeII = 0.0;
 
-/*
-			volatile double t0 = omp_get_wtime();
-			if(!got_lock) {
-				while(!lock(ipar, 1000000)) {
-					continue;
-				}
-			}
-			spinlock_time += (omp_get_wtime() - t0);
-*/
-			//const double NHI = fdim(xHI, psys.yGdepHI[ipar]) * NH;
 			const double NHI = xHI * NH;
 
 			const double NHIcd = kernel * NHI;
@@ -582,13 +439,11 @@ static void deposit(){
 			tausum += tauHI;
 
 			if(!CFG_H_ONLY && NHe != 0.0) {
-//				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
 				const double NHeI = xHeI * NHe;
 				const double NHeIcd = kernel * NHeI;
 				tauHeI = sigmaHeI * NHeIcd;
 				tausum += tauHeI;
 
-//				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
 				const double NHeII = xHeII * NHe;
 				const double NHeIIcd = kernel * NHeII;
 				tauHeII = sigmaHeII * NHeIIcd;
@@ -596,7 +451,6 @@ static void deposit(){
 			}
 
 			if(tausum == 0.0) {
-//				unlock(ipar);
 				continue;
 			}
 
@@ -610,9 +464,7 @@ static void deposit(){
 			deltaHI = absorbHI * NH_inv;
 			absorb = absorbHI;
 			if(!CFG_H_ONLY && NHe != 0.0) {
-//				const double NHeI = fdim(xHeI, psys.yGdepHeI[ipar]) * NHe;
 				const double NHeI = xHeI * NHe;
-//				const double NHeII = fdim(xHeII, psys.yGdepHeII[ipar]) * NHe;
 				const double NHeII = xHeII * NHe;
 				double absorbHeI = tauHeI / tausum * absorb_est;
 				if(absorbHeI > NHeI) {
@@ -697,7 +549,6 @@ static void deposit(){
 			}
 #pragma omp atomic
 			psys.hits[ipar]++;
-//		 unlock(ipar);
 
 
 			maybe_write_particle(ipar, stat.hitlogfile, 
@@ -715,17 +566,9 @@ static void deposit(){
 				break;
 			}
 		}
-		// if we terminated the ray sooner then it is safe to do this
-		// if the ray terminated too early we shall use a longer length
-		// next time.
-		// if the ray is a src ray we do not terminate it 
-		// because src ray drives the evolution of the particle histories
-		// for rec ray it is safe to preterminate.
-//      see if we cut all 
-//		if(r[i].type >= 0) {
-			ARRAY_RESIZE(r[i].x, Xtype, j);
-			r[i].length = r[i].x[j - 1].d;
-//		}
+
+//		ARRAY_RESIZE(r[i].x, Xtype, j);
+//		r[i].length = r[i].x[j - 1].d;
 		stat.lost_photon_count_sum += TM;
 		}
 	}
@@ -788,16 +631,42 @@ static void update_pars() {
 		const intptr_t ipar = x[j].ipar;
 		const double xHI = psys_xHI(ipar);
 		const double xHII = psys_xHII(ipar);
-		const double sml_inv = 1.0 / psys.sml[ipar];
-		const double rho = psys.rho[ipar];
+		double rho = psys.rho[ipar] * scaling_fac3_inv;
+		double NH = psys_NH(ipar);
+		double NHe = psys_NHe(ipar);
 		
 		Step step = {0};
 
-		const double NH = psys_NH(ipar);
-		const double NHe = psys_NHe(ipar);
+		step.ipar = ipar;
+		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
+
+		if (CFG_ENABLE_EOS) {
+		/* EOS really only make sense with adiabatic simulations, because we can't model
+         * the heating to the hot ambient in a meaningful way: it's internal energy only depends
+         * on the density in the two-phase model */
+			const double x = eos_get_cloud_fraction(rho);
+			NH *= (1 - x);
+			NHe *= (1 - x);
+			if(CFG_FAKE_TEMPERATURE>0) {
+				step.T = CFG_FAKE_TEMPERATURE;
+			} else {
+				if( x > 0.0) {
+					step.T = ieye2T(eos_get_egyhot(rho), psys_ye(ipar));
+				} else {
+					step.T = psys_T(ipar);
+				}
+			}
+		} else {
+			if(CFG_FAKE_TEMPERATURE>0) {
+				step.T = CFG_FAKE_TEMPERATURE;
+			} else {
+				step.T = psys_T(ipar);
+			}
+		}
 		step.yGdepHI = psys.yGdepHI[ipar];
 		step.yGdepHeI = psys.yGdepHeI[ipar];
 		step.yGdepHeII = psys.yGdepHeII[ipar];
+		step.heat = psys.heat[ipar];
 
 		step.yGrecHII = psys.yGrecHII[ipar];
 		step.yGrecHeII = psys.yGrecHeII[ipar];
@@ -808,13 +677,9 @@ static void update_pars() {
 		step.lambdaHeII = psys.lambdaHeII[ipar];
 
 		step.yeMET = psys.yeMET[ipar];
-		step.nH = C_H_PER_MASS * rho * scaling_fac3_inv;
+		step.nH = C_H_PER_MASS * rho;
 		step.ie = psys.ie[ipar];
-		step.T = psys_T(ipar);
-		step.heat = psys.heat[ipar];
 
-		step.ipar = ipar;
-		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
 		maybe_write_particle(ipar, stat.parlogfile, "%lu %lu %g %g %g %g %g %g %g\n",
 				psys.tick, ipar, step.time, step.T, step.lambdaH, step.nH, step.yGdepHI, step.ie, step.heat);
 
@@ -863,9 +728,9 @@ static void update_pars() {
 			if(CFG_ISOTHERMAL) {
 				psys.ie[ipar] = Tye2ie(step.T, psys_ye(ipar));
 			}
-			psys.yGdepHI[ipar] = 0.0;
-			psys.yGdepHeI[ipar] = 0.0;
-			psys.yGdepHeII[ipar] = 0.0;
+			psys.yGdepHI[ipar] = step.yGdepHI;
+			psys.yGdepHeI[ipar] = step.yGdepHeI;
+			psys.yGdepHeII[ipar] = step.yGdepHeII;
 			psys.heat[ipar] = 0.0;
 		}
 		d2++;

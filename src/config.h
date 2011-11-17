@@ -35,6 +35,9 @@ extern int CFG_TRACE_ONLY;
 extern int CFG_OCTTREE_PPC;
 extern int CFG_DISABLE_LTE;
 extern double CFG_FAKE_TEMPERATURE;
+extern int CFG_ENABLE_EOS;
+extern double CFG_EOS_CLOUD_TEMPERATURE;
+extern double CFG_RECOMBINE_THRESHOLD;
 
 extern gsl_rng * RNG;
 extern Epoch * EPOCHS;
@@ -145,3 +148,5 @@ extern int SECION_EH;
 void secion_init();
 
 double secion_get(int id, double E, double log10x);
+double eos_get_cloud_fraction(const double dens_phys);
+double eos_get_egyhot(const double dens_phys);

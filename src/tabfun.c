@@ -58,9 +58,10 @@ const double tabfun_get(const TabFun * tabfun, const int id, const double value)
 }
 
 void tabfun_init(TabFun * tabfun, const char * filename) {
+	/* the format of the file is stupid fortran. 14 cols per item */
 	FILE * fp = fopen(filename, "r");
 	if(fp == NULL) {
-		ERROR("atomic rates %s no access", filename);
+		ERROR("tabulated function input file %s no access", filename);
 	}
 	int NR = 0;
 	char * line = NULL;

@@ -1,7 +1,7 @@
 CC = gcc
 LD = gcc
 CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support 
-OPT= -fopenmp
+OPT= -O3 -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort
 LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc 
@@ -13,6 +13,7 @@ SOURCES = \
 config.c \
 tabfun.c \
 units.c \
+stat.c \
 epochs.c \
 reader.c \
 psystem.c \
@@ -23,6 +24,7 @@ solve.c \
 peano.c \
 secion.c \
 lte.c \
+eos.c \
 atomic-rate.c \
 loop.c \
 sph-depth.c \

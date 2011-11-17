@@ -27,6 +27,10 @@ int CFG_NO_PHOTON = CONFIG_FALSE;
 int CFG_SECONDARY_IONIZATION = CONFIG_TRUE;
 int CFG_OCTTREE_PPC = 8;
 int CFG_DISABLE_LTE = CONFIG_FALSE;
+int CFG_ENABLE_EOS = CONFIG_FALSE;
+double CFG_EOS_CLOUD_TEMPERATURE = 1e3;
+double CFG_RECOMBINE_THRESHOLD = 0.1;
+
 double CFG_FAKE_TEMPERATURE = -1;
 
 int64_t CFG_SEED = 123456;
@@ -54,7 +58,7 @@ void cfg_init(char * filename) {
 		ERROR("%s: %d: %s", config_error_file(CFG), config_error_line(CFG), config_error_text(CFG));
 	}
 	config_ensure        (CFG, "psphray", CONFIG_TYPE_GROUP);
-	config_ensure_string (CFG, "psphray.atomicRates", "<filename>");
+	config_ensure_string (CFG, "psphray.atomicRates", NULL);
 	config_ensure_string (CFG, "psphray.crossSections", NULL);
 	config_ensure_int64  (CFG, "psphray.seed", CFG_SEED);
 	config_ensure_bool   (CFG, "psphray.writeInit", CFG_WRITE_INIT);
@@ -70,6 +74,11 @@ void cfg_init(char * filename) {
 	config_ensure        (CFG, "psphray.octtree", CONFIG_TYPE_GROUP);
 	config_ensure_int64  (CFG, "psphray.octtree.particlesPerCell", CFG_OCTTREE_PPC);
 	config_ensure_float  (CFG, "psphray.fakeTemperature", CFG_FAKE_TEMPERATURE);
+	config_ensure_float  (CFG, "psphray.recombineThreshold", CFG_RECOMBINE_THRESHOLD);
+
+	config_ensure        (CFG, "psphray.eos", CONFIG_TYPE_GROUP);
+	config_ensure_string (CFG, "psphray.eos.filename", NULL);
+	config_ensure_float (CFG, "psphray.eos.cloudTemperature", CFG_EOS_CLOUD_TEMPERATURE);
 
 	config_ensure        (CFG, "cosmology", CONFIG_TYPE_GROUP);
 	config_ensure_bool   (CFG, "cosmology.comoving", CFG_COMOVING);
@@ -86,23 +95,11 @@ void cfg_init(char * filename) {
 	config_ensure_float  (CFG, "units.lengthCMh", C_1_CMH);
 	config_ensure_float  (CFG, "units.timeSh", C_1_SECH);
 
-	config_lookup_bool(CFG, "psphray.writeInit", &CFG_WRITE_INIT);
-	config_lookup_bool(CFG, "psphray.onTheSpot", &CFG_ON_THE_SPOT);
-	config_lookup_bool(CFG, "psphray.isothermal", &CFG_ISOTHERMAL);
-	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
-	config_lookup_bool(CFG, "psphray.dumpHotspots", &CFG_DUMP_HOTSPOTS);
-	config_lookup_bool(CFG, "psphray.traceOnly", &CFG_TRACE_ONLY);
-	config_lookup_bool(CFG, "psphray.noPhoton", &CFG_NO_PHOTON);
-	config_lookup_bool(CFG, "psphray.HOnly", &CFG_H_ONLY);
-	config_lookup_bool(CFG, "psphray.secondaryIonization", &CFG_SECONDARY_IONIZATION);
-	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
-	config_lookup_bool(CFG, "psphray.disableLTE", &CFG_DISABLE_LTE);
-	config_lookup_float(CFG, "psphray.fakeTemperature", &CFG_FAKE_TEMPERATURE);
-
 	config_lookup_int64(CFG, "psphray.seed", &CFG_SEED);
 	RNG = gsl_rng_alloc(gsl_rng_mt19937);
 	gsl_rng_set(RNG, CFG_SEED);
 
+	/* init the units first */ 
 	config_lookup_float(CFG, "cosmology.h", &C_H);
 	config_lookup_float(CFG, "cosmology.hmf", &C_HMF);
 	C_HEMF = 1 - C_HMF;
@@ -118,13 +115,38 @@ void cfg_init(char * filename) {
 
 	units_init();
 
+	/* then config the run */
+	config_lookup_bool(CFG, "psphray.writeInit", &CFG_WRITE_INIT);
+	config_lookup_bool(CFG, "psphray.onTheSpot", &CFG_ON_THE_SPOT);
+	config_lookup_bool(CFG, "psphray.isothermal", &CFG_ISOTHERMAL);
+	config_lookup_bool(CFG, "psphray.adiabatic", &CFG_ADIABATIC);
+	config_lookup_bool(CFG, "psphray.dumpHotspots", &CFG_DUMP_HOTSPOTS);
+	config_lookup_bool(CFG, "psphray.traceOnly", &CFG_TRACE_ONLY);
+	config_lookup_bool(CFG, "psphray.noPhoton", &CFG_NO_PHOTON);
+	config_lookup_bool(CFG, "psphray.HOnly", &CFG_H_ONLY);
+	config_lookup_bool(CFG, "psphray.secondaryIonization", &CFG_SECONDARY_IONIZATION);
+	config_lookup_bool(CFG, "cosmology.comoving", &CFG_COMOVING);
+	config_lookup_bool(CFG, "psphray.disableLTE", &CFG_DISABLE_LTE);
+
+	config_lookup_float(CFG, "psphray.fakeTemperature", &CFG_FAKE_TEMPERATURE);
+	config_lookup_float (CFG, "psphray.eos.cloudTemperature", &CFG_EOS_CLOUD_TEMPERATURE);
+	config_lookup_float  (CFG, "psphray.recombineThreshold", &CFG_RECOMBINE_THRESHOLD);
+
 	const char * arfilename = NULL;
 	const char * xsfilename = NULL;
+	const char * eosfilename = NULL;
 	config_lookup_string(CFG, "psphray.atomicRates", &arfilename);
 	config_lookup_string(CFG, "psphray.xsfilename", &xsfilename);
 
 	ar_init(arfilename);
 	xs_init(xsfilename);
+	config_lookup_string (CFG, "psphray.eos.filename", &eosfilename);
+	if(eosfilename != NULL) {
+		eos_init(eosfilename);
+		CFG_ENABLE_EOS = CONFIG_TRUE;
+	} else {
+		CFG_ENABLE_EOS = CONFIG_FALSE;
+	}
 
 	lte_init();
 	spec_init();

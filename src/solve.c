@@ -81,27 +81,27 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 
 /* from GABE's notes  */
 	if(!CFG_ON_THE_SPOT) {
-		dxdt[0] = -step->yGdepHI + step->time * (- gamma_HI * ye * xHI + alpha_HII_A * ye * xHII);
-		dxdt[3] = step->time * alpha_HII_AB * ye * xHII;
+		dxdt[0] = -step->yGdepHI / step->time + (- gamma_HI * ye * xHI + alpha_HII_A * ye * xHII);
+		dxdt[3] = alpha_HII_AB * ye * xHII;
 		if(CFG_H_ONLY) {
 			dxdt[1] = 0.0;
 			dxdt[2] = 0.0;
 			dxdt[4] = 0.0;
 			dxdt[5] = 0.0;
 		} else {
-			dxdt[1] = -step->yGdepHeI + step->time * (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
-			dxdt[2] = step->yGdepHeII + step->time * (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
-			dxdt[4] = step->time * alpha_HeII_AB * ye * xHeII;
-			dxdt[5] = step->time * alpha_HeIII_AB * ye * xHeIII;
+			dxdt[1] = -step->yGdepHeI / step->time + (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
+			dxdt[2] = step->yGdepHeII / step->time + (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
+			dxdt[4] = alpha_HeII_AB * ye * xHeII;
+			dxdt[5] = alpha_HeIII_AB * ye * xHeIII;
 		}
 	} else {
-		dxdt[0] = -step->yGdepHI + step->time * (- gamma_HI * ye * xHI + alpha_HII_B * ye * xHII);
+		dxdt[0] = -step->yGdepHI / step->time + (- gamma_HI * ye * xHI + alpha_HII_B * ye * xHII);
 		if(CFG_H_ONLY) {
 			dxdt[1] = 0.0;
 			dxdt[2] = 0.0;
 		} else {
-			dxdt[1] = -step->yGdepHeI + step->time * (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
-			dxdt[2] = step->yGdepHeII + step->time * (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
+			dxdt[1] = -step->yGdepHeI / step->time + (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
+			dxdt[2] = step->yGdepHeII / step->time + (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
 		}
 		dxdt[3] = 0;
 		dxdt[4] = 0;
@@ -115,12 +115,21 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 			 (eta_HII * ye * xHII) +
 			 beta * ye * xHII + chi * ye);
 	//	MESSAGE("T = %g H=%g L=%g eta=%g psi=%g zeta=%g beta=%g xHI=%g\n", T, heat_mean, L, eta_HII, psi_HI, zeta_HI, beta, xHI);
-		dxdt[6] = step->heat - step->time * L;
+		dxdt[6] = step->heat / step->time - L;
 	}
 	for(i = 0; i < 7; i++) {
 		if(isinf(dxdt[i]) || isnan(dxdt[i])) {
 			ERROR("nan found in dxdt[%d]", i);
 		}
+	}
+	if(dxdt[3] < 0) {
+		ERROR("dxdt[3] < 0");
+	}
+	if(dxdt[4] < 0) {
+		ERROR("dxdt[4] < 0");
+	}
+	if(dxdt[5] < 0) {
+		ERROR("dxdt[5] < 0");
 	}
 	if(x[6] + dxdt[6] < 0) {
 		ERROR("x[6] < 0");
@@ -145,19 +154,26 @@ int step_evolve(Step * step) {
 	x[5] = step->yGrecHeIII;
 	x[6] = step->ie;
 
+	if(x[3] > 1.0) {
+		ERROR("ygrecHII too big to start with");
+	}
 	FETCH_VARS;
 
 	double rectime = 1.0 / (alpha_HII_A);
+	double iontime = 1.0 / (gamma_HI);
 	if(!CFG_H_ONLY) {
 		rectime = fmin(rectime, 1.0 / alpha_HeII_A);
 		rectime = fmin(rectime, 1.0 / alpha_HeIII_A);
+		iontime = fmin(iontime, 1.0 / gamma_HeI);
+		iontime = fmin(iontime, 1.0 / gamma_HeII);
 	}
 	double internal_step = fmin(rectime / 200, step->time);
+	internal_step = fmin(iontime / 200, step->time);
+
 	int nsteps = step->time / internal_step;
-	if(nsteps > 100000) nsteps = 100000;
+	if(nsteps > 200) nsteps = 200;
 	internal_step = step->time / nsteps;
 
-	step->time = internal_step;
 	if(nsteps > 1) step->refined = 1;
 	int k;
 	for(k = 0; k < nsteps; k ++) {
@@ -171,27 +187,37 @@ int step_evolve(Step * step) {
 
 		function(t, x, dxdt, step);
 
-		x[0] += dxdt[0];
-		x[1] += dxdt[1];
-		x[2] += dxdt[2];
-		x[3] += dxdt[3];
-		x[4] += dxdt[4];
-		x[5] += dxdt[5];
-		x[6] += dxdt[6];
+		x[0] += dxdt[0] * internal_step;
+		x[1] += dxdt[1] * internal_step;
+		x[2] += dxdt[2] * internal_step;
+		x[3] += dxdt[3] * internal_step;
+		x[4] += dxdt[4] * internal_step;
+		x[5] += dxdt[5] * internal_step;
+		x[6] += dxdt[6] * internal_step;
 		for(i = 0 ; i < 7; i++) {
 			if(isinf(x[i]) || isnan(x[i])) {
 				ERROR("nan2 found in x[%d]", i);
 			}
 		}
 		for(i = 0 ; i < 3; i++) {
-			x[i] = fmax(0, x[i]);
-			x[i] = fmin(1, x[i]);
+			if(x[i] < 0.0 || x[i] > 1.0) {
+				k++;
+				goto terminate;
+			}
+		}
+		/* need to check xHeII too*/
+		if(1.0 - x[1] - x[2] < 0.0) {
+			k++;
+			goto terminate;
 		}
 	}
-
+	terminate:
 //	for(i = 0; i <= 5; i++) {
 //		x[i] = fmax(0, fmin(1, x[i]));
 //	}
+	if(x[3] > 1.0) {
+		ERROR("yGrecHII grows > 1.0 after ");
+	}
 
 	step->lambdaH = x[0];
 	step->lambdaHeI = x[1];
@@ -200,6 +226,11 @@ int step_evolve(Step * step) {
 	step->yGrecHeII = x[4];
 	step->yGrecHeIII = x[5];
 	step->ie = x[6];
+
+	double used = 1.0 - (float) k / nsteps;
+	step->yGdepHI *= used;
+	step->yGdepHeI *= used;
+	step->yGdepHeII *= used;
 
 	return 1;
 }
