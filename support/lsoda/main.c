@@ -1,11 +1,5 @@
 #include <stdio.h>
-
-typedef void deriv_func(int *, double *, double *,double *);
-typedef void jac_func(int *, double *, double *, int *,
-		      int *, double *, int *);
-
-int lsoda(double * y, double * yout, int neq, double * t, double tout, deriv_func *derivs, double * rtol, int lrtol,
-		double * atol, int latol, double * tcrit, jac_func * jac, double * hmin, double * hmax);
+#include "lsoda.h"
 
 static void fex(int * neq, double *t, double *y, double *ydot)
 {

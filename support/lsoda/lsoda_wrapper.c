@@ -1,10 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef void deriv_func(int * neq, double * t, double * y,double * ydot);
-typedef void jac_func(int * neq, double * t, double * y, int * ml,
-		      int * mu, double * pd, int * nrowpd);
+#include "lsoda.h"
 
 void lsoda_(void (*)(int *, double *, double *, double *),
 		     int *, double *, double *, double *,
@@ -36,6 +33,9 @@ void rwarnc_(char * str, int *len) {
  * returns the state code of losda
  *
  * this function is adapted from source code of R package odesolve.
+ * 
+ * This code is in public domain
+ * Yu Feng 2011, Carnegie Mellon Unviersity
  */
 
 int lsoda(double * y, double * yout, int neq, double * t, double tout, deriv_func *derivs, double * rtol, int lrtol,
