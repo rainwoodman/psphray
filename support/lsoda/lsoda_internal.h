@@ -1,5 +1,5 @@
 
-int stoda(int neq, double *y, _lsoda_f f, void *_data);
+int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart);
 void     correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, double *del, double *delp, double *told,
 						   int *ncf, double *rh, int *m, void *_data);
 void     prja(int neq, double *y, _lsoda_f f, void *_data);

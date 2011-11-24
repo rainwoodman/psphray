@@ -18,7 +18,7 @@ extern double   sm1[13];
 
 extern double   ccmax, el0, h, hmin, hmxi, hu, rc, tn;
 extern int      illin, init, mxstep, mxhnil, nhnil, ntrep, nslast, nyh, ierpj, iersl,
-                jcur, jstart, l, meth, miter, maxord, maxcor, msbp, mxncf, n, nq, nst,
+                jcur, l, meth, miter, maxord, maxcor, msbp, mxncf, n, nq, nst,
                 nfe, nje, nqu;
 extern double   tsw, pdnorm;
 extern int      ixpr, jtyp, mused, mxordn, mxords;

@@ -17,11 +17,10 @@ void endstoda()
 	for (i = 1; i <= n; i++)
 		acor[i] *= r;
 	hold = h;
-	jstart = 1;
 
 }
 
-int stoda(int neq, double *y, _lsoda_f f, void *_data)
+int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
 {
 	int kflag;
 	int             corflag, orderflag;

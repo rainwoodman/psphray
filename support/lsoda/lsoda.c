@@ -291,6 +291,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 
 {
 	int kflag;
+	int jstart;
 	int             mxstp0 = 500, mxhnl0 = 10;
 
 	int             i, iflag, lenyh, ihit;
@@ -700,6 +701,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 	   and is to check stop conditions before taking a step.
 	*/
 	if (*istate == 2 || *istate == 3) {
+		jstart = 1;
 		nslast = nst;
 		switch (itask) {
 		case 1:
@@ -843,8 +845,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 /*
    Call stoda
 */
-		kflag = stoda(neq, y, f, _data);
-
+		kflag = stoda(neq, y, f, _data, jstart);
 /*
    printf( "meth= %d,   order= %d,   nfe= %d,   nje= %d\n",
       meth, nq, nfe, nje );
@@ -863,6 +864,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
    and do extra printing of data if ixpr = 1.
    Then, in any case, check for stop conditions.
 */
+			jstart = 1;
 			init = 1;
 			if (meth != mused) {
 				tsw = tn;
