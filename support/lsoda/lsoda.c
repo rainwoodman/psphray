@@ -619,16 +619,10 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 */
 		nq = 1;
 		h = 1.;
-		ewset(itol, rtol, atol, y);
-		for (i = 1; i <= n; i++) {
-			if (ewt[i] <= 0.) {
-				fprintf(stderr, "[lsoda] ewt[%d] = %g <= 0.\n", i, ewt[i]);
-				terminate2(y, t);
-				return;
-			}
-			ewt[i] = 1. / ewt[i];
+		if(!ewset(ewt, itol, rtol, atol, y, n)) {
+			terminate2(y, t);
+			return;
 		}
-
 /*
    The coding below computes the step size, h0, to be attempted on the
    first step, unless the user has supplied a value for this.
@@ -805,15 +799,10 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 				terminate2(y, t);
 				return;
 			}
-			ewset(itol, rtol, atol, yh[1]);
-			for (i = 1; i <= n; i++) {
-				if (ewt[i] <= 0.) {
-					fprintf(stderr, "[lsoda] ewt[%d] = %g <= 0.\n", i, ewt[i]);
-					*istate = -6;
-					terminate2(y, t);
-					return;
-				}
-				ewt[i] = 1. / ewt[i];
+			if(!ewset(ewt, itol, rtol, atol, yh[1], n)) {
+				terminate2(y, t);
+				*istate = -6;
+				return;
 			}
 		}
 		tolsf = ETA * vmnorm(n, yh[1], ewt);

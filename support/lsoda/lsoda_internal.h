@@ -4,7 +4,7 @@ void     correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, 
 						   int *ncf, double *rh, int *m, void *_data);
 void     prja(int neq, double *y, _lsoda_f f, void *_data);
 
-void     ewset(int itol, double *rtol, double *atol, double *ycur);
+int ewset(double ewt[], int itol, double rtol[], double atol[], double *ycur, int n);
 void     resetcoeff(void);
 void     solsy(double *y);
 void     endstoda(void);

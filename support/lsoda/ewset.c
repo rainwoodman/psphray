@@ -1,7 +1,7 @@
 
-#include "common.h"
 #include <math.h>
-void ewset(int itol, double *rtol, double *atol, double *ycur)
+#include <stdio.h>
+int ewset(double * ewt, int itol, double *rtol, double *atol, double *ycur, int n)
 {
 	int             i;
 
@@ -23,6 +23,13 @@ void ewset(int itol, double *rtol, double *atol, double *ycur)
 			ewt[i] = rtol[i] * fabs(ycur[i]) + atol[i];
 		break;
 	}
-
+	for (i = 1; i <= n; i++) {
+		if (ewt[i] <= 0.) {
+			fprintf(stderr, "[lsoda] ewt[%d] = %g <= 0.\n", i, ewt[i]);
+			return 0;
+		}
+		ewt[i] = 1. / ewt[i];
+	}
+	return 1;
 }				/* end ewset   */
 
