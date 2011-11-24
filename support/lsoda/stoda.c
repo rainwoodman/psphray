@@ -21,8 +21,9 @@ void endstoda()
 
 }
 
-void stoda(int neq, double *y, _lsoda_f f, void *_data)
+int stoda(int neq, double *y, _lsoda_f f, void *_data)
 {
+	int kflag;
 	int             corflag, orderflag;
 	int             i, i1, j, m, ncf;
 	double          del, delp, dsm, dup, exup, r, rh, rhup, told;
@@ -175,7 +176,7 @@ void stoda(int neq, double *y, _lsoda_f f, void *_data)
 				kflag = -2;
 				hold = h;
 				jstart = 1;
-				return;
+				return kflag;
 			}
 		}		/* end inner while ( corrector loop )   */
 /*
@@ -238,7 +239,7 @@ void stoda(int neq, double *y, _lsoda_f f, void *_data)
 					exup = 1. / (double) (l + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
-				orderswitch(&rhup, dsm, &pdh, &rh, &orderflag);
+				orderswitch(&rhup, dsm, &pdh, &rh, &orderflag, kflag);
 /*
    No change in h or nq.
 */
@@ -305,7 +306,7 @@ void stoda(int neq, double *y, _lsoda_f f, void *_data)
 			}
 			if (kflag > -3) {
 				rhup = 0.;
-				orderswitch(&rhup, dsm, &pdh, &rh, &orderflag);
+				orderswitch(&rhup, dsm, &pdh, &rh, &orderflag, kflag);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
 						rh = min(rh, 0.2);
@@ -360,6 +361,7 @@ void stoda(int neq, double *y, _lsoda_f f, void *_data)
 		}		/* end error failure handling   */
 	}			/* end outer while   */
 
+	return kflag;
 }				/* end stoda   */
 
 

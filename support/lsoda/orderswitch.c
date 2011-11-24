@@ -2,7 +2,7 @@
 #include <math.h>
 #include "blas.h"
 
-void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderflag)
+void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderflag, int kflag)
 
 /*
    Regardless of the success or failure of the step, factors

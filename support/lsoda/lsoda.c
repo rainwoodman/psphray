@@ -290,6 +290,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 
 
 {
+	int kflag;
 	int             mxstp0 = 500, mxhnl0 = 10;
 
 	int             i, iflag, lenyh, ihit;
@@ -614,15 +615,19 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 		yp1 = yh[1];
 		for (i = 1; i <= n; i++)
 			yp1[i] = y[i];
+
 /*
-   Load and invert the ewt array.  ( h is temporarily set to 1. )
+   Load and invert the ewt array.  
 */
-		nq = 1;
-		h = 1.;
 		if(!ewset(ewt, itol, rtol, atol, y, n)) {
 			terminate2(y, t);
 			return;
 		}
+
+/*		( h is temporarily set to 1. ) */
+		nq = 1; 
+		h = 1.;
+
 /*
    The coding below computes the step size, h0, to be attempted on the
    first step, unless the user has supplied a value for this.
@@ -645,7 +650,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 */
 		if (h0 == 0.) {
 			tdist = fabs(tout - *t);
-			w0 = max(fabs(*t), fabs(tout));
+			w0 = fmax(fabs(*t), fabs(tout));
 			if (tdist < 2. * ETA * w0) {
 				fprintf(stderr, "[lsoda] tout too close to t to start integration\n ");
 				terminate(istate);
@@ -655,7 +660,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 			tol = rtol[1];
 			if (itol > 2) {
 				for (i = 2; i <= n; i++)
-					tol = max(tol, rtol[i]);
+					tol = fmax(tol, rtol[i]);
 			}
 			if (tol <= 0.) {
 				atoli = atol[1];
@@ -664,15 +669,15 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 						atoli = atol[i];
 					ayi = fabs(y[i]);
 					if (ayi != 0.)
-						tol = max(tol, atoli / ayi);
+						tol = fmax(tol, atoli / ayi);
 				}
 			}
-			tol = max(tol, 100. * ETA);
-			tol = min(tol, 0.001);
+			tol = fmax(tol, 100. * ETA);
+			tol = fmin(tol, 0.001);
 			sum = vmnorm(n, yh[2], ewt);
 			sum = 1. / (tol * w0 * w0) + tol * sum * sum;
 			h0 = 1. / sqrt(sum);
-			h0 = min(h0, tdist);
+			h0 = fmin(h0, tdist);
 			h0 = h0 * ((tout - *t >= 0.) ? 1. : -1.);
 		}		/* end if ( h0 == 0. )   */
 		/*
@@ -838,7 +843,7 @@ lsoda(f, neq, y, t, tout, itol, rtol, atol, itask, istate,
 /*
    Call stoda
 */
-		stoda(neq, y, f, _data);
+		kflag = stoda(neq, y, f, _data);
 
 /*
    printf( "meth= %d,   order= %d,   nfe= %d,   nje= %d\n",
