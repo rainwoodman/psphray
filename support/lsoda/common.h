@@ -4,8 +4,6 @@
 
 #define ETA 2.2204460492503131e-16
 
-extern int      g_nyh, g_lenyh;
-
 /* newly added static variables */
 
 extern int      imxer;
@@ -16,7 +14,7 @@ extern double   sm1[13];
 /* static variables for lsoda() */
 
 extern double   ccmax, el0, h, hu, rc, tn;
-extern int      illin, init, nhnil, ntrep, nslast, nyh, ierpj, iersl,
+extern int      illin, init, nhnil, ntrep, nslast, ierpj, iersl,
                 jcur, l, meth, mused, maxord, maxcor, msbp, mxncf, n, nq, nst,
                 nfe, nje, nqu, miter;
 extern double   tsw, pdnorm;
@@ -31,5 +29,6 @@ extern int      icount, irflag;
 
 /* static variables for various vectors and the Jacobian. */
 
+extern void * memory;
 extern double **yh, **wm, *ewt, *savf, *acor;
 extern int     *ipvt;

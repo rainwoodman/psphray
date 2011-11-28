@@ -189,6 +189,62 @@ static int check_opt(struct lsoda_opt_t * opt, int *istate, int n) {
 	}
 	return 1;
 }
+static int alloc_mem(struct lsoda_opt_t * opt, int n) {
+	int nyh = n;
+	int lenyh = 1 + max(opt->mxordn, opt->mxords);
+	long offset = 0;
+	int i;
+	long yhoff = offset;
+	/* yh */
+	offset += (1 + lenyh) * sizeof(double *);
+	long yh0off = offset;
+	for(i = 0; i <= lenyh; i++) {
+		offset += (1 + nyh) * sizeof(double);
+	}
+
+	long wmoff = offset;
+	long wm0off = offset;
+	/* wm */
+	offset += (1 + nyh) * sizeof(double *);
+	for(i = 0; i <= nyh; i++) {
+		offset += (1 + nyh) * sizeof(double);
+	}
+	
+	/* ewt */
+	long ewtoff =  offset;
+	offset += (1 + nyh) * sizeof(double);
+
+	/* savf */
+	long savfoff = offset;
+	offset += (1 + nyh) * sizeof(double);
+
+	/* acor */
+	long acoroff = offset;
+	offset += (1 + nyh) * sizeof(double);
+
+	/* ipvt */
+	long ipvtoff = offset;
+	offset += (1 + nyh) * sizeof(int);
+
+	memory = malloc(offset);
+
+	yh = memory + yhoff;
+	wm =  memory + wmoff;
+	ewt = memory + ewtoff;
+	savf =memory + savfoff;
+	acor =memory + acoroff;
+	ipvt =memory + ipvtoff;
+
+	for(i = 0; i <= lenyh; i++) {
+		yh[i] = memory + yh0off + i * (1 + nyh) * sizeof(double);
+	}
+
+	for(i = 0; i <= nyh; i++) {
+		wm[i] = memory + wm0off + i * (1 + nyh) * sizeof(double);
+	}
+
+	return memory != NULL;
+}
 /*
 c-----------------------------------------------------------------------
 c this is the march 30, 1987 version of
@@ -418,66 +474,12 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 			 */
 			sqrteta = sqrt(ETA);
 			meth = 1;
-			g_nyh = nyh = n;
-			g_lenyh = lenyh = 1 + max(opt->mxordn, opt->mxords);
+			if(!alloc_mem(opt, n)) {
+				printf("lsoda -- insufficient memory for your problem\n");
+				terminate(istate);
+				return;
+			}
 
-			yh = (double **) calloc(1 + lenyh, sizeof(*yh));
-			if (yh == NULL) {
-				printf("lsoda -- insufficient memory for your problem\n");
-				terminate(istate);
-				return;
-			}
-			for (i = 1; i <= lenyh; i++)
-				yh[i] = (double *) calloc(1 + nyh, sizeof(double));
-
-			wm = (double **) calloc(1 + nyh, sizeof(*wm));
-			if (wm == NULL) {
-				free(yh);
-				printf("lsoda -- insufficient memory for your problem\n");
-				terminate(istate);
-				return;
-			}
-			for (i = 1; i <= nyh; i++)
-				wm[i] = (double *) calloc(1 + nyh, sizeof(double));
-
-			ewt = (double *) calloc(1 + nyh, sizeof(double));
-			if (ewt == NULL) {
-				free(yh);
-				free(wm);
-				printf("lsoda -- insufficient memory for your problem\n");
-				terminate(istate);
-				return;
-			}
-			savf = (double *) calloc(1 + nyh, sizeof(double));
-			if (savf == NULL) {
-				free(yh);
-				free(wm);
-				free(ewt);
-				printf("lsoda -- insufficient memory for your problem\n");
-				terminate(istate);
-				return;
-			}
-			acor = (double *) calloc(1 + nyh, sizeof(double));
-			if (acor == NULL) {
-				free(yh);
-				free(wm);
-				free(ewt);
-				free(savf);
-				printf("lsoda -- insufficient memory for your problem\n");
-				terminate(istate);
-				return;
-			}
-			ipvt = (int *) calloc(1 + nyh, sizeof(int));
-			if (ipvt == NULL) {
-				free(yh);
-				free(wm);
-				free(ewt);
-				free(savf);
-				free(acor);
-				printf("lsoda -- insufficient memory for your problem\n");
-				terminate(istate);
-				return;
-			}
 		}
 		/*
 		   Check rtol and atol for legality.
@@ -929,11 +931,7 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 
 	static void _freevectors(void)
 	{
-		int i;
-		if (wm) for (i = 1; i <= g_nyh; ++i) free(wm[i]);
-		if (yh) for (i = 1; i <= g_lenyh; ++i) free(yh[i]);
-		free(yh); free(wm); free(ewt); free(savf); free(acor); free(ipvt);
-		g_nyh = g_lenyh = 0;
+		free(memory);
 		yh = 0; wm = 0;
 		ewt = 0; savf = 0; acor = 0; ipvt = 0;
 	}

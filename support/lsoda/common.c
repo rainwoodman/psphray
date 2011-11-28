@@ -1,6 +1,4 @@
 
-int      g_nyh = 0, g_lenyh = 0;
-
 /* newly added static variables */
 
 int      imxer;
@@ -11,7 +9,7 @@ double   sm1[13] = {0., 0.5, 0.575, 0.55, 0.45, 0.35, 0.25, 0.2, 0.15, 0.1, 0.07
 /* static variables for lsoda() */
 
 double   ccmax, el0, h, hu, rc, tn;
-int      illin = 0, init = 0, nhnil, ntrep = 0, nslast, nyh, ierpj, iersl,
+int      illin = 0, init = 0, nhnil, ntrep = 0, nslast, ierpj, iersl,
                 jcur, l, meth, mused, maxord, maxcor, msbp, mxncf, n, nq, nst,
                 nfe, nje, nqu, miter;
 double   tsw, pdnorm;
@@ -26,6 +24,7 @@ int      icount, irflag;
 
 /* static variables for various vectors and the Jacobian. */
 
+void * memory;
 double **yh, **wm, *ewt, *savf, *acor;
 int     *ipvt;
 
