@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "blas.h"
 
-void solsy(double *y)
+void solsy(double *y, double ** wm, int * ipvt, int n)
 
 /*
    This routine manages the solution of the linear system arising from

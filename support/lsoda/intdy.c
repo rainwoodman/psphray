@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <math.h>
+#include "lsoda.h"
+#include "lsoda_internal.h"
 #include "common.h"
 
 void intdy(double t, int k, double *dky, int *iflag)
@@ -30,7 +32,7 @@ void intdy(double t, int k, double *dky, int *iflag)
 {
 	int             i, ic, j, jj, jp1;
 	double          c, r, s, tp;
-
+	double ** yh = vec.yh;
 	*iflag = 0;
 	if (k < 0 || k > nq) {
 		fprintf(stderr, "[intdy] k = %d illegal\n", k);

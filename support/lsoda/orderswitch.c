@@ -1,3 +1,5 @@
+#include "lsoda.h"
+#include "lsoda_internal.h"
 #include "common.h"
 #include <math.h>
 #include "blas.h"
@@ -21,6 +23,9 @@ void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderfl
 {
 	int             newq, i;
 	double          exsm, rhdn, rhsm, ddn, exdn, r;
+	double ** yh = vec.yh;
+	double * ewt = vec.ewt;
+	double * acor = vec.acor;
 
 	*orderflag = 0;
 

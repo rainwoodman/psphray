@@ -102,6 +102,7 @@ static void terminate(int *istate)
 static void terminate2(double *y, double *t)
 {
 	int             i;
+	double ** yh = vec.yh;
 	yp1 = yh[1];
 	for (i = 1; i <= n; i++)
 		y[i] = yp1[i];
@@ -122,6 +123,7 @@ static void terminate2(double *y, double *t)
 static void successreturn(double *y, double *t, int itask, int ihit, double tcrit, int *istate)
 {
 	int             i;
+	double ** yh = vec.yh;
 	yp1 = yh[1];
 	for (i = 1; i <= n; i++)
 		y[i] = yp1[i];
@@ -228,19 +230,19 @@ static int alloc_mem(struct lsoda_opt_t * opt, int n) {
 
 	memory = malloc(offset);
 
-	yh = memory + yhoff;
-	wm =  memory + wmoff;
-	ewt = memory + ewtoff;
-	savf =memory + savfoff;
-	acor =memory + acoroff;
-	ipvt =memory + ipvtoff;
+	vec.yh = memory + yhoff;
+	vec.wm =  memory + wmoff;
+	vec.ewt = memory + ewtoff;
+	vec.savf =memory + savfoff;
+	vec.acor =memory + acoroff;
+	vec.ipvt =memory + ipvtoff;
 
 	for(i = 0; i <= lenyh; i++) {
-		yh[i] = memory + yh0off + i * (1 + nyh) * sizeof(double);
+		vec.yh[i] = memory + yh0off + i * (1 + nyh) * sizeof(double);
 	}
 
 	for(i = 0; i <= nyh; i++) {
-		wm[i] = memory + wm0off + i * (1 + nyh) * sizeof(double);
+		vec.wm[i] = memory + wm0off + i * (1 + nyh) * sizeof(double);
 	}
 
 	return memory != NULL;
@@ -549,19 +551,19 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 			/*
 			   Initial call to f.
 			 */
-			(*f) (*t, y + 1, yh[2] + 1, _data);
+			(*f) (*t, y + 1, vec.yh[2] + 1, _data);
 			nfe = 1;
 			/*
 			   Load the initial value vector in yh.
 			 */
-			yp1 = yh[1];
+			yp1 = vec.yh[1];
 			for (i = 1; i <= n; i++)
 				yp1[i] = y[i];
 
 			/*
 			   Load and invert the ewt array.  
 			 */
-			if(!ewset(ewt, itol, rtol, atol, y, n)) {
+			if(!ewset(vec.ewt, itol, rtol, atol, y, n)) {
 				terminate2(y, t);
 				return;
 			}
@@ -616,7 +618,7 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 				}
 				tol = fmax(tol, 100. * ETA);
 				tol = fmin(tol, 0.001);
-				sum = vmnorm(n, yh[2], ewt);
+				sum = vmnorm(n, vec.yh[2], vec.ewt);
 				sum = 1. / (tol * w0 * w0) + tol * sum * sum;
 				h0 = 1. / sqrt(sum);
 				h0 = fmin(h0, tdist);
@@ -632,7 +634,7 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 			   Load h with h0 and scale yh[2] by h0.
 			 */
 			h = h0;
-			yp1 = yh[2];
+			yp1 = vec.yh[2];
 			for (i = 1; i <= n; i++)
 				yp1[i] *= h0;
 		}			/* if ( *istate == 1 )   */
@@ -747,13 +749,13 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 					terminate2(y, t);
 					return;
 				}
-				if(!ewset(ewt, itol, rtol, atol, yh[1], n)) {
+				if(!ewset(vec.ewt, itol, rtol, atol, vec.yh[1], n)) {
 					terminate2(y, t);
 					*istate = -6;
 					return;
 				}
 			}
-			tolsf = ETA * vmnorm(n, yh[1], ewt);
+			tolsf = ETA * vmnorm(n, vec.yh[1], vec.ewt);
 			if (tolsf > 0.01) {
 				tolsf = tolsf * 200.;
 				if (nst == 0) {
@@ -910,7 +912,7 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 				big = 0.;
 				imxer = 1;
 				for (i = 1; i <= n; i++) {
-					size = fabs(acor[i]) * ewt[i];
+					size = fabs(vec.acor[i]) * vec.ewt[i];
 					if (big < size) {
 						big = size;
 						imxer = i;
@@ -931,8 +933,8 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 	static void _freevectors(void)
 	{
 		free(memory);
-		yh = 0; wm = 0;
-		ewt = 0; savf = 0; acor = 0; ipvt = 0;
+		vec.yh = 0; vec.wm = 0;
+		vec.ewt = 0; vec.savf = 0; vec.acor = 0; vec.ipvt = 0;
 	}
 
 	/*****************************

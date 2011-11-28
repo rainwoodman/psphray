@@ -9,7 +9,7 @@
    This routine returns from stoda to lsoda.  Hence freevectors() is
    not executed.
 */
-void endstoda()
+void endstoda(double acor[])
 {
 	double          r;
 	int             i;
@@ -28,7 +28,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	int             i, i1, j, m, ncf;
 	double          del, delp, dsm, dup, exup, r, rh, rhup, told;
 	double          pdh, pnorm;
-
+	double ** yh = vec.yh;
+	double ** wm = vec.wm;
+	double * ewt = vec.ewt;
+	double * acor = vec.acor;
+	double * savf = vec.savf;
+	
 /*
    stoda performs one step of the integration of an initial value
    problem for a system of ordinary differential equations.
@@ -221,7 +226,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					rh = max(rh, hmin / fabs(h));
 					scaleh(&rh, &pdh, hmxi);
 					rmax = 10.;
-					endstoda();
+					endstoda(acor);
 					break;
 				}
 			}
@@ -244,7 +249,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
    No change in h or nq.
 */
 				if (orderflag == 0) {
-					endstoda();
+					endstoda(acor);
 					break;
 				}
 /*
@@ -254,7 +259,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					rh = max(rh, hmin / fabs(h));
 					scaleh(&rh, &pdh, hmxi);
 					rmax = 10.;
-					endstoda();
+					endstoda(acor);
 					break;
 				}
 /*
@@ -265,18 +270,18 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					rh = max(rh, hmin / fabs(h));
 					scaleh(&rh, &pdh, hmxi);
 					rmax = 10.;
-					endstoda();
+					endstoda(acor);
 					break;
 				}
 			}	/* end if ( ialth == 0 )   */
 			if (ialth > 1 || l == lmax) {
-				endstoda();
+				endstoda(acor);
 				break;
 			}
 			yp1 = yh[lmax];
 			for (i = 1; i <= n; i++)
 				yp1[i] = acor[i];
-			endstoda();
+			endstoda(acor);
 			break;
 		}
 		/* end if ( dsm <= 1. )   */

@@ -1,9 +1,12 @@
+#include "lsoda.h"
 #include "common.h"
+#include "lsoda_internal.h"
 #include <math.h>
 
 void corfailure(double *told, double *rh, int *ncf, int *corflag, double hmin)
 {
 	int             j, i1, i;
+	double ** yh = vec.yh;
 
 	ncf++;
 	rmax = 2.;

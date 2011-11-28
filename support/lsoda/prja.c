@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "lsoda.h"
+#include "lsoda_internal.h"
 #include "blas.h"
 #include "common.h"
 
@@ -8,6 +9,12 @@ void prja(int neq, double *y, _lsoda_f f, void *_data)
 {
 	int             i, ier, j;
 	double          fac, hl0, r, r0, yj;
+	double * savf = vec.savf;
+	double * ewt = vec.ewt;
+	double * acor = vec.acor;
+	double ** wm = vec.wm;
+	int * ipvt = vec.ipvt;
+
 /*
    prja is called by stoda to compute and process the matrix
    P = I - h * el[1] * J, where J is an approximation to the Jacobian.

@@ -1,9 +1,12 @@
+#include "lsoda.h"
+#include "lsoda_internal.h"
 #include "common.h"
 #include <math.h>
 void scaleh(double *rh, double *pdh, double hmxi)
 {
 	double          r;
 	int             j, i;
+	double ** yh = vec.yh;
 /*
    If h is being changed, the h ratio rh is checked against rmax, hmin,
    and hmxi, and the yh array is rescaled.  ialth is set to l = nq + 1

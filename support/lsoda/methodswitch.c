@@ -1,4 +1,6 @@
 #include <math.h>
+#include "lsoda.h"
+#include "lsoda_internal.h"
 #include "common.h"
 #include "blas.h"
 
@@ -6,7 +8,8 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 {
 	int             lm1, lm1p1, lm2, lm2p1, nqm1, nqm2;
 	double          rh1, rh2, rh1it, exm2, dm2, exm1, dm1, alpha, exsm;
-
+	double ** yh = vec.yh;
+	double * ewt = vec.ewt;
 /*
    We are current using an Adams method.  Consider switching to bdf.
    If the current order is greater than 5, assume the problem is

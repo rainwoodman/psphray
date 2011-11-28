@@ -16,7 +16,12 @@ void correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, doub
 {
 	int             i;
 	double          rm, rate, dcon;
-
+	double ** yh = vec.yh;
+	double ** wm = vec.wm;
+	int * ipvt = vec.ipvt;
+	double * savf = vec.savf;
+	double * acor = vec.acor;
+	double * ewt = vec.ewt;
 /*
    Up to maxcor corrector iterations are taken.  A convergence test is
    made on the r.m.s. norm of each correction, weighted by the error
@@ -81,7 +86,7 @@ void correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, doub
 			yp1 = yh[2];
 			for (i = 1; i <= n; i++)
 				y[i] = h * savf[i] - (yp1[i] + acor[i]);
-			solsy(y);
+			solsy(y, wm, ipvt, n);
 			*del = vmnorm(n, y, ewt);
 			yp1 = yh[1];
 			for (i = 1; i <= n; i++) {
