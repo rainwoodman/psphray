@@ -43,7 +43,6 @@ int main(void)
 		}
 		tout = tout * 10.0E0;
 	}
-	n_lsoda_terminate();
 
 	return 0;
 }

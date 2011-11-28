@@ -84,8 +84,6 @@ tam@wri.com
 static void     terminate(int *istate);
 static void     terminate2(double *y, double *t);
 static void     successreturn(double *y, double *t, int itask, int ihit, double tcrit, int *istate);
-static void     freevectors(void); /* this function does nothing */
-static void     _freevectors(void);
 /* Terminate lsoda due to illegal input. */
 static void terminate(int *istate)
 {
@@ -107,7 +105,6 @@ static void terminate2(double *y, double *t)
 		y[i] = yh[1][i];
 	*t = tn;
 	illin = 0;
-	freevectors();
 	return;
 
 }
@@ -131,7 +128,6 @@ static void successreturn(double *y, double *t, int itask, int ihit, double tcri
 			*t = tcrit;
 	*istate = 2;
 	illin = 0;
-	freevectors();
 }
 
 static int check_opt(struct lsoda_opt_t * opt, int *istate, int n) {
@@ -376,8 +372,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 		double          atoli, ayi, big, h0, hmx, rh, rtoli, tcrit, tdist, tnext, tol,
 						tolsf, tp, size, sum, w0;
 
-		if (*istate == 1) _freevectors();
-
 		/*
 		   Block a.
 		   This code block is executed on every call.
@@ -494,13 +488,11 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 				if (rtoli < 0.) {
 					fprintf(stderr, "[lsoda] rtol = %g is less than 0.\n", rtoli);
 					terminate(istate);
-					freevectors();
 					return;
 				}
 				if (atoli < 0.) {
 					fprintf(stderr, "[lsoda] atol = %g is less than 0.\n", atoli);
 					terminate(istate);
-					freevectors();
 					return;
 				}
 			}		/* end for   */
@@ -529,7 +521,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 				if ((tcrit - tout) * (tout - *t) < 0.) {
 					fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\n");
 					terminate(istate);
-					freevectors();
 					return;
 				}
 				if (h0 != 0. && (*t + h0 - tcrit) * h0 > 0.)
@@ -597,7 +588,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 				if (tdist < 2. * ETA * w0) {
 					fprintf(stderr, "[lsoda] tout too close to t to start integration\n ");
 					terminate(istate);
-					freevectors();
 					return;
 				}
 				tol = rtol[1];
@@ -651,13 +641,11 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 						if (iflag != 0) {
 							fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\n", itask, tout);
 							terminate(istate);
-							freevectors();
 							return;
 						}
 						*t = tout;
 						*istate = 2;
 						illin = 0;
-						freevectors();
 						return;
 					}
 					break;
@@ -668,7 +656,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 					if ((tp - tout) * h > 0.) {
 						fprintf(stderr, "[lsoda] itask = %d and tout behind tcur - hu\n", itask);
 						terminate(istate);
-						freevectors();
 						return;
 					}
 					if ((tn - tout) * h < 0.) break;
@@ -679,13 +666,11 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 					if ((tn - tcrit) * h > 0.) {
 						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\n");
 						terminate(istate);
-						freevectors();
 						return;
 					}
 					if ((tcrit - tout) * h < 0.) {
 						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\n");
 						terminate(istate);
-						freevectors();
 						return;
 					}
 					if ((tn - tout) * h >= 0.) {
@@ -693,13 +678,11 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 						if (iflag != 0) {
 							fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\n", itask, tout);
 							terminate(istate);
-							freevectors();
 							return;
 						}
 						*t = tout;
 						*istate = 2;
 						illin = 0;
-						freevectors();
 						return;
 					}
 				case 5:
@@ -708,7 +691,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 						if ((tn - tcrit) * h > 0.) {
 							fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\n");
 							terminate(istate);
-							freevectors();
 							return;
 						}
 					}
@@ -761,7 +743,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 					fprintf(stderr, "         requested for precision of machine,\n");
 					fprintf(stderr, "         suggested scaling factor = %g\n", tolsf);
 					terminate(istate);
-					freevectors();
 					return;
 				}
 				fprintf(stderr, "lsoda -- at t = %g, too much accuracy requested\n", *t);
@@ -832,7 +813,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 					*t = tout;
 					*istate = 2;
 					illin = 0;
-					freevectors();
 					return;
 				}
 				/*
@@ -863,7 +843,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 						*t = tout;
 						*istate = 2;
 						illin = 0;
-						freevectors();
 						return;
 					} else {
 						hmx = fabs(tn) + fabs(h);
@@ -923,28 +902,3 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 
 	}				/* end lsoda   */
 
-	/* this function does nothing. */
-	static void freevectors(void)
-	{
-	}
-
-	static void _freevectors(void)
-	{
-		free(memory);
-		vec.yh = 0; vec.wm = 0;
-		vec.ewt = 0; vec.savf = 0; vec.acor = 0; vec.ipvt = 0;
-	}
-
-	/*****************************
-	 * more convenient interface *
-	 *****************************/
-
-	void n_lsoda_terminate(void)
-	{
-		if (init) _freevectors();
-		init = 0;
-	}
-
-	/*************
-	 * example.c *
-	 *************/
