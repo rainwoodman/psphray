@@ -137,28 +137,6 @@ static void successreturn(double *y, double *t, int itask, int ihit, double tcri
 static int check_opt(struct lsoda_opt_t * opt, int *istate, int n) {
 	const int mxstp0 = 500, mxhnl0 = 10;
 
-	/* default jacobian type is 2 */
-	if (opt->jt == 0) opt->jt = 2;
-
-	if (opt->jt == 3 || opt->jt < 1 || opt->jt > 5) {
-		fprintf(stderr, "[lsoda] jt = %d illegal\n", opt->jt);
-		terminate(istate);
-		return 0;
-	}
-
-	if (opt->jt > 2) {
-		if (opt->ml < 0 || opt->ml >= n) {
-			fprintf(stderr, "[lsoda] ml = %d not between 1 and neq\n", opt->ml);
-			terminate(istate);
-			return 0;
-		}
-		if (opt->mu < 0 || opt->mu >= n) {
-			fprintf(stderr, "[lsoda] mu = %d not between 1 and neq\n", opt->mu);
-			terminate(istate);
-			return 0;
-		}
-	}
-
 	if (*istate == 1) {
 		opt->h0 = 0.;
 		opt->mxordn = mord[1];
@@ -417,7 +395,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 			if(!check_opt(opt, istate, n)) {
 				return;
 			}
-			jtyp = opt->jt;
 			h0 = opt->h0;
 			if(*istate == 1) {
 				if ((tout - *t) * h0 < 0.) {

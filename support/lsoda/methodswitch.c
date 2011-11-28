@@ -62,7 +62,7 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 		*rh = rh2;
 		icount = 20;
 		meth = 2;
-		miter = jtyp;
+		miter = 2;
 		pdlast = 0.;
 		nq = nqm2;
 		l = nq + 1;

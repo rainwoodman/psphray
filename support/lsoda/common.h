@@ -17,10 +17,9 @@ extern double   sm1[13];
 
 extern double   ccmax, el0, h, hu, rc, tn;
 extern int      illin, init, nhnil, ntrep, nslast, nyh, ierpj, iersl,
-                jcur, l, meth, miter, maxord, maxcor, msbp, mxncf, n, nq, nst,
-                nfe, nje, nqu;
+                jcur, l, meth, mused, maxord, maxcor, msbp, mxncf, n, nq, nst,
+                nfe, nje, nqu, miter;
 extern double   tsw, pdnorm;
-extern int      jtyp, mused;
 
 /* no static variable for prja(), solsy() */
 /* static variables for stoda() */
