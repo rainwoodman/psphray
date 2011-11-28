@@ -3,12 +3,12 @@
 #define min( a , b )  ( (a) < (b) ? (a) : (b) )
 
 #define ETA 2.2204460492503131e-16
-
+#define SQRTETA 1.4901161193847656e-08
 /* newly added static variables */
 
 extern int      imxer;
 extern int      mord[3];
-extern double   sqrteta, *yp1, *yp2;
+extern double   *yp1, *yp2;
 extern double   sm1[13];
 
 /* static variables for lsoda() */

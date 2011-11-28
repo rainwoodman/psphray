@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "common.h"
 #include "lsoda.h"
 
 static void fex(double t, double *y, double *ydot, void *data)

@@ -37,7 +37,7 @@ void prja(int neq, double *y, _lsoda_f f, void *_data)
 			r0 = 1.;
 		for (j = 1; j <= n; j++) {
 			yj = y[j];
-			r = max(sqrteta * fabs(yj), r0 / ewt[j]);
+			r = fmax(SQRTETA * fabs(yj), r0 / ewt[j]);
 			y[j] += r;
 			fac = -hl0 / r;
 			(*f) (tn, y + 1, acor + 1, _data);

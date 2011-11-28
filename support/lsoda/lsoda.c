@@ -472,7 +472,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 			   If memory were not freed, *istate = 3 need not reallocate memory.
 			   Hence this section is not executed by *istate = 3.
 			 */
-			sqrteta = sqrt(ETA);
 			meth = 1;
 			if(!alloc_mem(opt, n)) {
 				printf("lsoda -- insufficient memory for your problem\n");
