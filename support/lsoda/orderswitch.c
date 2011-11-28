@@ -4,7 +4,7 @@
 #include <math.h>
 #include "blas.h"
 
-int orderswitch(double rhup, double dsm, double *pdh, double *rh, int kflag)
+int orderswitch(int neq, double rhup, double dsm, double *pdh, double *rh, int kflag)
 
 /*
    Regardless of the success or failure of the step, factors
@@ -32,7 +32,7 @@ int orderswitch(double rhup, double dsm, double *pdh, double *rh, int kflag)
 
 	rhdn = 0.;
 	if (nq != 1) {
-		ddn = vmnorm(n, yh[(nq + 1)], ewt) / tesco[nq][1];
+		ddn = vmnorm(neq, yh[(nq + 1)], ewt) / tesco[nq][1];
 		exdn = 1. / (double) nq;
 		rhdn = 1. / (1.3 * pow(ddn, exdn) + 0.0000013);
 	}
@@ -69,7 +69,7 @@ int orderswitch(double rhup, double dsm, double *pdh, double *rh, int kflag)
 			if (*rh >= 1.1) {
 				r = el[(nq + 1)] / (double) (nq + 1);
 				nq = nq + 1;
-				for (i = 1; i <= n; i++)
+				for (i = 1; i <= neq; i++)
 					yh[nq + 1][i] = acor[i] * r;
 				return 2;
 			} else {

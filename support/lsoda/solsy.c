@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "blas.h"
 
-void solsy(double *y, double ** wm, int * ipvt, int n)
+void solsy(int neq, double *y, double ** wm, int * ipvt)
 
 /*
    This routine manages the solution of the linear system arising from
@@ -21,7 +21,7 @@ void solsy(double *y, double ** wm, int * ipvt, int n)
 		return;
 	}
 	if (miter == 2)
-		dgesl(wm, n, ipvt, y, 0);
+		dgesl(wm, neq, ipvt, y, 0);
 	return;
 
 }

@@ -2,7 +2,7 @@
 #include "lsoda_internal.h"
 #include "common.h"
 #include <math.h>
-void scaleh(double *rh, double *pdh, double hmxi)
+void scaleh(int neq, double *rh, double *pdh, double hmxi)
 {
 	double          r;
 	int             j, i;
@@ -31,7 +31,7 @@ void scaleh(double *rh, double *pdh, double hmxi)
 	r = 1.;
 	for (j = 2; j <= (nq + 1); j++) {
 		r *= *rh;
-		for (i = 1; i <= n; i++)
+		for (i = 1; i <= neq; i++)
 			yh[j][i] *= r;
 	}
 	h *= *rh;

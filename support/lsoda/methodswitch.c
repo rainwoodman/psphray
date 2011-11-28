@@ -4,7 +4,7 @@
 #include "common.h"
 #include "blas.h"
 
-void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn)
+void methodswitch(int neq, double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn)
 {
 	int             lm1, lm1p1, lm2, lm2p1, nqm1, nqm2;
 	double          rh1, rh2, rh1it, exm2, dm2, exm1, dm1, alpha, exsm;
@@ -49,7 +49,7 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 				lm2 = mxords + 1;
 				exm2 = 1. / (double) lm2;
 				lm2p1 = lm2 + 1;
-				dm2 = vmnorm(n, yh[lm2p1], ewt) / cm2[mxords];
+				dm2 = vmnorm(neq, yh[lm2p1], ewt) / cm2[mxords];
 				rh2 = 1. / (1.2 * pow(dm2, exm2) + 0.0000012);
 			} else {
 				dm2 = dsm * (cm1[nq] / cm2[nq]);
@@ -86,7 +86,7 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 		lm1 = mxordn + 1;
 		exm1 = 1. / (double) lm1;
 		lm1p1 = lm1 + 1;
-		dm1 = vmnorm(n, yh[lm1p1], ewt) / cm1[mxordn];
+		dm1 = vmnorm(neq, yh[lm1p1], ewt) / cm1[mxordn];
 		rh1 = 1. / (1.2 * pow(dm1, exm1) + 0.0000012);
 	} else {
 		dm1 = dsm * (cm2[nq] / cm1[nq]);

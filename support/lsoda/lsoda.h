@@ -12,5 +12,13 @@ struct lsoda_opt_t {
 };
 typedef void    (*_lsoda_f) (double, double *, double *, void *);
 
-void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, double *rtol, double *atol,
-		   int itask, int *istate, struct lsoda_opt_t * opt, void *_data);
+
+struct lsoda_context_t {
+	_lsoda_f function;
+	void * data;
+	int neq;
+};
+
+
+void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int itol, double *rtol, double *atol,
+		   int itask, int *istate, struct lsoda_opt_t * opt);

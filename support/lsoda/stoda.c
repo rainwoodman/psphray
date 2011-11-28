@@ -9,13 +9,13 @@
    This routine returns from stoda to lsoda.  Hence freevectors() is
    not executed.
 */
-void endstoda(double acor[])
+void endstoda(int neq, double acor[])
 {
 	double          r;
 	int             i;
 
 	r = 1. / tesco[nqu][2];
-	for (i = 1; i <= n; i++)
+	for (i = 1; i <= neq; i++)
 		acor[i] *= r;
 	hold = h;
 
@@ -47,7 +47,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
                0  perform the first step,
              > 0  take a new step continuing from the last,
               -1  take the next step with a new value of h,
-                  n, meth, miter, and/or matrix parameters.
+                  neq, meth, miter, and/or matrix parameters.
               -2  take the next step with a new value of h,
                   but with other inputs unchanged.
 
@@ -132,14 +132,14 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 		if (h != hold) {
 			rh = h / hold;
 			h = hold;
-			scaleh(&rh, &pdh, hmxi);
+			scaleh(neq, &rh, &pdh, hmxi);
 		}
 	}			/* if ( jstart == -1 )   */
 	if (jstart == -2) {
 		if (h != hold) {
 			rh = h / hold;
 			h = hold;
-			scaleh(&rh, &pdh, hmxi);
+			scaleh(neq, &rh, &pdh, hmxi);
 		}
 	}			/* if ( jstart == -2 )   */
 	/*
@@ -160,17 +160,17 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			tn += h;
 			for (j = nq; j >= 1; j--)
 				for (i1 = j; i1 <= nq; i1++) {
-					for (i = 1; i <= n; i++)
+					for (i = 1; i <= neq; i++)
 						yh[i1][i] += yh[i1 + 1][i];
 				}
-			pnorm = vmnorm(n, yh[1], ewt);
+			pnorm = vmnorm(neq, yh[1], ewt);
 
 			int corflag = correction(neq, y, f, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, _data);
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {
 				rh = max(rh, hmin / fabs(h));
-				scaleh(&rh, &pdh, hmxi);
+				scaleh(neq, &rh, &pdh, hmxi);
 				continue;
 			}
 			if (corflag == 2) {
@@ -189,7 +189,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 		if (m == 0)
 			dsm = del / tesco[nq][2];
 		if (m > 0)
-			dsm = vmnorm(n, acor, ewt) / tesco[nq][2];
+			dsm = vmnorm(neq, acor, ewt) / tesco[nq][2];
 		if (dsm <= 1.) {
 /*
    After a successful step, update the yh array.
@@ -211,17 +211,17 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			mused = meth;
 			for (j = 1; j <= (nq + 1); j++) {
 				r = el[j];
-				for (i = 1; i <= n; i++)
+				for (i = 1; i <= neq; i++)
 					yh[j][i] += r * acor[i];
 			}
 			icount--;
 			if (icount < 0) {
-				methodswitch(dsm, pnorm, &pdh, &rh, mxords, mxordn);
+				methodswitch(neq, dsm, pnorm, &pdh, &rh, mxords, mxordn);
 				if (meth != mused) {
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh, hmxi);
+					scaleh(neq, &rh, &pdh, hmxi);
 					rmax = 10.;
-					endstoda(acor);
+					endstoda(neq, acor);
 					break;
 				}
 			}
@@ -232,18 +232,18 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			if (ialth == 0) {
 				double rhup = 0.;
 				if ((nq + 1) != lmax) {
-					for (i = 1; i <= n; i++)
+					for (i = 1; i <= neq; i++)
 						savf[i] = acor[i] - yh[lmax][i];
-					dup = vmnorm(n, savf, ewt) / tesco[nq][3];
+					dup = vmnorm(neq, savf, ewt) / tesco[nq][3];
 					exup = 1. / (double) ((nq + 1) + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
-				int orderflag = orderswitch(rhup, dsm, &pdh, &rh, kflag);
+				int orderflag = orderswitch(neq, rhup, dsm, &pdh, &rh, kflag);
 /*
    No change in h or nq.
 */
 				if (orderflag == 0) {
-					endstoda(acor);
+					endstoda(neq, acor);
 					break;
 				}
 /*
@@ -251,9 +251,9 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 */
 				if (orderflag == 1) {
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh, hmxi);
+					scaleh(neq, &rh, &pdh, hmxi);
 					rmax = 10.;
-					endstoda(acor);
+					endstoda(neq, acor);
 					break;
 				}
 /*
@@ -262,19 +262,19 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh, hmxi);
+					scaleh(neq, &rh, &pdh, hmxi);
 					rmax = 10.;
-					endstoda(acor);
+					endstoda(neq, acor);
 					break;
 				}
 			}	/* end if ( ialth == 0 )   */
 			if (ialth > 1 || (nq + 1) == lmax) {
-				endstoda(acor);
+				endstoda(neq, acor);
 				break;
 			}
-			for (i = 1; i <= n; i++)
+			for (i = 1; i <= neq; i++)
 				yh[lmax][i] = acor[i];
-			endstoda(acor);
+			endstoda(neq, acor);
 			break;
 		}
 		/* end if ( dsm <= 1. )   */
@@ -290,7 +290,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			tn = told;
 			for (j = nq; j >= 1; j--)
 				for (i1 = j; i1 <= nq; i1++) {
-					for (i = 1; i <= n; i++)
+					for (i = 1; i <= neq; i++)
 						yh[i1][i] -= yh[i1 + 1][i];
 				}
 			rmax = 2.;
@@ -301,17 +301,17 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				break;
 			}
 			if (kflag > -3) {
-				int orderflag = orderswitch(0., dsm, &pdh, &rh, kflag);
+				int orderflag = orderswitch(neq, 0., dsm, &pdh, &rh, kflag);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
 						rh = min(rh, 0.2);
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh, hmxi);
+					scaleh(neq, &rh, &pdh, hmxi);
 				}
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh, hmxi);
+					scaleh(neq, &rh, &pdh, hmxi);
 				}
 				continue;
 			}
@@ -335,11 +335,11 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					rh = 0.1;
 					rh = max(hmin / fabs(h), rh);
 					h *= rh;
-					for (i = 1; i <= n; i++)
+					for (i = 1; i <= neq; i++)
 						y[i] = yh[1][i];
 					(*f) (tn, y + 1, savf + 1, _data);
 					nfe++;
-					for (i = 1; i <= n; i++)
+					for (i = 1; i <= neq; i++)
 						yh[2][i] = h * savf[i];
 					ipup = miter;
 					ialth = 5;

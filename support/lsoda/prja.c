@@ -18,54 +18,54 @@ void prja(int neq, double *y, _lsoda_f f, void *_data)
 /*
    prja is called by stoda to compute and process the matrix
    P = I - h * el[1] * J, where J is an approximation to the Jacobian.
-   Here J is computed by finite differencing.
+   Here J is computed by finite differencin.
    J, scaled by -h * el[1], is stored in wm.  Then the norm of J ( the
-   matrix norm consistent with the weighted max-norm on vectors given
+   matrix norm consistent with the weihted max-norm on vectors given
    by vmnorm ) is computed, and J is overwritten by P.  P is then
    subjected to LU decomposition in preparation for later solution
    of linear systems with p as coefficient matrix.  This is done
-   by dgefa if miter = 2, and by dgbfa if miter = 5.
+   by defa if miter = 2, and by dgbfa if miter = 5.
 */
 	nje++;
 	ierpj = 0;
 	jcur = 1;
 	hl0 = h * el0;
 /*
-   If miter = 2, make n calls to f to approximate J.
+   If miter = 2, make neq calls to f to approximate J.
 */
 	if (miter != 2) {
-		fprintf(stderr, "[prja] miter != 2\n");
+		fprintf(stderr, "[prja] miter != 2\neq");
 		return;
 	}
 	if (miter == 2) {
-		fac = vmnorm(n, savf, ewt);
-		r0 = 1000. * fabs(h) * ETA * ((double) n) * fac;
+		fac = vmnorm(neq, savf, ewt);
+		r0 = 1000. * fabs(h) * ETA * ((double) neq) * fac;
 		if (r0 == 0.)
 			r0 = 1.;
-		for (j = 1; j <= n; j++) {
+		for (j = 1; j <= neq; j++) {
 			yj = y[j];
 			r = fmax(SQRTETA * fabs(yj), r0 / ewt[j]);
 			y[j] += r;
 			fac = -hl0 / r;
 			(*f) (tn, y + 1, acor + 1, _data);
-			for (i = 1; i <= n; i++)
+			for (i = 1; i <= neq; i++)
 				wm[i][j] = (acor[i] - savf[i]) * fac;
 			y[j] = yj;
 		}
-		nfe += n;
+		nfe += neq;
 /*
    Compute norm of Jacobian.
 */
-		pdnorm = fnorm(n, wm, ewt) / fabs(hl0);
+		pdnorm = fnorm(neq, wm, ewt) / fabs(hl0);
 /*
    Add identity matrix.
 */
-		for (i = 1; i <= n; i++)
+		for (i = 1; i <= neq; i++)
 			wm[i][i] += 1.;
 /*
    Do LU decomposition on P.
 */
-		dgefa(wm, n, ipvt, &ier);
+		dgefa(wm, neq, ipvt, &ier);
 		if (ier != 0)
 			ierpj = 1;
 		return;
