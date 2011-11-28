@@ -24,7 +24,6 @@ void endstoda(double acor[])
 int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int mxordn)
 {
 	int kflag;
-	int             corflag, orderflag;
 	int             i, i1, j, m, ncf;
 	double          del, delp, dsm, dup, exup, r, rh, rhup, told;
 	double          pdh, pnorm;
@@ -169,7 +168,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				}
 			pnorm = vmnorm(n, yh[1], ewt);
 
-			correction(neq, y, f, &corflag, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, _data);
+			int corflag = correction(neq, y, f, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, _data);
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {

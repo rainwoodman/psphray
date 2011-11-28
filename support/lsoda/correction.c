@@ -5,7 +5,7 @@
 #include "blas.h"
 #include "lsoda_internal.h"
 
-void correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, double *del, double *delp, double *told,
+int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double *delp, double *told,
 					   int *ncf, double *rh, int *m, double hmin, void *_data)
 /*
    *corflag = 0 : corrector converged,
@@ -30,7 +30,6 @@ void correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, doub
 */
 
 	*m = 0;
-	*corflag = 0;
 	rate = 0.;
 	*del = 0.;
 	yp1 = yh[1];
@@ -52,8 +51,7 @@ void correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, doub
 				nslp = nst;
 				crate = 0.7;
 				if (ierpj != 0) {
-					corfailure(told, rh, ncf, corflag, hmin);
-					return;
+					return corfailure(told, rh, ncf, hmin);
 				}
 			}
 			for (i = 1; i <= n; i++)
@@ -134,8 +132,7 @@ void correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, doub
 		(*m)++;
 		if (*m == maxcor || (*m >= 2 && *del > 2. * *delp)) {
 			if (miter == 0 || jcur == 1) {
-				corfailure(told, rh, ncf, corflag, hmin);
-				return;
+				return corfailure(told, rh, ncf, hmin);
 			}
 			ipup = miter;
 /*
@@ -159,5 +156,6 @@ void correction(int neq, double *y, _lsoda_f f, int *corflag, double pnorm, doub
 			nfe++;
 		}
 	}			/* end while   */
+	return 0;
 }				/* end correction   */
 

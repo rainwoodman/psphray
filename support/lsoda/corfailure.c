@@ -3,7 +3,7 @@
 #include "lsoda_internal.h"
 #include <math.h>
 
-void corfailure(double *told, double *rh, int *ncf, int *corflag, double hmin)
+int corfailure(double *told, double *rh, int *ncf, double hmin)
 {
 	int             j, i1, i;
 	double ** yh = vec.yh;
@@ -19,12 +19,10 @@ void corfailure(double *told, double *rh, int *ncf, int *corflag, double hmin)
 				yp1[i] -= yp2[i];
 		}
 	if (fabs(h) <= hmin * 1.00001 || *ncf == mxncf) {
-		*corflag = 2;
-		return;
+		return 2;
 	}
-	*corflag = 1;
 	*rh = 0.25;
 	ipup = miter;
-
+	return 1;
 }
 
