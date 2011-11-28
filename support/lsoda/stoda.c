@@ -87,11 +87,11 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 		ialth = 2;
 		rmax = 10000.;
 		rc = 0.;
-		el0 = 1.;
 		crate = 0.7;
 		hold = h;
 		nslp = 0;
 		ipup = miter;
+		el[1] = 1.0;
 /*
    Initialize switching parameters.  meth = 1 is assumed initially.
 */

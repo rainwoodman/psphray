@@ -29,7 +29,7 @@ void prja(int neq, double *y, _lsoda_f f, void *_data)
 	nje++;
 	ierpj = 0;
 	jcur = 1;
-	hl0 = h * el0;
+	hl0 = h * el[1];
 /*
    If miter = 2, make neq calls to f to approximate J.
 */

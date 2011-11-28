@@ -7,13 +7,11 @@ void resetcoeff()
 */
 {
 	int             i;
-	double         *ep1;
 
-	ep1 = elco[nq];
+	double el0 = el[1];
 	for (i = 1; i <= (nq + 1); i++)
-		el[i] = ep1[i];
+		el[i] = elco[nq][i];
 	rc = rc * el[1] / el0;
-	el0 = el[1];
 	conit = 0.5 / (double) (nq + 2);
 
 }
