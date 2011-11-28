@@ -27,12 +27,12 @@ int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 	double * ewt = vec.ewt;
 	double * acor = vec.acor;
 
-	exsm = 1. / (double) l;
+	exsm = 1. / (double) (nq + 1);
 	rhsm = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
 
 	rhdn = 0.;
 	if (nq != 1) {
-		ddn = vmnorm(n, yh[l], ewt) / tesco[nq][1];
+		ddn = vmnorm(n, yh[(nq + 1)], ewt) / tesco[nq][1];
 		exdn = 1. / (double) nq;
 		rhdn = 1. / (1.3 * pow(ddn, exdn) + 0.0000013);
 	}
@@ -41,8 +41,8 @@ int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 */
 	if (meth == 1) {
 		*pdh = max(fabs(h) * pdlast, 0.000001);
-		if (l < lmax)
-			*rhup = min(*rhup, sm1[l] / *pdh);
+		if ((nq + 1) < lmax)
+			*rhup = min(*rhup, sm1[(nq + 1)] / *pdh);
 		rhsm = min(rhsm, sm1[nq] / *pdh);
 		if (nq > 1)
 			rhdn = min(rhdn, sm1[nq - 1] / *pdh);
@@ -67,10 +67,9 @@ int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 		} else {
 			*rh = *rhup;
 			if (*rh >= 1.1) {
-				r = el[l] / (double) l;
-				nq = l;
-				l = nq + 1;
-				yp1 = yh[l];
+				r = el[(nq + 1)] / (double) (nq + 1);
+				nq = nq + 1;
+				yp1 = yh[(nq + 1)];
 				for (i = 1; i <= n; i++)
 					yp1[i] = acor[i] * r;
 				return 2;
@@ -98,7 +97,7 @@ int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 	if (kflag <= -2)
 		*rh = min(*rh, 0.2);
 /*
-   If there is a change of order, reset nq, l, and the coefficients.
+   If there is a change of order, reset nq, (nq + 1), and the coefficients.
    In any case h is reset according to rh and the yh array is rescaled.
    Then exit or redo the step.
 */
@@ -106,7 +105,6 @@ int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 		return 1;
 	}
 	nq = newq;
-	l = nq + 1;
 	return 2;
 }				/* end orderswitch   */
 

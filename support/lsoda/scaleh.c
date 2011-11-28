@@ -9,7 +9,7 @@ void scaleh(double *rh, double *pdh, double hmxi)
 	double ** yh = vec.yh;
 /*
    If h is being changed, the h ratio rh is checked against rmax, hmin,
-   and hmxi, and the yh array is rescaled.  ialth is set to l = nq + 1
+   and hmxi, and the yh array is rescaled.  ialth is set to (nq + 1) = nq + 1
    to prevent a change of h for that many steps, unless forced by a
    convergence or error test failure.
 */
@@ -29,7 +29,7 @@ void scaleh(double *rh, double *pdh, double hmxi)
 		}
 	}
 	r = 1.;
-	for (j = 2; j <= l; j++) {
+	for (j = 2; j <= (nq + 1); j++) {
 		r *= *rh;
 		yp1 = yh[j];
 		for (i = 1; i <= n; i++)
@@ -37,6 +37,6 @@ void scaleh(double *rh, double *pdh, double hmxi)
 	}
 	h *= *rh;
 	rc *= *rh;
-	ialth = l;
+	ialth = (nq + 1);
 
 }				/* end scaleh   */

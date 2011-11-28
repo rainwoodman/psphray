@@ -84,7 +84,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	if (jstart == 0) {
 		lmax = maxord + 1;
 		nq = 1;
-		l = 2;
 		ialth = 2;
 		rmax = 10000.;
 		rc = 0.;
@@ -117,7 +116,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	   If the caller has changed meth, cfode is called to reset
 	   the coefficients of the method.
 	   If h is to be changed, yh must be rescaled.
-	   If h or meth is being changed, ialth is reset to l = nq + 1
+	   If h or meth is being changed, ialth is reset to (nq + 1) = nq + 1
 	   to prevent further changes in h for that many steps.
 	*/
 	if (jstart == -1) {
@@ -127,7 +126,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			ialth = 2;
 		if (meth != mused) {
 			cfode(meth);
-			ialth = l;
+			ialth = (nq + 1);
 			resetcoeff();
 		}
 		if (h != hold) {
@@ -212,7 +211,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			hu = h;
 			nqu = nq;
 			mused = meth;
-			for (j = 1; j <= l; j++) {
+			for (j = 1; j <= (nq + 1); j++) {
 				yp1 = yh[j];
 				r = el[j];
 				for (i = 1; i <= n; i++)
@@ -235,12 +234,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			ialth--;
 			if (ialth == 0) {
 				rhup = 0.;
-				if (l != lmax) {
+				if ((nq + 1) != lmax) {
 					yp1 = yh[lmax];
 					for (i = 1; i <= n; i++)
 						savf[i] = acor[i] - yp1[i];
 					dup = vmnorm(n, savf, ewt) / tesco[nq][3];
-					exup = 1. / (double) (l + 1);
+					exup = 1. / (double) ((nq + 1) + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
 				int orderflag = orderswitch(&rhup, dsm, &pdh, &rh, kflag);
@@ -273,7 +272,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					break;
 				}
 			}	/* end if ( ialth == 0 )   */
-			if (ialth > 1 || l == lmax) {
+			if (ialth > 1 || (nq + 1) == lmax) {
 				endstoda(acor);
 				break;
 			}
@@ -357,7 +356,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					if (nq == 1)
 						continue;
 					nq = 1;
-					l = 2;
 					resetcoeff();
 					continue;
 				}

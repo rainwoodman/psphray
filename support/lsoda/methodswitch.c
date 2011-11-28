@@ -37,7 +37,7 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 			rh2 = 2.;
 			nqm2 = min(nq, mxords);
 		} else {
-			exsm = 1. / (double) l;
+			exsm = 1. / (double) (nq + 1);
 			rh1 = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
 			rh1it = 2. * rh1;
 			*pdh = pdlast * fabs(h);
@@ -68,7 +68,6 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 		miter = 2;
 		pdlast = 0.;
 		nq = nqm2;
-		l = nq + 1;
 		return;
 	}			/* end if ( meth == 1 )   */
 	/*
@@ -81,7 +80,7 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 	   If the step size for Adams would be so small as to cause
 	   roundoff pollution, we stay with bdf.
 	*/
-	exsm = 1. / (double) l;
+	exsm = 1. / (double) (nq + 1);
 	if (mxordn < nq) {
 		nqm1 = mxordn;
 		lm1 = mxordn + 1;
@@ -116,7 +115,6 @@ void methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords,
 	miter = 0;
 	pdlast = 0.;
 	nq = nqm1;
-	l = nq + 1;
 
 }				/* end methodswitch   */
 

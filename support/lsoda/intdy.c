@@ -47,10 +47,10 @@ void intdy(double t, int k, double *dky, int *iflag)
 	}
 	s = (t - tn) / h;
 	ic = 1;
-	for (jj = l - k; jj <= nq; jj++)
+	for (jj = (nq + 1) - k; jj <= nq; jj++)
 		ic *= jj;
 	c = (double) ic;
-	yp1 = yh[l];
+	yp1 = yh[nq + 1];
 	for (i = 1; i <= n; i++)
 		dky[i] = c * yp1[i];
 	for (j = nq - 1; j >= k; j--) {
