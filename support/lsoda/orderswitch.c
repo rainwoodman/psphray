@@ -4,7 +4,7 @@
 #include <math.h>
 #include "blas.h"
 
-int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
+int orderswitch(double rhup, double dsm, double *pdh, double *rh, int kflag)
 
 /*
    Regardless of the success or failure of the step, factors
@@ -42,13 +42,13 @@ int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 	if (meth == 1) {
 		*pdh = max(fabs(h) * pdlast, 0.000001);
 		if ((nq + 1) < lmax)
-			*rhup = min(*rhup, sm1[(nq + 1)] / *pdh);
+			rhup = min(rhup, sm1[(nq + 1)] / *pdh);
 		rhsm = min(rhsm, sm1[nq] / *pdh);
 		if (nq > 1)
 			rhdn = min(rhdn, sm1[nq - 1] / *pdh);
 		pdest = 0.;
 	}
-	if (rhsm >= *rhup) {
+	if (rhsm >= rhup) {
 		if (rhsm >= rhdn) {
 			newq = nq;
 			*rh = rhsm;
@@ -59,13 +59,13 @@ int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 				*rh = 1.;
 		}
 	} else {
-		if (*rhup <= rhdn) {
+		if (rhup <= rhdn) {
 			newq = nq - 1;
 			*rh = rhdn;
 			if (kflag < 0 && *rh > 1.)
 				*rh = 1.;
 		} else {
-			*rh = *rhup;
+			*rh = rhup;
 			if (*rh >= 1.1) {
 				r = el[(nq + 1)] / (double) (nq + 1);
 				nq = nq + 1;

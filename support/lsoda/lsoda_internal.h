@@ -11,7 +11,7 @@ void     prja(int neq, double *y, _lsoda_f f, void *_data);
 int      ewset(double ewt[], int itol, double rtol[], double atol[], double *ycur, int n);
 void     resetcoeff(void);
 void     solsy(double *y, double ** wm, int * ipvt, int n);
-int      orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag);
+int      orderswitch(double rhup, double dsm, double *pdh, double *rh, int kflag);
 void     intdy(double t, int k, double *dky, int *iflag);
 int      corfailure(double *told, double *rh, int *ncf, double hmin);
 void     methodswitch(double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn);

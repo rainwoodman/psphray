@@ -25,7 +25,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 {
 	int kflag;
 	int             i, i1, j, m, ncf;
-	double          del, delp, dsm, dup, exup, r, rh, rhup, told;
+	double          del, delp, dsm, dup, exup, r, rh, told;
 	double          pdh, pnorm;
 	double ** yh = vec.yh;
 	double ** wm = vec.wm;
@@ -233,7 +233,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 */
 			ialth--;
 			if (ialth == 0) {
-				rhup = 0.;
+				double rhup = 0.;
 				if ((nq + 1) != lmax) {
 					yp1 = yh[lmax];
 					for (i = 1; i <= n; i++)
@@ -242,7 +242,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					exup = 1. / (double) ((nq + 1) + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
-				int orderflag = orderswitch(&rhup, dsm, &pdh, &rh, kflag);
+				int orderflag = orderswitch(rhup, dsm, &pdh, &rh, kflag);
 /*
    No change in h or nq.
 */
@@ -308,8 +308,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				break;
 			}
 			if (kflag > -3) {
-				rhup = 0.;
-				int orderflag = orderswitch(&rhup, dsm, &pdh, &rh, kflag);
+				int orderflag = orderswitch(0., dsm, &pdh, &rh, kflag);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
 						rh = min(rh, 0.2);
