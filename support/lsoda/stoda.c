@@ -160,10 +160,8 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			tn += h;
 			for (j = nq; j >= 1; j--)
 				for (i1 = j; i1 <= nq; i1++) {
-					yp1 = yh[i1];
-					yp2 = yh[i1 + 1];
 					for (i = 1; i <= n; i++)
-						yp1[i] += yp2[i];
+						yh[i1][i] += yh[i1 + 1][i];
 				}
 			pnorm = vmnorm(n, yh[1], ewt);
 
@@ -212,10 +210,9 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			nqu = nq;
 			mused = meth;
 			for (j = 1; j <= (nq + 1); j++) {
-				yp1 = yh[j];
 				r = el[j];
 				for (i = 1; i <= n; i++)
-					yp1[i] += r * acor[i];
+					yh[j][i] += r * acor[i];
 			}
 			icount--;
 			if (icount < 0) {
@@ -235,9 +232,8 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			if (ialth == 0) {
 				double rhup = 0.;
 				if ((nq + 1) != lmax) {
-					yp1 = yh[lmax];
 					for (i = 1; i <= n; i++)
-						savf[i] = acor[i] - yp1[i];
+						savf[i] = acor[i] - yh[lmax][i];
 					dup = vmnorm(n, savf, ewt) / tesco[nq][3];
 					exup = 1. / (double) ((nq + 1) + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
@@ -276,9 +272,8 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				endstoda(acor);
 				break;
 			}
-			yp1 = yh[lmax];
 			for (i = 1; i <= n; i++)
-				yp1[i] = acor[i];
+				yh[lmax][i] = acor[i];
 			endstoda(acor);
 			break;
 		}
@@ -295,10 +290,8 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			tn = told;
 			for (j = nq; j >= 1; j--)
 				for (i1 = j; i1 <= nq; i1++) {
-					yp1 = yh[i1];
-					yp2 = yh[i1 + 1];
 					for (i = 1; i <= n; i++)
-						yp1[i] -= yp2[i];
+						yh[i1][i] -= yh[i1 + 1][i];
 				}
 			rmax = 2.;
 			if (fabs(h) <= hmin * 1.00001) {
@@ -342,14 +335,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					rh = 0.1;
 					rh = max(hmin / fabs(h), rh);
 					h *= rh;
-					yp1 = yh[1];
 					for (i = 1; i <= n; i++)
-						y[i] = yp1[i];
+						y[i] = yh[1][i];
 					(*f) (tn, y + 1, savf + 1, _data);
 					nfe++;
-					yp1 = yh[2];
 					for (i = 1; i <= n; i++)
-						yp1[i] = h * savf[i];
+						yh[2][i] = h * savf[i];
 					ipup = miter;
 					ialth = 5;
 					if (nq == 1)

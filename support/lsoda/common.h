@@ -8,7 +8,6 @@
 
 extern int      imxer;
 extern int      mord[3];
-extern double   *yp1, *yp2;
 extern double   sm1[13];
 
 /* static variables for lsoda() */

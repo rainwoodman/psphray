@@ -32,9 +32,8 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 	*m = 0;
 	rate = 0.;
 	*del = 0.;
-	yp1 = yh[1];
 	for (i = 1; i <= n; i++)
-		y[i] = yp1[i];
+		y[i] = yh[1][i];
 	(*f) (tn, y + 1, savf + 1, _data);
 	nfe++;
 /*
@@ -62,15 +61,13 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
    In case of functional iteration, update y directly from
    the result of the last function evaluation.
 */
-			yp1 = yh[2];
 			for (i = 1; i <= n; i++) {
-				savf[i] = h * savf[i] - yp1[i];
+				savf[i] = h * savf[i] - yh[2][i];
 				y[i] = savf[i] - acor[i];
 			}
 			*del = vmnorm(n, y, ewt);
-			yp1 = yh[1];
 			for (i = 1; i <= n; i++) {
-				y[i] = yp1[i] + el[1] * savf[i];
+				y[i] = yh[1][i] + el[1] * savf[i];
 				acor[i] = savf[i];
 			}
 		}
@@ -81,15 +78,13 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 		   P as coefficient matrix.
 		 */ 
 		else {
-			yp1 = yh[2];
 			for (i = 1; i <= n; i++)
-				y[i] = h * savf[i] - (yp1[i] + acor[i]);
+				y[i] = h * savf[i] - (yh[2][i] + acor[i]);
 			solsy(y, wm, ipvt, n);
 			*del = vmnorm(n, y, ewt);
-			yp1 = yh[1];
 			for (i = 1; i <= n; i++) {
 				acor[i] += y[i];
-				y[i] = yp1[i] + el[1] * acor[i];
+				y[i] = yh[1][i] + el[1] * acor[i];
 			}
 		}		/* end chord method   */
 /*
@@ -141,9 +136,8 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 			*m = 0;
 			rate = 0.;
 			*del = 0.;
-			yp1 = yh[1];
 			for (i = 1; i <= n; i++)
-				y[i] = yp1[i];
+				y[i] = yh[1][i];
 			(*f) (tn, y + 1, savf + 1, _data);
 			nfe++;
 		}

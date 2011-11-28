@@ -9,7 +9,6 @@ double   sm1[13] = {0., 0.5, 0.575, 0.55, 0.45, 0.35, 0.25, 0.2, 0.15, 0.1, 0.07
 
 /* static variables for lsoda() */
 
-double   *yp1, *yp2;
 double   ccmax, el0, h, hu, rc, tn;
 int      illin = 0, init = 0, nhnil, ntrep = 0, nslast, ierpj, iersl,
                 jcur, meth, mused, maxord, maxcor, msbp, mxncf, n, nq, nst,

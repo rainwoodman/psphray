@@ -13,10 +13,8 @@ int corfailure(double *told, double *rh, int *ncf, double hmin)
 	tn = *told;
 	for (j = nq; j >= 1; j--)
 		for (i1 = j; i1 <= nq; i1++) {
-			yp1 = yh[i1];
-			yp2 = yh[i1 + 1];
 			for (i = 1; i <= n; i++)
-				yp1[i] -= yp2[i];
+				yh[i1][i] -= yh[i1 + 1][i];
 		}
 	if (fabs(h) <= hmin * 1.00001 || *ncf == mxncf) {
 		return 2;

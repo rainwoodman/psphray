@@ -50,18 +50,16 @@ void intdy(double t, int k, double *dky, int *iflag)
 	for (jj = (nq + 1) - k; jj <= nq; jj++)
 		ic *= jj;
 	c = (double) ic;
-	yp1 = yh[nq + 1];
 	for (i = 1; i <= n; i++)
-		dky[i] = c * yp1[i];
+		dky[i] = c * yh[nq + 1][i];
 	for (j = nq - 1; j >= k; j--) {
 		jp1 = j + 1;
 		ic = 1;
 		for (jj = jp1 - k; jj <= j; jj++)
 			ic *= jj;
 		c = (double) ic;
-		yp1 = yh[jp1];
 		for (i = 1; i <= n; i++)
-			dky[i] = c * yp1[i] + s * dky[i];
+			dky[i] = c * yh[jp1][i] + s * dky[i];
 	}
 	if (k == 0)
 		return;

@@ -31,9 +31,8 @@ void scaleh(double *rh, double *pdh, double hmxi)
 	r = 1.;
 	for (j = 2; j <= (nq + 1); j++) {
 		r *= *rh;
-		yp1 = yh[j];
 		for (i = 1; i <= n; i++)
-			yp1[i] *= r;
+			yh[j][i] *= r;
 	}
 	h *= *rh;
 	rc *= *rh;

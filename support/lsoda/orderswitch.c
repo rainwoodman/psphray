@@ -69,9 +69,8 @@ int orderswitch(double rhup, double dsm, double *pdh, double *rh, int kflag)
 			if (*rh >= 1.1) {
 				r = el[(nq + 1)] / (double) (nq + 1);
 				nq = nq + 1;
-				yp1 = yh[(nq + 1)];
 				for (i = 1; i <= n; i++)
-					yp1[i] = acor[i] * r;
+					yh[nq + 1][i] = acor[i] * r;
 				return 2;
 			} else {
 				ialth = 3;
