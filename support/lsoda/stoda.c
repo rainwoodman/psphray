@@ -153,7 +153,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	*/
 	while (1) {
 		while (1) {
-			if (fabs(rc - 1.) > ccmax)
+			if (fabs(rc - 1.) > CCMAX)
 				ipup = miter;
 			if (nst >= nslp + msbp)
 				ipup = miter;

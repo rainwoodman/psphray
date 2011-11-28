@@ -4,6 +4,7 @@
 
 #define ETA 2.2204460492503131e-16
 #define SQRTETA 1.4901161193847656e-08
+#define CCMAX  0.3
 /* newly added static variables */
 
 extern int      imxer;
@@ -12,7 +13,7 @@ extern double   sm1[13];
 
 /* static variables for lsoda() */
 
-extern double   ccmax, el0, h, hu, rc, tn;
+extern double   el0, h, hu, rc, tn;
 extern int      illin, init, nhnil, ntrep, nslast, ierpj, iersl,
                 jcur, meth, mused, maxord, maxcor, msbp, mxncf, nq, nst,
                 nfe, nje, nqu, miter;
