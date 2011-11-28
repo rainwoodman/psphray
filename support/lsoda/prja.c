@@ -1,7 +1,8 @@
-#include "common.h"
 #include <stdio.h>
 #include <math.h>
+#include "lsoda.h"
 #include "blas.h"
+#include "common.h"
 
 void prja(int neq, double *y, _lsoda_f f, void *_data)
 {

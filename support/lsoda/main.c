@@ -10,14 +10,10 @@ static void fex(double t, double *y, double *ydot, void *data)
 
 int main(void)
 {
-	double          rwork1, rwork5, rwork6, rwork7;
 	double          atol[4], rtol[4], t, tout, y[4];
-	int             iwork1, iwork2, iwork5, iwork6, iwork7, iwork8, iwork9;
 	int             neq = 3;
 	int             itol, itask, istate, iopt, jt, iout;
 
-	iwork1 = iwork2 = iwork5 = iwork6 = iwork7 = iwork8 = iwork9 = 0;
-	rwork1 = rwork5 = rwork6 = rwork7 = 0.0;
 	y[1] = 1.0E0;
 	y[2] = 0.0E0;
 	y[3] = 0.0E0;
@@ -36,10 +32,10 @@ int main(void)
 	iopt = 0;
 	jt = 2;
 
+	struct lsoda_opt_t opt = {0};
 	for (iout = 1; iout <= 12; iout++) {
-		lsoda(fex, neq, y, &t, tout, itol, rtol, atol, itask, &istate, iopt, jt,
-		      iwork1, iwork2, iwork5, iwork6, iwork7, iwork8, iwork9,
-		      rwork1, rwork5, rwork6, rwork7, 0);
+		lsoda(fex, neq, y, &t, tout, itol, rtol, atol, itask, &istate, jt,
+		      0 , 0, &opt, NULL);
 		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[1], y[2], y[3]);
 		if (istate <= 0) {
 			printf("error istate = %d\n", istate);

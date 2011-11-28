@@ -1,7 +1,7 @@
 #include "common.h"
 #include <math.h>
 
-void corfailure(double *told, double *rh, int *ncf, int *corflag)
+void corfailure(double *told, double *rh, int *ncf, int *corflag, double hmin)
 {
 	int             j, i1, i;
 

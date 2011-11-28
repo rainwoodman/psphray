@@ -1,6 +1,6 @@
 #include "common.h"
 #include <math.h>
-void scaleh(double *rh, double *pdh)
+void scaleh(double *rh, double *pdh, double hmxi)
 {
 	double          r;
 	int             j, i;

@@ -1,3 +1,4 @@
+#include "lsoda.h"
 #include "common.h"
 #include "lsoda_internal.h"
 
@@ -20,7 +21,7 @@ void endstoda()
 
 }
 
-int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
+int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int mxordn)
 {
 	int kflag;
 	int             corflag, orderflag;
@@ -128,14 +129,14 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
 		if (h != hold) {
 			rh = h / hold;
 			h = hold;
-			scaleh(&rh, &pdh);
+			scaleh(&rh, &pdh, hmxi);
 		}
 	}			/* if ( jstart == -1 )   */
 	if (jstart == -2) {
 		if (h != hold) {
 			rh = h / hold;
 			h = hold;
-			scaleh(&rh, &pdh);
+			scaleh(&rh, &pdh, hmxi);
 		}
 	}			/* if ( jstart == -2 )   */
 	/*
@@ -163,12 +164,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
 				}
 			pnorm = vmnorm(n, yh[1], ewt);
 
-			correction(neq, y, f, &corflag, pnorm, &del, &delp, &told, &ncf, &rh, &m, _data);
+			correction(neq, y, f, &corflag, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, _data);
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {
 				rh = max(rh, hmin / fabs(h));
-				scaleh(&rh, &pdh);
+				scaleh(&rh, &pdh, hmxi);
 				continue;
 			}
 			if (corflag == 2) {
@@ -215,10 +216,10 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
 			}
 			icount--;
 			if (icount < 0) {
-				methodswitch(dsm, pnorm, &pdh, &rh);
+				methodswitch(dsm, pnorm, &pdh, &rh, mxords, mxordn);
 				if (meth != mused) {
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh);
+					scaleh(&rh, &pdh, hmxi);
 					rmax = 10.;
 					endstoda();
 					break;
@@ -251,7 +252,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
 */
 				if (orderflag == 1) {
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh);
+					scaleh(&rh, &pdh, hmxi);
 					rmax = 10.;
 					endstoda();
 					break;
@@ -262,7 +263,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh);
+					scaleh(&rh, &pdh, hmxi);
 					rmax = 10.;
 					endstoda();
 					break;
@@ -310,12 +311,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart)
 					if (orderflag == 0)
 						rh = min(rh, 0.2);
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh);
+					scaleh(&rh, &pdh, hmxi);
 				}
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = max(rh, hmin / fabs(h));
-					scaleh(&rh, &pdh);
+					scaleh(&rh, &pdh, hmxi);
 				}
 				continue;
 			}

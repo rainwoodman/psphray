@@ -10,12 +10,12 @@ double   sm1[13] = {0., 0.5, 0.575, 0.55, 0.45, 0.35, 0.25, 0.2, 0.15, 0.1, 0.07
 
 /* static variables for lsoda() */
 
-double   ccmax, el0, h, hmin, hmxi, hu, rc, tn;
-int      illin = 0, init = 0, mxstep, mxhnil, nhnil, ntrep = 0, nslast, nyh, ierpj, iersl,
+double   ccmax, el0, h, hu, rc, tn;
+int      illin = 0, init = 0, nhnil, ntrep = 0, nslast, nyh, ierpj, iersl,
                 jcur, l, meth, miter, maxord, maxcor, msbp, mxncf, n, nq, nst,
                 nfe, nje, nqu;
 double   tsw, pdnorm;
-int      ixpr = 0, jtyp, mused, mxordn, mxords;
+int      jtyp, mused;
 
 /* no static variable for prja(), solsy() */
 /* static variables for stoda() */

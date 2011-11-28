@@ -1,6 +1,17 @@
-#include "common.h"
+struct lsoda_opt_t {
+	int ixpr;
+	int mxstep;
+	int mxhnil;
+	int mxordn;
+	int mxords;
+	double tcrit;
+	double h0;
+	double hmax;
+	double hmin;
+	double hmxi;
+
+};
+typedef void    (*_lsoda_f) (double, double *, double *, void *);
 
 void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, double *rtol, double *atol,
-		   int itask, int *istate, int iopt, int jt,
-		   int iwork1, int iwork2, int iwork5, int iwork6, int iwork7, int iwork8, int iwork9,
-		   double rwork1, double rwork5, double rwork6, double rwork7, void *_data);
+		   int itask, int *istate, int jt, int ml, int mu, struct lsoda_opt_t * opt, void *_data);

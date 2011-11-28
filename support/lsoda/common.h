@@ -3,7 +3,6 @@
 #define min( a , b )  ( (a) < (b) ? (a) : (b) )
 
 #define ETA 2.2204460492503131e-16
-typedef void    (*_lsoda_f) (double, double *, double *, void *);
 
 extern int      g_nyh, g_lenyh;
 
@@ -16,12 +15,12 @@ extern double   sm1[13];
 
 /* static variables for lsoda() */
 
-extern double   ccmax, el0, h, hmin, hmxi, hu, rc, tn;
-extern int      illin, init, mxstep, mxhnil, nhnil, ntrep, nslast, nyh, ierpj, iersl,
+extern double   ccmax, el0, h, hu, rc, tn;
+extern int      illin, init, nhnil, ntrep, nslast, nyh, ierpj, iersl,
                 jcur, l, meth, miter, maxord, maxcor, msbp, mxncf, n, nq, nst,
                 nfe, nje, nqu;
 extern double   tsw, pdnorm;
-extern int      ixpr, jtyp, mused, mxordn, mxords;
+extern int      jtyp, mused;
 
 /* no static variable for prja(), solsy() */
 /* static variables for stoda() */
