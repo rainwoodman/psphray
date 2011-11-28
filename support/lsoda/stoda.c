@@ -244,7 +244,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					exup = 1. / (double) (l + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
-				orderswitch(&rhup, dsm, &pdh, &rh, &orderflag, kflag);
+				int orderflag = orderswitch(&rhup, dsm, &pdh, &rh, kflag);
 /*
    No change in h or nq.
 */
@@ -311,7 +311,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			}
 			if (kflag > -3) {
 				rhup = 0.;
-				orderswitch(&rhup, dsm, &pdh, &rh, &orderflag, kflag);
+				int orderflag = orderswitch(&rhup, dsm, &pdh, &rh, kflag);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
 						rh = min(rh, 0.2);

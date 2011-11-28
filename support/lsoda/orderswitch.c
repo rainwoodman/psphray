@@ -4,7 +4,7 @@
 #include <math.h>
 #include "blas.h"
 
-void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderflag, int kflag)
+int orderswitch(double *rhup, double dsm, double *pdh, double *rh, int kflag)
 
 /*
    Regardless of the success or failure of the step, factors
@@ -26,8 +26,6 @@ void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderfl
 	double ** yh = vec.yh;
 	double * ewt = vec.ewt;
 	double * acor = vec.acor;
-
-	*orderflag = 0;
 
 	exsm = 1. / (double) l;
 	rhsm = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
@@ -75,11 +73,10 @@ void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderfl
 				yp1 = yh[l];
 				for (i = 1; i <= n; i++)
 					yp1[i] = acor[i] * r;
-				*orderflag = 2;
-				return;
+				return 2;
 			} else {
 				ialth = 3;
-				return;
+				return 0;
 			}
 		}
 	}
@@ -90,12 +87,12 @@ void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderfl
 		if ((*rh * *pdh * 1.00001) < sm1[newq])
 			if (kflag == 0 && *rh < 1.1) {
 				ialth = 3;
-				return;
+				return 0;
 			}
 	} else {
 		if (kflag == 0 && *rh < 1.1) {
 			ialth = 3;
-			return;
+			return 0 ;
 		}
 	}
 	if (kflag <= -2)
@@ -106,13 +103,11 @@ void orderswitch(double *rhup, double dsm, double *pdh, double *rh, int *orderfl
    Then exit or redo the step.
 */
 	if (newq == nq) {
-		*orderflag = 1;
-		return;
+		return 1;
 	}
 	nq = newq;
 	l = nq + 1;
-	*orderflag = 2;
-
+	return 2;
 }				/* end orderswitch   */
 
 
