@@ -134,8 +134,30 @@ static void successreturn(double *y, double *t, int itask, int ihit, double tcri
 	freevectors();
 }
 
-static int check_opt(struct lsoda_opt_t * opt, int *istate) {
+static int check_opt(struct lsoda_opt_t * opt, int *istate, int n) {
 	const int mxstp0 = 500, mxhnl0 = 10;
+
+	/* default jacobian type is 2 */
+	if (opt->jt == 0) opt->jt = 2;
+
+	if (opt->jt == 3 || opt->jt < 1 || opt->jt > 5) {
+		fprintf(stderr, "[lsoda] jt = %d illegal\n", opt->jt);
+		terminate(istate);
+		return 0;
+	}
+
+	if (opt->jt > 2) {
+		if (opt->ml < 0 || opt->ml >= n) {
+			fprintf(stderr, "[lsoda] ml = %d not between 1 and neq\n", opt->ml);
+			terminate(istate);
+			return 0;
+		}
+		if (opt->mu < 0 || opt->mu >= n) {
+			fprintf(stderr, "[lsoda] mu = %d not between 1 and neq\n", opt->mu);
+			terminate(istate);
+			return 0;
+		}
+	}
 
 	if (*istate == 1) {
 		opt->h0 = 0.;
@@ -310,24 +332,7 @@ c-----------------------------------------------------------------------
 */
 
 void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, double *rtol, double *atol,
-		int itask, int *istate, int jt, int ml, int mu, struct lsoda_opt_t * opt, void *_data) {
-	/*
-	   If the user does not supply any of these values, the calling program
-	   should initialize those untouched working variables to zero.
-
-	   ml = iwork1
-	   mu = iwork2
-	   ixpr = iwork5
-	   mxstep = iwork6
-	   mxhnil = iwork7
-	   mxordn = iwork8
-	   mxords = iwork9
-
-	   tcrit = rwork1
-	   h0 = rwork5
-	   hmax = rwork6
-	   hmin = rwork7
-	 */
+		int itask, int *istate, struct lsoda_opt_t * opt, void *_data) {
 
 		int kflag;
 		int jstart;
@@ -400,24 +405,6 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 				terminate(istate);
 				return;
 			}
-			if (jt == 3 || jt < 1 || jt > 5) {
-				fprintf(stderr, "[lsoda] jt = %d illegal\n", jt);
-				terminate(istate);
-				return;
-			}
-			jtyp = jt;
-			if (jt > 2) {
-				if (ml < 0 || ml >= n) {
-					fprintf(stderr, "[lsoda] ml = %d not between 1 and neq\n", ml);
-					terminate(istate);
-					return;
-				}
-				if (mu < 0 || mu >= n) {
-					fprintf(stderr, "[lsoda] mu = %d not between 1 and neq\n", mu);
-					terminate(istate);
-					return;
-				}
-			}
 			/* Next process and check the optional inpus.   */
 
 			/* Default options.   */
@@ -427,10 +414,10 @@ void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, dou
 				terminate(istate);
 				return;
 			}
-			if(!check_opt(opt, istate)) {
+			if(!check_opt(opt, istate, n)) {
 				return;
 			}
-
+			jtyp = opt->jt;
 			h0 = opt->h0;
 			if(*istate == 1) {
 				if ((tout - *t) * h0 < 0.) {

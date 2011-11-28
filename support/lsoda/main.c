@@ -34,8 +34,7 @@ int main(void)
 
 	struct lsoda_opt_t opt = {0};
 	for (iout = 1; iout <= 12; iout++) {
-		lsoda(fex, neq, y, &t, tout, itol, rtol, atol, itask, &istate, jt,
-		      0 , 0, &opt, NULL);
+		lsoda(fex, neq, y, &t, tout, itol, rtol, atol, itask, &istate, &opt, NULL);
 		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[1], y[2], y[3]);
 		if (istate <= 0) {
 			printf("error istate = %d\n", istate);

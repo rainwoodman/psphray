@@ -8,7 +8,7 @@ extern int      g_nyh, g_lenyh;
 
 /* newly added static variables */
 
-extern int      ml, mu, imxer;
+extern int      imxer;
 extern int      mord[3];
 extern double   sqrteta, *yp1, *yp2;
 extern double   sm1[13];

@@ -9,9 +9,11 @@ struct lsoda_opt_t {
 	double hmax;
 	double hmin;
 	double hmxi;
-
+	int jt;
+	int mu;
+	int ml;
 };
 typedef void    (*_lsoda_f) (double, double *, double *, void *);
 
 void lsoda(_lsoda_f f, int neq, double *y, double *t, double tout, int itol, double *rtol, double *atol,
-		   int itask, int *istate, int jt, int ml, int mu, struct lsoda_opt_t * opt, void *_data);
+		   int itask, int *istate, struct lsoda_opt_t * opt, void *_data);
