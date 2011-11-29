@@ -1,5 +1,6 @@
 SRC =  \
 cfode.c \
+cfode_static.c \
 common.c \
 corfailure.c \
 correction.c \
@@ -25,6 +26,8 @@ vmnorm.c
 
 all: main.o liblsoda.a
 	gcc -std=c99 -g -O0 -o a.out $^ -lm -lgfortran
+printcf: printcf.o liblsoda.a
+	gcc -std=c99 -g -O0 -o printcf $^ -lm -lgfortran
 
 clean:
 	rm *.[oa]
@@ -32,6 +35,6 @@ liblsoda.a: $(SRC:.c=.o)
 	ar cur $@ $^
 
 .c.o:
-	gcc -std=c99 -g -O0 -c -o $@ $<
+	gcc -DCFODE_STATIC -std=c99 -g -O0 -c -o $@ $<
 
 

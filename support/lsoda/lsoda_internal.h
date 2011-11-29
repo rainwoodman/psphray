@@ -11,6 +11,10 @@ void     intdy(int neq, double t, int k, double *dky, int *iflag);
 int      corfailure(int neq, double *told, double *rh, int *ncf, double hmin);
 void     methodswitch(int neq, double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn);
 void     cfode(int meth);
+void     cfode_static(int meth);
 void     scaleh(int neq, double *rh, double *pdh, double hmxi);
 
+#ifdef CFODE_STATIC
+	#define cfode cfode_static
+#endif
 

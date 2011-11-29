@@ -28,7 +28,13 @@ struct common_t {
 	/* no static variable for prja(), solsy() */
 	/* static variables for stoda() */
 
-	double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
+	double   crate, el[14];
+#ifdef CFODE_STATIC
+	double (*elco)[14], (*tesco)[4];
+#else
+	double elco[13][14], tesco[13][4];
+#endif
+	double hold, rmax;
 	int      ialth, ipup, nslp;
 	double   pdest, pdlast, cm1[13], cm2[6];
 	int      icount, irflag;
