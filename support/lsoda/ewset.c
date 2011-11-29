@@ -1,7 +1,7 @@
 
 #include <math.h>
 #include <stdio.h>
-int ewset(int neq, double * ewt, int itol, double *rtol, double *atol, double *ycur)
+int ewset(const int neq, double * ewt, const int itol, const double *rtol, const double *atol, const double *ycur)
 {
 	int             i;
 

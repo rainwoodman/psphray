@@ -9,7 +9,12 @@ struct lsoda_opt_t {
 	double hmax;
 	double hmin;
 	double hmxi;
+	int itask;
+	int itol;
+	double *rtol;
+	double *atol;
 };
+
 typedef void    (*_lsoda_f) (double, double *, double *, void *);
 
 
@@ -20,5 +25,5 @@ struct lsoda_context_t {
 };
 
 
-void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int itol, double *rtol, double *atol,
-		   int itask, int *istate, struct lsoda_opt_t * opt);
+void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, 
+		   int *istate, struct lsoda_opt_t * opt);

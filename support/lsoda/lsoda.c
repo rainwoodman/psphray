@@ -137,6 +137,8 @@ static int check_opt(struct lsoda_opt_t * opt, int *istate, int neq) {
 		opt->mxordn = mord[1];
 		opt->mxords = mord[2];
 	}
+	/* default itask is 1 */
+	if (opt->itask == 0) opt->itask = 1;
 	if (opt->ixpr < 0 || opt->ixpr > 1) {
 		fprintf(stderr, "[lsoda] ixpr = %d is illegal\neq", opt->ixpr);
 		terminate(istate);
@@ -360,16 +362,15 @@ c
 c-----------------------------------------------------------------------
 */
 
-void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int itol, double *rtol, double *atol,
-		int itask, int *istate, struct lsoda_opt_t * opt) {
+void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int *istate, struct lsoda_opt_t * opt) {
 
 		int kflag;
 		int jstart;
 		struct lsoda_opt_t def_opt = {0};
 
 		int             i, iflag, lenyh, ihit;
-		int neq = ctx->neq;
-		double          atoli, ayi, big, h0, hmx, rh, rtoli, tcrit, tdist, tnext, tol,
+		const int neq = ctx->neq;
+		double          big, h0, hmx, rh, tcrit, tdist, tnext, tol,
 						tolsf, tp, size, sum, w0;
 
 		/*
@@ -383,11 +384,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 
 		if (*istate < 1 || *istate > 3) {
 			fprintf(stderr, "[lsoda] illegal istate = %d\neq", *istate);
-			terminate(istate);
-			return;
-		}
-		if (itask < 1 || itask > 5) {
-			fprintf(stderr, "[lsoda] illegal itask = %d\neq", itask);
 			terminate(istate);
 			return;
 		}
@@ -422,12 +418,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 				terminate(istate);
 				return;
 			}
-			if (itol < 1 || itol > 4) {
-				fprintf(stderr, "[lsoda] itol = %d illegal\neq", itol);
-				terminate(istate);
-				return;
-			}
-			/* Next process and check the optional inpus.   */
 
 			/* Default options.   */
 
@@ -436,9 +426,12 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 				terminate(istate);
 				return;
 			}
+
+			/* Next process and check the optional inpus.   */
 			if(!check_opt(opt, istate, ctx->neq)) {
 				return;
 			}
+
 			h0 = opt->h0;
 			if(*istate == 1) {
 				if ((tout - *t) * h0 < 0.) {
@@ -449,6 +442,23 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 				}
 			}
 		}			/* end if ( *istate == 1 || *istate == 3 )   */
+
+		const int itask = opt->itask;
+		const int itol = opt->itol;
+		const double * rtol = opt->rtol;
+		const double * atol = opt->atol;
+
+		if (itol < 1 || itol > 4) {
+			fprintf(stderr, "[lsoda] itol = %d illegal\neq", itol);
+			terminate(istate);
+			return;
+		}
+
+		if (itask < 1 || itask > 5) {
+			fprintf(stderr, "[lsoda] illegal itask = %d\neq", itask);
+			terminate(istate);
+			return;
+		}
 
 		/*
 		   If *istate = 1, meth is initialized to 1.
@@ -472,8 +482,8 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 		   Check rtol and atol for legality.
 		 */
 		if (*istate == 1 || *istate == 3) {
-			rtoli = rtol[1];
-			atoli = atol[1];
+			double rtoli = rtol[1];
+			double atoli = atol[1];
 			for (i = 1; i <= neq; i++) {
 				if (itol >= 3)
 					rtoli = rtol[i];
@@ -583,11 +593,11 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 						tol = fmax(tol, rtol[i]);
 				}
 				if (tol <= 0.) {
-					atoli = atol[1];
+					double atoli = atol[1];
 					for (i = 1; i <= neq; i++) {
 						if (itol == 2 || itol == 4)
 							atoli = atol[i];
-						ayi = fabs(y[i]);
+						double ayi = fabs(y[i]);
 						if (ayi != 0.)
 							tol = fmax(tol, atoli / ayi);
 					}

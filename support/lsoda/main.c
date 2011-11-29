@@ -20,7 +20,13 @@ int main(void)
 	y[3] = 0.0E0;
 	t = 0.0E0;
 	tout = 0.4E0;
-	itol = 2;
+	struct lsoda_opt_t opt = {0};
+	opt.ixpr = 1;
+	opt.itol = 2;
+	opt.rtol = rtol;
+	opt.atol = atol;
+	opt.itask = 1;
+	
 	rtol[0] = 0.0;
 	atol[0] = 0.0;
 	rtol[1] = rtol[3] = 1.0E-4;
@@ -28,13 +34,9 @@ int main(void)
 	atol[1] = 1.0E-6;
 	atol[2] = 1.0E-10;
 	atol[3] = 1.0E-6;
-	itask = 1;
 	istate = 1;
-	iopt = 0;
-	jt = 2;
 
-	struct lsoda_opt_t opt = {0};
-	opt.ixpr = 1;
+
 	struct lsoda_context_t ctx = {
 		.function = fex,
 		.neq = neq,
@@ -42,7 +44,7 @@ int main(void)
 	};
 
 	for (iout = 1; iout <= 12; iout++) {
-		lsoda(&ctx, y, &t, tout, itol, rtol, atol, itask, &istate, &opt);
+		lsoda(&ctx, y, &t, tout, &istate, &opt);
 		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[1], y[2], y[3]);
 		if (istate <= 0) {
 			printf("error istate = %d\n", istate);
