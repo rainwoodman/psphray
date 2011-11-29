@@ -11,13 +11,13 @@ static void fex(double t, double *y, double *ydot, void *data)
 
 int main(void)
 {
-	double          atol[4], rtol[4], t, tout, y[4];
+	double          atol[3], rtol[3], t, tout, y[3];
 	int             neq = 3;
 	int             itol, itask, istate, iopt, jt, iout;
 
-	y[1] = 1.0E0;
+	y[0] = 1.0E0;
+	y[1] = 0.0E0;
 	y[2] = 0.0E0;
-	y[3] = 0.0E0;
 	t = 0.0E0;
 	tout = 0.4E0;
 	struct lsoda_opt_t opt = {0};
@@ -27,13 +27,11 @@ int main(void)
 	opt.atol = atol;
 	opt.itask = 1;
 	
-	rtol[0] = 0.0;
-	atol[0] = 0.0;
-	rtol[1] = rtol[3] = 1.0E-4;
-	rtol[2] = 1.0E-8;
-	atol[1] = 1.0E-6;
-	atol[2] = 1.0E-10;
-	atol[3] = 1.0E-6;
+	rtol[0] = rtol[2] = 1.0E-4;
+	rtol[1] = 1.0E-8;
+	atol[0] = 1.0E-6;
+	atol[1] = 1.0E-10;
+	atol[2] = 1.0E-6;
 	istate = 1;
 
 
@@ -45,7 +43,7 @@ int main(void)
 
 	for (iout = 1; iout <= 12; iout++) {
 		lsoda(&ctx, y, &t, tout, &istate, &opt);
-		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[1], y[2], y[3]);
+		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[0], y[1], y[2]);
 		if (istate <= 0) {
 			printf("error istate = %d\n", istate);
 			exit(0);

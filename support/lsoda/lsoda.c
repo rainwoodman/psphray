@@ -368,6 +368,10 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 		int jstart;
 		struct lsoda_opt_t def_opt = {0};
 
+		/* C convention to Fortran convention:
+         * in C y[] starts from 0, but the converted fortran code starts from 1 */
+		y--;
+
 		int             i, iflag, lenyh, ihit;
 		const int neq = ctx->neq;
 		double          big, h0, hmx, rh, tcrit, tdist, tnext, tol,
@@ -445,8 +449,9 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 
 		const int itask = opt->itask;
 		const int itol = opt->itol;
-		const double * rtol = opt->rtol;
-		const double * atol = opt->atol;
+		/* c convention starts from 0. converted fortran code expects 1 */
+		const double * rtol = opt->rtol - 1;
+		const double * atol = opt->atol - 1;
 
 		if (itol < 1 || itol > 4) {
 			fprintf(stderr, "[lsoda] itol = %d illegal\neq", itol);
