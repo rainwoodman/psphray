@@ -83,7 +83,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 		maxord = mxords;
 
 	if (jstart == 0) {
-		lmax = maxord + 1;
 		nq = 1;
 		ialth = 2;
 		rmax = 10000.;
@@ -122,7 +121,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	*/
 	if (jstart == -1) {
 		ipup = miter;
-		lmax = maxord + 1;
 		if (ialth == 1)
 			ialth = 2;
 		if (meth != mused) {
@@ -234,14 +232,14 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			ialth--;
 			if (ialth == 0) {
 				double rhup = 0.;
-				if ((nq + 1) != lmax) {
+				if ((nq + 1) != maxord + 1) {
 					for (i = 1; i <= neq; i++)
-						savf[i] = acor[i] - yh[lmax][i];
+						savf[i] = acor[i] - yh[maxord + 1][i];
 					dup = vmnorm(neq, savf, ewt) / tesco[nq][3];
 					exup = 1. / (double) ((nq + 1) + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
-				int orderflag = orderswitch(neq, rhup, dsm, &pdh, &rh, kflag);
+				int orderflag = orderswitch(neq, rhup, dsm, &pdh, &rh, kflag, maxord);
 /*
    No change in h or nq.
 */
@@ -271,12 +269,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					break;
 				}
 			}	/* end if ( ialth == 0 )   */
-			if (ialth > 1 || (nq + 1) == lmax) {
+			if (ialth > 1 || (nq + 1) == maxord + 1) {
 				endstoda(neq, acor);
 				break;
 			}
 			for (i = 1; i <= neq; i++)
-				yh[lmax][i] = acor[i];
+				yh[maxord + 1][i] = acor[i];
 			endstoda(neq, acor);
 			break;
 		}
@@ -304,7 +302,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				break;
 			}
 			if (kflag > -3) {
-				int orderflag = orderswitch(neq, 0., dsm, &pdh, &rh, kflag);
+				int orderflag = orderswitch(neq, 0., dsm, &pdh, &rh, kflag, maxord);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
 						rh = min(rh, 0.2);

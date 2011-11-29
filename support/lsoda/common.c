@@ -19,7 +19,7 @@ double   tsw, pdnorm;
 /* static variables for stoda() */
 
 double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
-int      ialth, ipup, lmax, nslp;
+int      ialth, ipup, nslp;
 double   pdest, pdlast, ratio, cm1[13], cm2[6];
 int      icount, irflag;
 

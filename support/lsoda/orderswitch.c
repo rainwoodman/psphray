@@ -4,7 +4,7 @@
 #include <math.h>
 #include "blas.h"
 
-int orderswitch(int neq, double rhup, double dsm, double *pdh, double *rh, int kflag)
+int orderswitch(int neq, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord)
 
 /*
    Regardless of the success or failure of the step, factors
@@ -41,7 +41,7 @@ int orderswitch(int neq, double rhup, double dsm, double *pdh, double *rh, int k
 */
 	if (meth == 1) {
 		*pdh = max(fabs(h) * pdlast, 0.000001);
-		if ((nq + 1) < lmax)
+		if ((nq + 1) < maxord + 1)
 			rhup = min(rhup, sm1[(nq + 1)] / *pdh);
 		rhsm = min(rhsm, sm1[nq] / *pdh);
 		if (nq > 1)

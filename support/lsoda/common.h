@@ -26,7 +26,7 @@ extern double   tsw, pdnorm;
 /* static variables for stoda() */
 
 extern double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
-extern int      ialth, ipup, lmax, nslp;
+extern int      ialth, ipup, nslp;
 extern double   pdest, pdlast, ratio, cm1[13], cm2[6];
 extern int      icount, irflag;
 
