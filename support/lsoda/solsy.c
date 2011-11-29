@@ -2,25 +2,25 @@
 #include <stdio.h>
 #include "blas.h"
 
-int solsy(int neq, double *y, double ** wm, int * ipvt)
+int solsy(int neq, double *y)
 
 /*
    This routine manages the solution of the linear system arising from
-   a chord iteration.  It is called if miter != 0.
-   If miter is 2, it calls dgesl to accomplish this.
-   If miter is 5, it calls dgbsl.
+   a chord iteration.  It is called if _C(miter) != 0.
+   If _C(miter) is 2, it calls dgesl to accomplish this.
+   If _C(miter) is 5, it calls dgbsl.
 
    y = the right-hand side vector on input, and the solution vector
        on output.
 */
 
 {
-	if (miter != 2) {
-		printf("solsy -- miter != 2\n");
+	if (_C(miter) != 2) {
+		printf("solsy -- _C(miter) != 2\n");
 		return 0;
 	}
-	if (miter == 2)
-		dgesl(wm, neq, ipvt, y, 0);
+	if (_C(miter) == 2)
+		dgesl(_C(wm), neq, _C(ipvt), y, 0);
 	return 1;
 
 }

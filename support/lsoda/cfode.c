@@ -13,9 +13,9 @@ void cfode(int meth)
    cfode is called once at the beginning of the problem, and
    is not called again unless and until meth is changed.
 
-   The elco array contains the basic method coefficients.
+   The _C(elco) array contains the basic method coefficients.
    The coefficients el[i], 1 < i < nq+1, for the method of
-   order nq are stored in elco[nq][i].  They are given by a generating
+   order nq are stored in _C(elco)[nq][i].  They are given by a generating
    polynomial, i.e.,
 
       l(x) = el[1] + el[2]*x + ... + el[nq+1]*x^nq.
@@ -30,19 +30,19 @@ void cfode(int meth)
 
    where   k = factorial(nq)*(1+1/2+...+1/nq).
 
-   The tesco array contains test constants used for the
+   The _C(tesco) array contains test constants used for the
    local error test and the selection of step size and/or order.
-   At order nq, tesco[nq][k] is used for the selection of step
+   At order nq, _C(tesco)[nq][k] is used for the selection of step
    size at order nq-1 if k = 1, at order nq if k = 2, and at order
    nq+1 if k = 3.
 */
 	if (meth == 1) {
-		elco[1][1] = 1.;
-		elco[1][2] = 1.;
-		tesco[1][1] = 0.;
-		tesco[1][2] = 2.;
-		tesco[2][1] = 1.;
-		tesco[12][3] = 0.;
+		_C(elco)[1][1] = 1.;
+		_C(elco)[1][2] = 1.;
+		_C(tesco)[1][1] = 0.;
+		_C(tesco)[1][2] = 2.;
+		_C(tesco)[2][1] = 1.;
+		_C(tesco)[12][3] = 0.;
 		pc[1] = 1.;
 		rqfac = 1.;
 		for (nq = 2; nq <= 12; nq++) {
@@ -77,18 +77,18 @@ void cfode(int meth)
 				xpin += tsign * pc[i] / (double) (i + 1);
 			}
 /*
-   Store coefficients in elco and tesco.
+   Store coefficients in _C(elco) and _C(tesco).
 */
-			elco[nq][1] = pint * rq1fac;
-			elco[nq][2] = 1.;
+			_C(elco)[nq][1] = pint * rq1fac;
+			_C(elco)[nq][2] = 1.;
 			for (i = 2; i <= nq; i++)
-				elco[nq][i + 1] = rq1fac * pc[i] / (double) i;
+				_C(elco)[nq][i + 1] = rq1fac * pc[i] / (double) i;
 			agamq = rqfac * xpin;
 			ragq = 1. / agamq;
-			tesco[nq][2] = ragq;
+			_C(tesco)[nq][2] = ragq;
 			if (nq < 12)
-				tesco[nqp1][1] = ragq * rqfac / (double) nqp1;
-			tesco[nqm1][3] = ragq;
+				_C(tesco)[nqp1][1] = ragq * rqfac / (double) nqp1;
+			_C(tesco)[nqm1][3] = ragq;
 		}		/* end for   */
 		return;
 	}			/* end if ( meth == 1 )   */
@@ -115,14 +115,14 @@ void cfode(int meth)
 			pc[i] = pc[i - 1] + fnq * pc[i];
 		pc[1] *= fnq;
 /*
-   Store coefficients in elco and tesco.
+   Store coefficients in _C(elco) and _C(tesco).
 */
 		for (i = 1; i <= nqp1; i++)
-			elco[nq][i] = pc[i] / pc[2];
-		elco[nq][2] = 1.;
-		tesco[nq][1] = rq1fac;
-		tesco[nq][2] = ((double) nqp1) / elco[nq][1];
-		tesco[nq][3] = ((double) (nq + 2)) / elco[nq][1];
+			_C(elco)[nq][i] = pc[i] / pc[2];
+		_C(elco)[nq][2] = 1.;
+		_C(tesco)[nq][1] = rq1fac;
+		_C(tesco)[nq][2] = ((double) nqp1) / _C(elco)[nq][1];
+		_C(tesco)[nq][3] = ((double) (nq + 2)) / _C(elco)[nq][1];
 		rq1fac /= fnq;
 	}
 	return;

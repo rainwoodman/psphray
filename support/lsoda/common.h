@@ -10,30 +10,34 @@
 #define MXNCF 10
 #define RATIO 5.0
 
-/* newly added static variables */
-
-extern int      imxer;
 extern int      mord[3];
 extern double   sm1[13];
+/* newly added static variables */
 
-/* static variables for lsoda() */
+struct common_t {
+	int      imxer;
 
-extern double   h, hu, rc, tn;
-extern int      illin, init, nhnil, ntrep, nslast,
-                jcur, meth, mused, nq, nst,
-                nfe, nje, nqu, miter;
-extern double   tsw, pdnorm;
+	/* static variables for lsoda() */
 
-/* no static variable for prja(), solsy() */
-/* static variables for stoda() */
+	double   h, hu, rc, tn;
+	int      illin, init, nhnil, ntrep, nslast,
+					jcur, meth, mused, nq, nst,
+					nfe, nje, nqu, miter;
+	double   tsw, pdnorm;
 
-extern double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
-extern int      ialth, ipup, nslp;
-extern double   pdest, pdlast, cm1[13], cm2[6];
-extern int      icount, irflag;
+	/* no static variable for prja(), solsy() */
+	/* static variables for stoda() */
 
-/* static variables for various vectors and the Jacobian. */
+	double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
+	int      ialth, ipup, nslp;
+	double   pdest, pdlast, cm1[13], cm2[6];
+	int      icount, irflag;
 
-extern void * memory;
-extern double **yh, **wm, *ewt, *savf, *acor;
-extern int     *ipvt;
+	/* static variables for various vectors and the Jacobian. */
+
+	void * memory;
+	double **yh, **wm, *ewt, *savf, *acor;
+	int     *ipvt;
+};
+extern struct common_t common;
+#define _C(x) (common.x)

@@ -8,18 +8,18 @@ int corfailure(int neq, double *told, double *rh, int *ncf, double hmin)
 	int             j, i1, i;
 
 	ncf++;
-	rmax = 2.;
-	tn = *told;
-	for (j = nq; j >= 1; j--)
-		for (i1 = j; i1 <= nq; i1++) {
+	_C(rmax) = 2.;
+	_C(tn) = *told;
+	for (j = _C(nq); j >= 1; j--)
+		for (i1 = j; i1 <= _C(nq); i1++) {
 			for (i = 1; i <= neq; i++)
-				yh[i1][i] -= yh[i1 + 1][i];
+				_C(yh)[i1][i] -= _C(yh)[i1 + 1][i];
 		}
-	if (fabs(h) <= hmin * 1.00001 || *ncf == MXNCF) {
+	if (fabs(_C(h)) <= hmin * 1.00001 || *ncf == MXNCF) {
 		return 2;
 	}
 	*rh = 0.25;
-	ipup = miter;
+	_C(ipup) = _C(miter);
 	return 1;
 }
 
