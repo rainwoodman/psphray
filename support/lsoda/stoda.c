@@ -67,7 +67,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	kflag = 0;
 	told = tn;
 	ncf = 0;
-	jcur = 0;
 	delp = 0.;
 
 /*
@@ -154,6 +153,11 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	   In any case, prja is called at least every msbp steps.
 	*/
 	while (1) {
+/*
+   Before the corrector starts.  jcur is set to 0
+   to signal that the Jacobian involved may need updating later.
+*/
+		jcur = 0;
 		while (1) {
 			if (fabs(rc - 1.) > CCMAX)
 				ipup = miter;
@@ -183,11 +187,8 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			}
 		}		/* end inner while ( corrector loop )   */
 /*
-   The corrector has converged.  jcur is set to 0
-   to signal that the Jacobian involved may need updating later.
    The local error test is done now.
 */
-		jcur = 0;
 		if (m == 0)
 			dsm = del / tesco[nq][2];
 		if (m > 0)

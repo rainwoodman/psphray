@@ -27,7 +27,6 @@ int prja(int neq, double *y, _lsoda_f f, void *_data)
    by defa if miter = 2, and by dgbfa if miter = 5.
 */
 	nje++;
-	jcur = 1;
 	hl0 = h * el[1];
 /*
    If miter = 2, make neq calls to f to approximate J.

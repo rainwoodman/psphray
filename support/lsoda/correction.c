@@ -45,6 +45,7 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 		if (*m == 0) {
 			if (ipup > 0) {
 				int ierpj = prja(neq, y, f, _data);
+				jcur = 1;
 				ipup = 0;
 				rc = 1.;
 				nslp = nst;
