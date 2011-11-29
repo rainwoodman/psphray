@@ -25,7 +25,7 @@ extern double   tsw, pdnorm;
 /* no static variable for prja(), solsy() */
 /* static variables for stoda() */
 
-extern double   conit, crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
+extern double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
 extern int      ialth, ipup, lmax, nslp;
 extern double   pdest, pdlast, ratio, cm1[13], cm2[6];
 extern int      icount, irflag;

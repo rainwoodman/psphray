@@ -12,7 +12,5 @@ void resetcoeff()
 	for (i = 1; i <= (nq + 1); i++)
 		el[i] = elco[nq][i];
 	rc = rc * el[1] / el0;
-	conit = 0.5 / (double) (nq + 2);
-
 }
 

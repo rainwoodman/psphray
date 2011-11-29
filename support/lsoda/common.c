@@ -18,7 +18,7 @@ double   tsw, pdnorm;
 /* no static variable for prja(), solsy() */
 /* static variables for stoda() */
 
-double   conit, crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
+double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
 int      ialth, ipup, lmax, nslp;
 double   pdest, pdlast, ratio, cm1[13], cm2[6];
 int      icount, irflag;

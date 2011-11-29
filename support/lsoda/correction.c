@@ -110,6 +110,7 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 				rate = max(rate, rm);
 				crate = max(0.2 * crate, rm);
 			}
+			double conit = 0.5 / (double) (nq + 2);
 			dcon = *del * min(1., 1.5 * crate) / (tesco[nq][2] * conit);
 			if (dcon <= 1.) {
 				pdest = max(pdest, rate / fabs(h * el[1]));
