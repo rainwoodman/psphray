@@ -22,8 +22,9 @@ struct lsoda_context_t {
 	_lsoda_f function;
 	void * data;
 	int neq;
+	int state;
 };
 
 
 void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, 
-		   int *istate, struct lsoda_opt_t * opt);
+		   struct lsoda_opt_t * opt);

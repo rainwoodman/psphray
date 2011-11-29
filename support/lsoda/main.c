@@ -39,13 +39,14 @@ int main(void)
 		.function = fex,
 		.neq = neq,
 		.data = NULL,
+		.state = 1,
 	};
 
 	for (iout = 1; iout <= 12; iout++) {
-		lsoda(&ctx, y, &t, tout, &istate, &opt);
+		lsoda(&ctx, y, &t, tout, &opt);
 		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[0], y[1], y[2]);
-		if (istate <= 0) {
-			printf("error istate = %d\n", istate);
+		if (ctx.state <= 0) {
+			printf("error istate = %d\n", ctx.state);
 			exit(0);
 		}
 		tout = tout * 10.0E0;

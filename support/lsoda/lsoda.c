@@ -362,7 +362,7 @@ c
 c-----------------------------------------------------------------------
 */
 
-void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int *istate, struct lsoda_opt_t * opt) {
+void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, struct lsoda_opt_t * opt) {
 
 		int kflag;
 		int jstart;
@@ -376,6 +376,8 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 		const int neq = ctx->neq;
 		double          big, h0, hmx, rh, tcrit, tdist, tnext, tol,
 						tolsf, tp, size, sum, w0;
+
+		int * istate = &ctx->state;
 
 		/*
 		   Block a.
