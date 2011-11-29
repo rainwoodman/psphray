@@ -6,7 +6,6 @@
 int corfailure(int neq, double *told, double *rh, int *ncf, double hmin)
 {
 	int             j, i1, i;
-	double ** yh = vec.yh;
 
 	ncf++;
 	rmax = 2.;

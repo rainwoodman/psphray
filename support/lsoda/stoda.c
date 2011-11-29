@@ -27,11 +27,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	int             i, i1, j, m, ncf;
 	double          del, delp, dsm, dup, exup, r, rh, told;
 	double          pdh, pnorm;
-	double ** yh = vec.yh;
-	double ** wm = vec.wm;
-	double * ewt = vec.ewt;
-	double * acor = vec.acor;
-	double * savf = vec.savf;
 	
 /*
    stoda performs one step of the integration of an initial value

@@ -23,9 +23,6 @@ int orderswitch(int neq, double rhup, double dsm, double *pdh, double *rh, int k
 {
 	int             newq, i;
 	double          exsm, rhdn, rhsm, ddn, exdn, r;
-	double ** yh = vec.yh;
-	double * ewt = vec.ewt;
-	double * acor = vec.acor;
 
 	exsm = 1. / (double) (nq + 1);
 	rhsm = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);

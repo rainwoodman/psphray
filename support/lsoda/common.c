@@ -26,4 +26,6 @@ int      icount, irflag;
 /* static variables for various vectors and the Jacobian. */
 
 void * memory;
-struct vec_t vec = {0};
+
+double **yh, **wm, *ewt, *savf, *acor;
+int     *ipvt;

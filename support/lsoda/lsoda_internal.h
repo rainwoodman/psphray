@@ -1,8 +1,3 @@
-struct vec_t {
-	double **yh, **wm, *ewt, *savf, *acor;
-	int     *ipvt;
-};
-
 int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int msordn);
 int      correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double *delp, double *told,
 						   int *ncf, double *rh, int *m, double hmin, void *_data);

@@ -98,7 +98,7 @@ static void terminate2(struct lsoda_context_t * ctx, double *y, double *t)
 {
 	int             i;
 	int neq = ctx->neq;
-	double ** yh = vec.yh;
+
 	for (i = 1; i <= neq; i++)
 		y[i] = yh[1][i];
 	*t = tn;
@@ -118,7 +118,7 @@ static void successreturn(struct lsoda_context_t * ctx, double *y, double *t, in
 {
 	int             i;
 	int neq = ctx->neq;
-	double ** yh = vec.yh;
+
 	for (i = 1; i <= neq; i++)
 		y[i] = yh[1][i];
 	*t = tn;
@@ -223,19 +223,19 @@ static int alloc_mem(struct lsoda_opt_t * opt, int neq) {
 
 	memory = malloc(offset);
 
-	vec.yh = memory + yhoff;
-	vec.wm =  memory + wmoff;
-	vec.ewt = memory + ewtoff;
-	vec.savf =memory + savfoff;
-	vec.acor =memory + acoroff;
-	vec.ipvt =memory + ipvtoff;
+	yh = memory + yhoff;
+	wm =  memory + wmoff;
+	ewt = memory + ewtoff;
+	savf =memory + savfoff;
+	acor =memory + acoroff;
+	ipvt =memory + ipvtoff;
 
 	for(i = 0; i <= lenyh; i++) {
-		vec.yh[i] = memory + yh0off + i * (1 + nyh) * sizeof(double);
+		yh[i] = memory + yh0off + i * (1 + nyh) * sizeof(double);
 	}
 
 	for(i = 0; i <= nyh; i++) {
-		vec.wm[i] = memory + wm0off + i * (1 + nyh) * sizeof(double);
+		wm[i] = memory + wm0off + i * (1 + nyh) * sizeof(double);
 	}
 
 	return memory != NULL;
@@ -505,8 +505,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 		   The error weights in ewt are inverted after being loaded.
 		 */
 		if (*istate == 1) {
-			double ** yh = vec.yh;
-			double * ewt = vec.ewt;
 			tn = *t;
 			tsw = *t;
 			if (itask == 4 || itask == 5) {
@@ -542,7 +540,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 			/*
 			   Load and invert the ewt array.  
 			 */
-			if(!ewset(neq, vec.ewt, itol, rtol, atol, y)) {
+			if(!ewset(neq, ewt, itol, rtol, atol, y)) {
 				terminate2(ctx, y, t);
 				return;
 			}
@@ -718,13 +716,13 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 					terminate2(ctx, y, t);
 					return;
 				}
-				if(!ewset(neq, vec.ewt, itol, rtol, atol, vec.yh[1])) {
+				if(!ewset(neq, ewt, itol, rtol, atol, yh[1])) {
 					terminate2(ctx, y, t);
 					*istate = -6;
 					return;
 				}
 			}
-			tolsf = ETA * vmnorm(neq, vec.yh[1], vec.ewt);
+			tolsf = ETA * vmnorm(neq, yh[1], ewt);
 			if (tolsf > 0.01) {
 				tolsf = tolsf * 200.;
 				if (nst == 0) {
@@ -875,7 +873,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 				big = 0.;
 				imxer = 1;
 				for (i = 1; i <= neq; i++) {
-					size = fabs(vec.acor[i]) * vec.ewt[i];
+					size = fabs(acor[i]) * ewt[i];
 					if (big < size) {
 						big = size;
 						imxer = i;

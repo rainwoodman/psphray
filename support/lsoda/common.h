@@ -35,4 +35,5 @@ extern int      icount, irflag;
 /* static variables for various vectors and the Jacobian. */
 
 extern void * memory;
-extern struct vec_t vec;
+extern double **yh, **wm, *ewt, *savf, *acor;
+extern int     *ipvt;

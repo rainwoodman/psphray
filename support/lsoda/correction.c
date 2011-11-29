@@ -16,12 +16,6 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 {
 	int             i;
 	double          rm, rate, dcon;
-	double ** yh = vec.yh;
-	double ** wm = vec.wm;
-	int * ipvt = vec.ipvt;
-	double * savf = vec.savf;
-	double * acor = vec.acor;
-	double * ewt = vec.ewt;
 /*
    Up to maxcor corrector iterations are taken.  A convergence test is
    made on the r.m.s. norm of each correction, weighted by the error
