@@ -81,6 +81,10 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
    the next increase.
    cfode is called to get the needed coefficients for both methods.
 */
+	int maxord = mxordn;
+	if (meth == 2)
+		maxord = mxords;
+
 	if (jstart == 0) {
 		lmax = maxord + 1;
 		nq = 1;

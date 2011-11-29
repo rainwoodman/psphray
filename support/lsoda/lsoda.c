@@ -509,7 +509,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 			double * ewt = vec.ewt;
 			tn = *t;
 			tsw = *t;
-			maxord = opt->mxordn;
 			if (itask == 4 || itask == 5) {
 				tcrit = opt->tcrit;
 				if ((tcrit - tout) * (tout - *t) < 0.) {
@@ -783,9 +782,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 				init = 1;
 				if (meth != mused) {
 					tsw = tn;
-					maxord = opt->mxordn;
-					if (meth == 2)
-						maxord = opt->mxords;
 					jstart = -1;
 					if (opt->ixpr) {
 						if (meth == 2)

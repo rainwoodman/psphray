@@ -34,6 +34,7 @@ int main(void)
 	jt = 2;
 
 	struct lsoda_opt_t opt = {0};
+	opt.ixpr = 1;
 	struct lsoda_context_t ctx = {
 		.function = fex,
 		.neq = neq,
