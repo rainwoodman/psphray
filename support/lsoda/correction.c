@@ -49,7 +49,7 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 				rc = 1.;
 				nslp = nst;
 				crate = 0.7;
-				if (ierpj != 0) {
+				if (!ierpj) {
 					return corfailure(neq, told, rh, ncf, hmin);
 				}
 			}

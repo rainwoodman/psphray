@@ -66,8 +66,8 @@ int prja(int neq, double *y, _lsoda_f f, void *_data)
 */
 		dgefa(wm, neq, ipvt, &ier);
 		if (ier != 0)
-		return 1;
+		return 0;
 	}
-	return 0;
+	return 1;
 }				/* end prja   */
 
