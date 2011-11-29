@@ -1,7 +1,7 @@
 #include "common.h"
 #include "cfode_static.inc"
 
-void cfode_static (int meth)
+void cfode_static (struct common_t * common, int meth)
 {
 #ifdef CFODE_STATIC
 	if (meth == 1) {

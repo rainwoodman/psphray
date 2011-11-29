@@ -1,5 +1,3 @@
-#include "lsoda.h"
-#include "lsoda_internal.h"
 #include "common.h"
 
 /* newly added static variables */

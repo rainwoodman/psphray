@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "blas.h"
 
-int solsy(int neq, double *y)
+int solsy(struct common_t * common, int neq, double *y)
 
 /*
    This routine manages the solution of the linear system arising from

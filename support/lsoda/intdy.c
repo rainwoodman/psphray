@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <math.h>
 #include "lsoda.h"
-#include "lsoda_internal.h"
 #include "common.h"
+#include "lsoda_internal.h"
 
-void intdy(int neq, double t, int k, double *dky, int *iflag)
+void intdy(struct common_t * common, int neq, double t, int k, double *dky, int *iflag)
 
 /*
    Intdy computes interpolated values of the k-th derivative of the

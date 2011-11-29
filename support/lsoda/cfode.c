@@ -1,6 +1,6 @@
 #include "common.h"
 
-void cfode(int meth)
+void cfode(struct common_t * common, int meth)
 {
 	int             i, nq, nqm1, nqp1;
 	double          agamq, fnq, fnqm1, pc[13], pint, ragq, rqfac, rq1fac, tsign, xpin;

@@ -1,6 +1,6 @@
 #include "common.h"
 
-void resetcoeff()
+void resetcoeff(struct common_t * common)
 /*
    The _C(el) vector and related constants are reset
    whenever the order _C(nq) is changed, or at the start of the problem.

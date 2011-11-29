@@ -1,7 +1,7 @@
 
 #include <math.h>
 #include <stdio.h>
-int ewset(const int neq, double * ewt, const int itol, const double *rtol, const double *atol, const double *ycur)
+int ewset(struct common_t * common, const int neq, double * ewt, const int itol, const double *rtol, const double *atol, const double *ycur)
 {
 	int             i;
 

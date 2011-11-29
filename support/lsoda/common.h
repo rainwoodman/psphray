@@ -45,5 +45,4 @@ struct common_t {
 	double **yh, **wm, *ewt, *savf, *acor;
 	int     *ipvt;
 };
-extern struct common_t common;
-#define _C(x) (common.x)
+#define _C(x) (common->x)

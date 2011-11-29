@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <math.h>
 #include "lsoda.h"
-#include "lsoda_internal.h"
 #include "blas.h"
 #include "common.h"
+#include "lsoda_internal.h"
 
-int prja(int neq, double *y, _lsoda_f f, void *_data)
+int prja(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data)
 {
 	int             i, ier, j;
 	double          fac, hl0, r, r0, yj;

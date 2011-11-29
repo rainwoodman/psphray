@@ -3,7 +3,7 @@
 #include "lsoda_internal.h"
 #include <math.h>
 
-int corfailure(int neq, double *told, double *rh, int *ncf, double hmin)
+int corfailure(struct common_t * common, int neq, double *told, double *rh, int *ncf, double hmin)
 {
 	int             j, i1, i;
 

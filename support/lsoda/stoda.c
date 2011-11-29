@@ -9,19 +9,18 @@
    This routine returns from stoda to lsoda.  Hence freevectors() is
    not executed.
 */
-void endstoda(int neq)
-{
-	double          r;
-	int             i;
-
-	r = 1. / _C(tesco)[_C(nqu)][2];
-	for (i = 1; i <= neq; i++)
-		_C(acor)[i] *= r;
-	_C(hold) = _C(h);
-
+#define endstoda() \
+{ \
+	double          r; \
+	int             i; \
+ \
+	r = 1. / _C(tesco)[_C(nqu)][2]; \
+	for (i = 1; i <= neq; i++) \
+		_C(acor)[i] *= r; \
+	_C(hold) = _C(h); \
 }
 
-int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int mxordn)
+int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int mxordn)
 {
 	int kflag;
 	int             i, i1, j, m, ncf;
@@ -94,13 +93,13 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 		_C(irflag) = 0;
 		_C(pdest) = 0.;
 		_C(pdlast) = 0.;
-		cfode(2);
+		cfode(common, 2);
 		for (i = 1; i <= 5; i++)
 			_C(cm2)[i] = _C(tesco)[i][2] * _C(elco)[i][i + 1];
-		cfode(1);
+		cfode(common, 1);
 		for (i = 1; i <= 12; i++)
 			_C(cm1)[i] = _C(tesco)[i][2] * _C(elco)[i][i + 1];
-		resetcoeff();
+		resetcoeff(common);
 	}			/* end if ( jstart == 0 )   */
 	/*
 	   The following block handles preliminaries needed when jstart = -1.
@@ -118,21 +117,21 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 		if (_C(ialth) == 1)
 			_C(ialth) = 2;
 		if (_C(meth) != _C(mused)) {
-			cfode(_C(meth));
+			cfode(common, _C(meth));
 			_C(ialth) = (_C(nq) + 1);
-			resetcoeff();
+			resetcoeff(common);
 		}
 		if (_C(h) != _C(hold)) {
 			rh = _C(h) / _C(hold);
 			_C(h) = _C(hold);
-			scaleh(neq, &rh, &pdh, hmxi);
+			scaleh(common, neq, &rh, &pdh, hmxi);
 		}
 	}			/* if ( jstart == -1 )   */
 	if (jstart == -2) {
 		if (_C(h) != _C(hold)) {
 			rh = _C(h) / _C(hold);
 			_C(h) = _C(hold);
-			scaleh(neq, &rh, &pdh, hmxi);
+			scaleh(common, neq, &rh, &pdh, hmxi);
 		}
 	}			/* if ( jstart == -2 )   */
 	/*
@@ -163,12 +162,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				}
 			pnorm = vmnorm(neq, _C(yh)[1], _C(ewt));
 
-			int corflag = correction(neq, y, f, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, _data);
+			int corflag = correction(common, neq, y, f, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, _data);
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {
 				rh = max(rh, hmin / fabs(_C(h)));
-				scaleh(neq, &rh, &pdh, hmxi);
+				scaleh(common, neq, &rh, &pdh, hmxi);
 				continue;
 			}
 			if (corflag == 2) {
@@ -211,12 +210,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 			}
 			_C(icount)--;
 			if (_C(icount) < 0) {
-				methodswitch(neq, dsm, pnorm, &pdh, &rh, mxords, mxordn);
+				methodswitch(common, neq, dsm, pnorm, &pdh, &rh, mxords, mxordn);
 				if (_C(meth) != _C(mused)) {
 					rh = max(rh, hmin / fabs(_C(h)));
-					scaleh(neq, &rh, &pdh, hmxi);
+					scaleh(common, neq, &rh, &pdh, hmxi);
 					_C(rmax) = 10.;
-					endstoda(neq);
+					endstoda();
 					break;
 				}
 			}
@@ -233,12 +232,12 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					exup = 1. / (double) ((_C(nq) + 1) + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
-				int orderflag = orderswitch(neq, rhup, dsm, &pdh, &rh, kflag, maxord);
+				int orderflag = orderswitch(common, neq, rhup, dsm, &pdh, &rh, kflag, maxord);
 /*
    No change in _C(h) or _C(nq).
 */
 				if (orderflag == 0) {
-					endstoda(neq);
+					endstoda();
 					break;
 				}
 /*
@@ -246,30 +245,30 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 */
 				if (orderflag == 1) {
 					rh = max(rh, hmin / fabs(_C(h)));
-					scaleh(neq, &rh, &pdh, hmxi);
+					scaleh(common, neq, &rh, &pdh, hmxi);
 					_C(rmax) = 10.;
-					endstoda(neq);
+					endstoda();
 					break;
 				}
 /*
    both _C(nq) and _C(h) are changed.
 */
 				if (orderflag == 2) {
-					resetcoeff();
+					resetcoeff(common);
 					rh = max(rh, hmin / fabs(_C(h)));
-					scaleh(neq, &rh, &pdh, hmxi);
+					scaleh(common, neq, &rh, &pdh, hmxi);
 					_C(rmax) = 10.;
-					endstoda(neq);
+					endstoda();
 					break;
 				}
 			}	/* end if ( _C(ialth) == 0 )   */
 			if (_C(ialth) > 1 || (_C(nq) + 1) == maxord + 1) {
-				endstoda(neq);
+				endstoda();
 				break;
 			}
 			for (i = 1; i <= neq; i++)
 				_C(yh)[maxord + 1][i] = _C(acor)[i];
-			endstoda(neq);
+			endstoda();
 			break;
 		}
 		/* end if ( dsm <= 1. )   */
@@ -296,17 +295,17 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 				break;
 			}
 			if (kflag > -3) {
-				int orderflag = orderswitch(neq, 0., dsm, &pdh, &rh, kflag, maxord);
+				int orderflag = orderswitch(common, neq, 0., dsm, &pdh, &rh, kflag, maxord);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
 						rh = min(rh, 0.2);
 					rh = max(rh, hmin / fabs(_C(h)));
-					scaleh(neq, &rh, &pdh, hmxi);
+					scaleh(common, neq, &rh, &pdh, hmxi);
 				}
 				if (orderflag == 2) {
-					resetcoeff();
+					resetcoeff(common);
 					rh = max(rh, hmin / fabs(_C(h)));
-					scaleh(neq, &rh, &pdh, hmxi);
+					scaleh(common, neq, &rh, &pdh, hmxi);
 				}
 				continue;
 			}
@@ -341,7 +340,7 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 					if (_C(nq) == 1)
 						continue;
 					_C(nq) = 1;
-					resetcoeff();
+					resetcoeff(common);
 					continue;
 				}
 			}	/* end else -- kflag <= -3 */

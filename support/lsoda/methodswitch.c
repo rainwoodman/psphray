@@ -1,10 +1,10 @@
 #include <math.h>
 #include "lsoda.h"
-#include "lsoda_internal.h"
 #include "common.h"
+#include "lsoda_internal.h"
 #include "blas.h"
 
-void methodswitch(int neq, double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn)
+void methodswitch(struct common_t * common, int neq, double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn)
 {
 	int             lm1, lm1p1, lm2, lm2p1, nqm1, nqm2;
 	double          rh1, rh2, rh1it, exm2, dm2, exm1, dm1, alpha, exsm;

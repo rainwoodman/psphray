@@ -5,7 +5,7 @@
 #include "blas.h"
 #include "lsoda_internal.h"
 
-int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double *delp, double *told,
+int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double pnorm, double *del, double *delp, double *told,
 					   int *ncf, double *rh, int *m, double hmin, void *_data)
 /*
    *corflag = 0 : corrector converged,
@@ -38,14 +38,14 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 	while (1) {
 		if (*m == 0) {
 			if (_C(ipup) > 0) {
-				int ierpj = prja(neq, y, f, _data);
+				int ierpj = prja(common, neq, y, f, _data);
 				_C(jcur) = 1;
 				_C(ipup) = 0;
 				_C(rc) = 1.;
 				_C(nslp) = _C(nst);
 				_C(crate) = 0.7;
 				if (!ierpj) {
-					return corfailure(neq, told, rh, ncf, hmin);
+					return corfailure(common, neq, told, rh, ncf, hmin);
 				}
 			}
 			for (i = 1; i <= neq; i++)
@@ -75,7 +75,7 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 		else {
 			for (i = 1; i <= neq; i++)
 				y[i] = _C(h) * _C(savf)[i] - (_C(yh)[2][i] + _C(acor)[i]);
-			solsy(neq, y);
+			solsy(common, neq, y);
 			*del = vmnorm(neq, y, _C(ewt));
 			for (i = 1; i <= neq; i++) {
 				_C(acor)[i] += y[i];
@@ -123,7 +123,7 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
 		(*m)++;
 		if (*m == MAXCOR || (*m >= 2 && *del > 2. * *delp)) {
 			if (_C(miter) == 0 || _C(jcur) == 1) {
-				return corfailure(neq, told, rh, ncf, hmin);
+				return corfailure(common, neq, told, rh, ncf, hmin);
 			}
 			_C(ipup) = _C(miter);
 /*

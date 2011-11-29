@@ -1,8 +1,8 @@
 #include "lsoda.h"
-#include "lsoda_internal.h"
 #include "common.h"
+#include "lsoda_internal.h"
 #include <math.h>
-void scaleh(int neq, double *rh, double *pdh, double hmxi)
+void scaleh(struct common_t * common, int neq, double *rh, double *pdh, double hmxi)
 {
 	double          r;
 	int             j, i;
