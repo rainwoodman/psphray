@@ -67,7 +67,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 	kflag = 0;
 	told = tn;
 	ncf = 0;
-	iersl = 0;
 	jcur = 0;
 	delp = 0.;
 

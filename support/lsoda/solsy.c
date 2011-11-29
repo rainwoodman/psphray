@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "blas.h"
 
-void solsy(int neq, double *y, double ** wm, int * ipvt)
+int solsy(int neq, double *y, double ** wm, int * ipvt)
 
 /*
    This routine manages the solution of the linear system arising from
@@ -15,14 +15,13 @@ void solsy(int neq, double *y, double ** wm, int * ipvt)
 */
 
 {
-	iersl = 0;
 	if (miter != 2) {
 		printf("solsy -- miter != 2\n");
-		return;
+		return 0;
 	}
 	if (miter == 2)
 		dgesl(wm, neq, ipvt, y, 0);
-	return;
+	return 1;
 
 }
 

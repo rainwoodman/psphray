@@ -17,7 +17,7 @@ extern double   sm1[13];
 /* static variables for lsoda() */
 
 extern double   h, hu, rc, tn;
-extern int      illin, init, nhnil, ntrep, nslast, iersl,
+extern int      illin, init, nhnil, ntrep, nslast,
                 jcur, meth, mused, nq, nst,
                 nfe, nje, nqu, miter;
 extern double   tsw, pdnorm;
