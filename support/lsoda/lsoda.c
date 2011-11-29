@@ -528,7 +528,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, int 
 			nqu = 0;
 			mused = 0;
 			miter = 0;
-			maxcor = 3;
 			msbp = 20;
 			mxncf = 10;
 			/*

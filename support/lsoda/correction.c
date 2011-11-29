@@ -125,7 +125,7 @@ int correction(int neq, double *y, _lsoda_f f, double pnorm, double *del, double
    reduced or mxncf failures have occured, exit with corflag = 2.
 */
 		(*m)++;
-		if (*m == maxcor || (*m >= 2 && *del > 2. * *delp)) {
+		if (*m == MAXCOR || (*m >= 2 && *del > 2. * *delp)) {
 			if (miter == 0 || jcur == 1) {
 				return corfailure(neq, told, rh, ncf, hmin);
 			}
