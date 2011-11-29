@@ -99,7 +99,6 @@ int stoda(int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, 
 		irflag = 0;
 		pdest = 0.;
 		pdlast = 0.;
-		ratio = 5.;
 		cfode(2);
 		for (i = 1; i <= 5; i++)
 			cm2[i] = tesco[i][2] * elco[i][i + 1];

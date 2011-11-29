@@ -8,6 +8,8 @@
 #define MAXCOR 3
 #define MSBP 20
 #define MXNCF 10
+#define RATIO 5.0
+
 /* newly added static variables */
 
 extern int      imxer;
@@ -27,7 +29,7 @@ extern double   tsw, pdnorm;
 
 extern double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
 extern int      ialth, ipup, nslp;
-extern double   pdest, pdlast, ratio, cm1[13], cm2[6];
+extern double   pdest, pdlast, cm1[13], cm2[6];
 extern int      icount, irflag;
 
 /* static variables for various vectors and the Jacobian. */

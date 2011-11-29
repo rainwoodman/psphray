@@ -20,7 +20,7 @@ double   tsw, pdnorm;
 
 double   crate, el[14], elco[13][14], hold, rmax, tesco[13][4];
 int      ialth, ipup, nslp;
-double   pdest, pdlast, ratio, cm1[13], cm2[6];
+double   pdest, pdlast, cm1[13], cm2[6];
 int      icount, irflag;
 
 /* static variables for various vectors and the Jacobian. */

@@ -56,7 +56,7 @@ void methodswitch(int neq, double dsm, double pnorm, double *pdh, double *rh, in
 				rh2 = 1. / (1.2 * pow(dm2, exsm) + 0.0000012);
 				nqm2 = nq;
 			}
-			if (rh2 < ratio * rh1)
+			if (rh2 < RATIO * rh1)
 				return;
 		}
 /*
@@ -100,7 +100,7 @@ void methodswitch(int neq, double dsm, double pnorm, double *pdh, double *rh, in
 		rh1it = sm1[nqm1] / *pdh;
 	rh1 = min(rh1, rh1it);
 	rh2 = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
-	if ((rh1 * ratio) < (5. * rh2))
+	if ((rh1 * RATIO) < (5. * rh2))
 		return;
 	alpha = max(0.001, rh1);
 	dm1 *= pow(alpha, exm1);
