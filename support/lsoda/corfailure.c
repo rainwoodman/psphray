@@ -16,7 +16,7 @@ int corfailure(int neq, double *told, double *rh, int *ncf, double hmin)
 			for (i = 1; i <= neq; i++)
 				yh[i1][i] -= yh[i1 + 1][i];
 		}
-	if (fabs(h) <= hmin * 1.00001 || *ncf == mxncf) {
+	if (fabs(h) <= hmin * 1.00001 || *ncf == MXNCF) {
 		return 2;
 	}
 	*rh = 0.25;
