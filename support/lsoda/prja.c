@@ -5,7 +5,7 @@
 #include "blas.h"
 #include "common.h"
 
-void prja(int neq, double *y, _lsoda_f f, void *_data)
+int prja(int neq, double *y, _lsoda_f f, void *_data)
 {
 	int             i, ier, j;
 	double          fac, hl0, r, r0, yj;
@@ -27,7 +27,6 @@ void prja(int neq, double *y, _lsoda_f f, void *_data)
    by defa if miter = 2, and by dgbfa if miter = 5.
 */
 	nje++;
-	ierpj = 0;
 	jcur = 1;
 	hl0 = h * el[1];
 /*
@@ -35,7 +34,7 @@ void prja(int neq, double *y, _lsoda_f f, void *_data)
 */
 	if (miter != 2) {
 		fprintf(stderr, "[prja] miter != 2\neq");
-		return;
+		return 0;
 	}
 	if (miter == 2) {
 		fac = vmnorm(neq, savf, ewt);
@@ -67,8 +66,8 @@ void prja(int neq, double *y, _lsoda_f f, void *_data)
 */
 		dgefa(wm, neq, ipvt, &ier);
 		if (ier != 0)
-			ierpj = 1;
-		return;
+		return 1;
 	}
+	return 0;
 }				/* end prja   */
 
