@@ -353,14 +353,36 @@ c
 c-----------------------------------------------------------------------
 */
 
-static struct common_t _common = {0};
-void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, struct lsoda_opt_t * opt) {
+/*
+   allocate _C(memory) for _C(yh), _C(wm), _C(ewt), _C(savf), _C(acor), _C(ipvt).
+ */
+
+int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
+	ctx->common = calloc(1, sizeof(struct common_t));
+	ctx->opt = opt;
+
+	/* Default options.   */
+
+	/* Next process and check the optional inpus.   */
+	if(!check_opt(opt, &ctx->state, ctx->neq)) {
+		return 0;
+	}
+
+	return alloc_mem(ctx->common, opt, ctx->neq);
+}
+
+void lsoda_free(struct lsoda_context_t * ctx) {
+	free(((struct common_t *)ctx->common)->memory);
+	free(ctx->common);
+}
+
+void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 
 		int kflag;
 		int jstart;
-		struct lsoda_opt_t def_opt = {0};
-		struct common_t * common = &_common;
 
+		struct common_t * common = ctx->common;
+		struct lsoda_opt_t * opt = ctx->opt;
 		/* C convention to Fortran convention:
          * in C y[] starts from 0, but the converted fortran code starts from 1 */
 		y--;
@@ -372,6 +394,10 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, stru
 
 		int * istate = &ctx->state;
 
+		if(common == NULL) {
+			fprintf(stderr, "[lsoda] illegal common block did you call lsoda_prepare?\n");
+			terminate();
+		}
 		/*
 		   Block a.
 		   This code block is executed on every call.
@@ -417,21 +443,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, stru
 				terminate();
 				return;
 			}
-
-			/* Default options.   */
-
-			if(opt == NULL) {
-				fprintf(stderr, "[lsoda] need an opt struct\neq");
-				terminate();
-				return;
-			}
-
-			/* Next process and check the optional inpus.   */
-			if(!check_opt(opt, istate, ctx->neq)) {
-				terminate();
-				return;
-			}
-
 			h0 = opt->h0;
 			if(*istate == 1) {
 				if ((tout - *t) * h0 < 0.) {
@@ -464,20 +475,9 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, stru
 		/*
 		   If *istate = 1, _C(meth) is initialized to 1.
 
-		   Also allocate _C(memory) for _C(yh), _C(wm), _C(ewt), _C(savf), _C(acor), _C(ipvt).
 		 */
 		if (*istate == 1) {
-			/*
-			   If _C(memory) were not freed, *istate = 3 need not reallocate _C(memory).
-			   Hence this section is not executed by *istate = 3.
-			 */
 			_C(meth) = 1;
-			if(!alloc_mem(common, opt, neq)) {
-				printf("lsoda -- insufficient _C(memory) for your problem\neq");
-				terminate();
-				return;
-			}
-
 		}
 		/*
 		   Check rtol and atol for legality.

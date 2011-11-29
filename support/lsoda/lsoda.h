@@ -23,8 +23,13 @@ struct lsoda_context_t {
 	void * data;
 	int neq;
 	int state;
+/* private for lsoda */
+	void * common;
+	struct lsoda_opt_t * opt;
 };
 
 
-void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout, 
-		   struct lsoda_opt_t * opt);
+int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt);
+void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout);
+void lsoda_free(struct lsoda_context_t * ctx);
+

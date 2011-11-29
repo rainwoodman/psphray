@@ -42,8 +42,10 @@ int main(void)
 		.state = 1,
 	};
 
+	lsoda_prepare(&ctx, &opt);
+
 	for (iout = 1; iout <= 12; iout++) {
-		lsoda(&ctx, y, &t, tout, &opt);
+		lsoda(&ctx, y, &t, tout);
 		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[0], y[1], y[2]);
 		if (ctx.state <= 0) {
 			printf("error istate = %d\n", ctx.state);
@@ -51,7 +53,7 @@ int main(void)
 		}
 		tout = tout * 10.0E0;
 	}
-
+	lsoda_free(&ctx);
 	return 0;
 }
 /*
