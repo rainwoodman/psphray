@@ -531,6 +531,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					h0 = tcrit - *t;
 			}
 			jstart = 0;
+/*
 			_C(nhnil) = 0;
 			_C(nst) = 0;
 			_C(nje) = 0;
@@ -539,6 +540,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			_C(nqu) = 0;
 			_C(mused) = 0;
 			_C(miter) = 0;
+*/
 			/*
 			   Initial call to f.
 			 */
