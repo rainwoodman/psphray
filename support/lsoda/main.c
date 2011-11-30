@@ -54,6 +54,7 @@ int main(void)
 		tout = tout * 10.0E0;
 	}
 	lsoda_free(&ctx);
+	printcm12();
 	return 0;
 }
 /*

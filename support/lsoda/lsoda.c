@@ -139,13 +139,22 @@ static int check_opt(struct lsoda_opt_t * opt, int *istate, int neq) {
 	   Check rtol and atol for legality.
 	 */
 	if (*istate == 1 || *istate == 3) {
-		double rtoli = opt->rtol[1];
-		double atoli = opt->atol[1];
+		/* c convention starts from 0. converted fortran code expects 1 */
+		const int itol = opt->itol;
+		const double * rtol = opt->rtol - 1;
+		const double * atol = opt->atol - 1;
+
+		if (itol < 1 || itol > 4) {
+			fprintf(stderr, "[lsoda] itol = %d illegal\neq", itol);
+			return 0;
+		}
+		double rtoli = rtol[1];
+		double atoli = atol[1];
 		int i;
 		for (i = 1; i <= neq; i++) {
-			if (opt->itol >= 3)
-				rtoli = opt->rtol[i];
-			if (opt->itol == 2 || opt->itol == 4)
+			if (itol >= 3)
+				rtoli = rtol[i];
+			if (itol == 2 || itol == 4)
 				atoli = opt->atol[i];
 			if (rtoli < 0.) {
 				fprintf(stderr, "[lsoda] rtol = %g is less than 0.\neq", rtoli);
@@ -477,16 +486,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		}			/* end if ( *istate == 1 || *istate == 3 )   */
 
 		const int itask = opt->itask;
-		const int itol = opt->itol;
-		/* c convention starts from 0. converted fortran code expects 1 */
-		const double * rtol = opt->rtol - 1;
-		const double * atol = opt->atol - 1;
-
-		if (itol < 1 || itol > 4) {
-			fprintf(stderr, "[lsoda] itol = %d illegal\neq", itol);
-			terminate();
-			return;
-		}
 
 		if (itask < 1 || itask > 5) {
 			fprintf(stderr, "[lsoda] illegal itask = %d\neq", itask);
@@ -514,6 +513,9 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		   and the calculation of the initial step size.
 		   The error weights in _C(ewt) are inverted after being loaded.
 		 */
+		const int itol = opt->itol;
+		const double * rtol = opt->rtol - 1;
+		const double * atol = opt->atol - 1;
 		if (*istate == 1) {
 			_C(tn) = *t;
 			_C(tsw) = *t;

@@ -14,3 +14,20 @@ void cfode_static (struct common_t * common, int meth)
 	}
 #endif
 }
+#include <stdio.h>
+void printcm12() {
+	printf("static double cm1[13] = {\n");
+	int i;
+	for(i = 0; i < 13; i++) {
+		printf("%a, ", (tesco1)[i][2] *(elco1)[i][i + 1]);
+		if((i + 1) % 4 == 0) printf("\n  ");
+	}
+	printf("};\n");
+	printf("static double cm2[13] = {\n");
+	for(i = 0; i < 13; i++) {
+		printf("%a, ", (tesco2)[i][2] *(elco2)[i][i + 1]);
+		if((i + 1) % 4 == 0) printf("\n  ");
+	}
+	printf("};\n");
+	
+}

@@ -36,7 +36,7 @@ struct common_t {
 #endif
 	double hold, rmax;
 	int      ialth, ipup, nslp;
-	double   pdest, pdlast, cm1[13], cm2[6];
+	double   pdest, pdlast;
 	int      icount, irflag;
 
 	/* static variables for various vectors and the Jacobian. */

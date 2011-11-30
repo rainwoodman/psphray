@@ -52,5 +52,18 @@ int main(void) {
 		printf("}, \n");
 	}
 	printf("} ;\n");
-
+	printf("static double cm1[13] = {\n");
+	for(i = 0; i < 13; i++) {
+		printf("%a, ", _C(tesco1)[i][2] *_C(elco1)[i][i + 1]);
+		if((i + 1) % 4 == 0) printf("\n  ");
+		printf("}, \n");
+	}
+	printf("};\n");
+	printf("static double cm2[13] = {\n");
+	for(i = 0; i < 13; i++) {
+		printf("%a, ", _C(tesco2)[i][2] *_C(elco2)[i][i + 1]);
+		if((i + 1) % 4 == 0) printf("\n  ");
+		printf("}, \n");
+	}
+	printf("};\n");
 }

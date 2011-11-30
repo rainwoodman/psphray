@@ -93,12 +93,8 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
 		_C(irflag) = 0;
 		_C(pdest) = 0.;
 		_C(pdlast) = 0.;
-		cfode(common, 2);
-		for (i = 1; i <= 5; i++)
-			_C(cm2)[i] = _C(tesco)[i][2] * _C(elco)[i][i + 1];
+
 		cfode(common, 1);
-		for (i = 1; i <= 12; i++)
-			_C(cm1)[i] = _C(tesco)[i][2] * _C(elco)[i][i + 1];
 		resetcoeff(common);
 	}			/* end if ( jstart == 0 )   */
 	/*

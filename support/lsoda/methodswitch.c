@@ -4,6 +4,24 @@
 #include "lsoda_internal.h"
 #include "blas.h"
 
+
+/*
+ * cm1 and cm2 are calculated from tesco/elco 1 and 2 formula in cfode.c:printcm12.
+ *
+ * */
+static double cm1[13] = {
+0x0p+0, 0x1p+1, 0x1.7ffffffffffffp+2, 0x1p+2, 
+  0x1.9435e50d79434p+0, 0x1.c71c71c71c721p-2, 0x1.8eaf0473189ecp-4, 0x1.1df9ab7934513p-6, 
+  0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18, 
+  0x1.ac0fa4b46f6c6p-22, };
+
+/* only useful till cm2[5] */
+static double cm2[13] = {
+0x0p+0, 0x1p+1, 0x1.8p+0, 0x1.5555555555556p-1, 
+  0x1.aaaaaaaaaaaacp-3, 0x1.9999999999999p-5, 0x1.8eaf0473189ecp-4, 0x1.1df9ab7934513p-6, 
+  0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18, 
+  0x1.ac0fa4b46f6c6p-22, };
+
 void methodswitch(struct common_t * common, int neq, double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn)
 {
 	int             lm1, lm1p1, lm2, lm2p1, nqm1, nqm2;
@@ -47,10 +65,10 @@ void methodswitch(struct common_t * common, int neq, double dsm, double pnorm, d
 				lm2 = mxords + 1;
 				exm2 = 1. / (double) lm2;
 				lm2p1 = lm2 + 1;
-				dm2 = vmnorm(neq, _C(yh)[lm2p1], _C(ewt)) / _C(cm2)[mxords];
+				dm2 = vmnorm(neq, _C(yh)[lm2p1], _C(ewt)) / cm2[mxords];
 				rh2 = 1. / (1.2 * pow(dm2, exm2) + 0.0000012);
 			} else {
-				dm2 = dsm * (_C(cm1)[_C(nq)] / _C(cm2)[_C(nq)]);
+				dm2 = dsm * (cm1[_C(nq)] / cm2[_C(nq)]);
 				rh2 = 1. / (1.2 * pow(dm2, exsm) + 0.0000012);
 				nqm2 = _C(nq);
 			}
@@ -84,10 +102,10 @@ void methodswitch(struct common_t * common, int neq, double dsm, double pnorm, d
 		lm1 = mxordn + 1;
 		exm1 = 1. / (double) lm1;
 		lm1p1 = lm1 + 1;
-		dm1 = vmnorm(neq, _C(yh)[lm1p1], _C(ewt)) / _C(cm1)[mxordn];
+		dm1 = vmnorm(neq, _C(yh)[lm1p1], _C(ewt)) / cm1[mxordn];
 		rh1 = 1. / (1.2 * pow(dm1, exm1) + 0.0000012);
 	} else {
-		dm1 = dsm * (_C(cm2)[_C(nq)] / _C(cm1)[_C(nq)]);
+		dm1 = dsm * (cm2[_C(nq)] / cm1[_C(nq)]);
 		rh1 = 1. / (1.2 * pow(dm1, exsm) + 0.0000012);
 		nqm1 = _C(nq);
 		exm1 = exsm;
