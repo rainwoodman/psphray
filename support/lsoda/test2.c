@@ -2,7 +2,7 @@
 #include "common.h"
 #include "lsoda.h"
 
-static int function(double t, double * y, double * ydot, void * data) {
+int function(double t, double * y, double * ydot, void * data) {
 	double gamma_HI = 6067.4902268982732;
 	double alpha_HII_A = 4966736.4918453256;
 	double ion = 0.13580749322316402;
@@ -14,7 +14,13 @@ static int function(double t, double * y, double * ydot, void * data) {
 	return 1;
 }
 
-int main(void) {
+void main(void) {
+	int i;
+	for(i = 0; i < 1000; i++) {
+		test();
+	}
+}
+int test(void) {
 	struct lsoda_context_t ctx = {
 		.function = function,
 		.neq = 1,
@@ -22,11 +28,10 @@ int main(void) {
 		.state = 1,
 	};
 	static double rtol[7] = {1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7};
-	static double atol[7] = {1e-7, 1e-7, 1e-7, 1e-8, 1e-8, 1e-8, 1.};
+	static double atol[7] = {1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1.};
 
 	static struct lsoda_opt_t opt = {
 		.ixpr = 1,
-		.itol = 2,
 		.rtol = rtol,
 		.atol = atol,
 		.itask = 1,
@@ -42,6 +47,6 @@ int main(void) {
 		lsoda_prepare(&ctx, &opt);
 		lsoda(&ctx, x, &t, step);
 		lsoda_free(&ctx);
-		printf ("%g %g\n", i * step, x[0]);
+		//printf ("%g %g\n", i * step, x[0]);
 	}
 }

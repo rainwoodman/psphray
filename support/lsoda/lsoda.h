@@ -10,7 +10,6 @@ struct lsoda_opt_t {
 	double hmin;
 	double hmxi;
 	int itask;
-	int itol;
 	double *rtol;
 	double *atol;
 };

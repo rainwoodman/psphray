@@ -28,7 +28,7 @@ all: main.o liblsoda.a
 printcf: printcf.o liblsoda.a
 	gcc -std=c99 -g -O0 -o printcf $^ -lm -lgfortran
 test2: test2.o liblsoda.a
-	gcc -std=c99 -g -O0 -o test2 $^ -lm -lgfortran
+	gcc -std=c99 -g -pg -O0 -o test2 $^ -lm -lgfortran
 
 clean:
 	rm *.[oa]
@@ -36,6 +36,7 @@ liblsoda.a: $(SRC:.c=.o)
 	ar cur $@ $^
 
 .c.o:
-	gcc -DCFODE_STATIC -std=c99 -g -pg -O0 -fopenmp -c -o $@ $<
+	gcc -DCFODE_STATIC -std=c99 -g -pg -O3 -ffast-math -fopenmp -c -o $@ $<
+	gcc -DCFODE_STATIC -std=c99 -g -pg -O3 -ffast-math -fopenmp -S -o $(<:.c=.s) $<
 
 

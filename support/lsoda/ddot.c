@@ -61,6 +61,7 @@ ddot(n, dx, incx, dy, incy)
 /* Clean-up loop so remaining vector length is a multiple of 5.  */
 
 	if (incx == 1) {
+/*
 		m = n % 5;
 		if (m != 0) {
 			for (i = 1; i <= m; i++)
@@ -72,6 +73,9 @@ ddot(n, dx, incx, dy, incy)
 			dotprod = dotprod + dx[i] * dy[i] + dx[i + 1] * dy[i + 1] +
 				dx[i + 2] * dy[i + 2] + dx[i + 3] * dy[i + 3] +
 				dx[i + 4] * dy[i + 4];
+*/
+		for (i = 1; i <= n; i++)
+			dotprod = dotprod + dx[i] * dy[i];
 		return dotprod;
 	}
 /* Code for positive equal nonunit increments.   */

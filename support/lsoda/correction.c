@@ -101,13 +101,13 @@ int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double 
 				rm = 1024.0;
 				if (*del <= (1024. * *delp))
 					rm = *del / *delp;
-				rate = max(rate, rm);
-				_C(crate) = max(0.2 * _C(crate), rm);
+				rate = fmax(rate, rm);
+				_C(crate) = fmax(0.2 * _C(crate), rm);
 			}
 			double conit = 0.5 / (double) (_C(nq) + 2);
-			dcon = *del * min(1., 1.5 * _C(crate)) / (_C(tesco)[_C(nq)][2] * conit);
+			dcon = *del * fmin(1., 1.5 * _C(crate)) / (_C(tesco)[_C(nq)][2] * conit);
 			if (dcon <= 1.) {
-				_C(pdest) = max(_C(pdest), rate / fabs(_C(h) * _C(el)[1]));
+				_C(pdest) = fmax(_C(pdest), rate / fabs(_C(h) * _C(el)[1]));
 				if (_C(pdest) != 0.)
 					_C(pdlast) = _C(pdest);
 				break;

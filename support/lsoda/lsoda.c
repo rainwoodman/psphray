@@ -140,22 +140,13 @@ static int check_opt(struct lsoda_opt_t * opt, int *istate, int neq) {
 	 */
 	if (*istate == 1 || *istate == 3) {
 		/* c convention starts from 0. converted fortran code expects 1 */
-		const int itol = opt->itol;
 		const double * rtol = opt->rtol - 1;
 		const double * atol = opt->atol - 1;
 
-		if (itol < 1 || itol > 4) {
-			fprintf(stderr, "[lsoda] itol = %d illegal\neq", itol);
-			return 0;
-		}
-		double rtoli = rtol[1];
-		double atoli = atol[1];
 		int i;
 		for (i = 1; i <= neq; i++) {
-			if (itol >= 3)
-				rtoli = rtol[i];
-			if (itol == 2 || itol == 4)
-				atoli = opt->atol[i];
+			double rtoli = rtol[i];
+			double atoli = atol[i];
 			if (rtoli < 0.) {
 				fprintf(stderr, "[lsoda] rtol = %g is less than 0.\neq", rtoli);
 				return 0;
@@ -322,13 +313,11 @@ c neq    = number of first order ode-s.
 c y      = array of initial values, of length neq.
 c t      = the initial value of the independent variable.
 c tout   = first point where output is desired (.ne. t).
-c itol   = 1 or 2 according as atol (below) is a scalar or array.
-c rtol   = relative tolerance parameter (scalar).
-c atol   = absolute tolerance parameter (scalar or array).
+c rtol   = relative tolerance parameter (array, one for each dim).
+c atol   = absolute tolerance parameter (array, one for each dim).
 c          the estimated local error in y(i) will be controlled so as
 c          to be less than
-c             _C(ewt)(i) = rtol*abs(y(i)) + atol     if itol = 1, or
-c             _C(ewt)(i) = rtol*abs(y(i)) + atol(i)  if itol = 2.
+c             _C(ewt)(i) = rtol(i*abs(y(i)) + atol(i)
 c          thus the local error test passes if, in each component,
 c          either the absolute error is less than atol (or atol(i)),
 c          or the relative error is less than rtol.
@@ -513,7 +502,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		   and the calculation of the initial step size.
 		   The error weights in _C(ewt) are inverted after being loaded.
 		 */
-		const int itol = opt->itol;
 		const double * rtol = opt->rtol - 1;
 		const double * atol = opt->atol - 1;
 		if (*istate == 1) {
@@ -552,7 +540,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			/*
 			   Load and invert the _C(ewt) array.  
 			 */
-			if(!ewset(common, neq, _C(ewt), itol, rtol, atol, y)) {
+			if(!ewset(common, neq, _C(ewt), rtol, atol, y)) {
 				terminate2();
 				return;
 			}
@@ -590,15 +578,11 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					return;
 				}
 				tol = rtol[1];
-				if (itol > 2) {
-					for (i = 2; i <= neq; i++)
-						tol = fmax(tol, rtol[i]);
-				}
+				for (i = 2; i <= neq; i++)
+					tol = fmax(tol, rtol[i]);
 				if (tol <= 0.) {
-					double atoli = atol[1];
 					for (i = 1; i <= neq; i++) {
-						if (itol == 2 || itol == 4)
-							atoli = atol[i];
+						double atoli = atol[i];
 						double ayi = fabs(y[i]);
 						if (ayi != 0.)
 							tol = fmax(tol, atoli / ayi);
@@ -728,7 +712,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					terminate2();
 					return;
 				}
-				if(!ewset(common, neq, _C(ewt), itol, rtol, atol, _C(yh)[1])) {
+				if(!ewset(common, neq, _C(ewt), rtol, atol, _C(yh)[1])) {
 					terminate2();
 					*istate = -6;
 					return;
