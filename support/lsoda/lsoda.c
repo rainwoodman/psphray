@@ -451,8 +451,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		   If *istate = 1 and tout = t, return immediately.
 		 */
 
-		if (*istate == 1) {
-		}
 		/*
 		   Block b.
 		   The next code block is executed for the initial call ( *istate = 1 ),
@@ -500,7 +498,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			_C(meth) = 1;
 			_C(tn) = *t;
 			_C(tsw) = *t;
-			_C(init) = 0;
 			if (itask == 4 || itask == 5) {
 				tcrit = opt->tcrit;
 				if ((tcrit - tout) * (tout - *t) < 0.) {
@@ -764,7 +761,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				   Then, in any case, check for stop conditions.
 				 */
 				jstart = 1;
-				_C(init) = 1;
 				if (_C(meth) != _C(mused)) {
 					_C(tsw) = _C(tn);
 					jstart = -1;

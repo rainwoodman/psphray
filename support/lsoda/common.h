@@ -42,7 +42,7 @@ struct common_t {
 	int      ialth, ipup, nslp;
 	int      icount, irflag;
 	int      imxer;
-	int      illin, init, nhnil, nslast,
+	int      illin, nhnil, nslast,
 					jcur, meth, mused, nq, nst,
 					nfe, nje, nqu, miter;
 };
