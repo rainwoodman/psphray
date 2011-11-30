@@ -7,7 +7,7 @@ int corfailure(struct common_t * common, int neq, double *told, double *rh, int 
 {
 	int             j, i1, i;
 
-	ncf++;
+	(*ncf)++;
 	_C(rmax) = 2.;
 	_C(tn) = *told;
 	for (j = _C(nq); j >= 1; j--)

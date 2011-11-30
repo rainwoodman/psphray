@@ -78,23 +78,25 @@ tam@wri.com
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include "lsoda_internal.h"
 #include "blas.h"
 
 /* Terminate lsoda due to illegal input. */
-#define terminate() \
+#define hardfailure() \
 { \
 	if (_C(illin) == 5) { \
 		fprintf(stderr, "[lsoda] repeated occurrence of illegal input. run aborted.. apparent infinite loop\neq"); \
 	} else { \
 		_C(illin)++; \
-		*istate = -3; \
+		ctx->state = -3; \
 	} \
+	return; \
 }
 
 
 /* Terminate lsoda due to various error conditions. */
-#define terminate2() \
+#define softfailure() \
 { \
 	int             i; \
 	int neq = ctx->neq; \
@@ -103,6 +105,7 @@ tam@wri.com
 		y[i] = _C(yh)[1][i]; \
 	*t = _C(tn); \
 	_C(illin) = 0; \
+	return; \
 }
 
 /*
@@ -123,8 +126,24 @@ tam@wri.com
 	if (itask == 4 || itask == 5) \
 		if (ihit) \
 			*t = tcrit; \
-	*istate = 2; \
+	ctx->state = 2; \
 	_C(illin) = 0; \
+	return; \
+}
+
+#define intdyreturn() \
+{ \
+	int iflag = intdy(common, neq, tout, 0, y);  \
+	if (iflag != 0) { \
+		fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\neq", itask, tout); \
+		for (i = 1; i <= neq; i++) \
+			y[i] = _C(yh)[1][i]; \
+		*t = _C(tn); \
+	} \
+	*t = tout; \
+	ctx->state = 2; \
+	_C(illin) = 0; \
+	return; \
 }
 
 static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
@@ -161,7 +180,7 @@ static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 				return 0;
 			}
 		}		/* end for   */
-	}			/* end if ( *istate == 1 || *istate == 3 )   */
+	}			/* end if ( ctx->state == 1 || ctx->state == 3 )   */
 	/* default itask is 1 */
 	if (opt->itask == 0) opt->itask = 1;
 	if (opt->itask < 1 || opt->itask > 5) {
@@ -195,7 +214,7 @@ static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 		}
 		if (opt->mxords == 0) opt->mxords = 100;
 		opt->mxords = min(opt->mxords, mord[2]);
-	}	/* end if ( *istate == 1 )  */
+	}	/* end if ( ctx->state == 1 )  */
 	if (opt->hmax < 0.) {
 		fprintf(stderr, "[lsoda] hmax < 0.\neq");
 		return 0;
@@ -401,6 +420,12 @@ int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	return alloc_mem(ctx->common, opt, ctx->neq);
 }
 
+void lsoda_reset(struct lsoda_context_t * ctx) {
+
+	int offset = offsetof(struct common_t, memory) + sizeof(void*);
+	memset(ctx->common + offset, 0, sizeof(struct common_t) - offset);
+}
+
 void lsoda_free(struct lsoda_context_t * ctx) {
 	free(((struct common_t *)ctx->common)->memory);
 	free(ctx->common);
@@ -426,7 +451,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		int jstart;
 
 		struct common_t * common = ctx->common;
-		struct lsoda_opt_t * opt = ctx->opt;
+		const struct lsoda_opt_t * opt = ctx->opt;
 		/* C convention to Fortran convention:
          * in C y[] starts from 0, but the converted fortran code starts from 1 */
 		y--;
@@ -436,65 +461,62 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		double          big, h0, hmx, rh, tcrit, tdist, tnext, tol,
 						tolsf, tp, size, sum, w0;
 
-		int * istate = &ctx->state;
-
 		if(common == NULL) {
 			fprintf(stderr, "[lsoda] illegal common block did you call lsoda_prepare?\n");
-			terminate();
+			hardfailure();
 		}
 		/*
 		   Block a.
 		   This code block is executed on every call.
-		   It tests *istate and itask for legality and branches appropriately.
-		   If *istate > 1 but the flag _C(init) shows that initialization has not
+		   It tests ctx->state and itask for legality and branches appropriately.
+		   If ctx->state > 1 but the flag _C(init) shows that initialization has not
 		   yet been done, an error return occurs.
-		   If *istate = 1 and tout = t, return immediately.
+		   If ctx->state = 1 and tout = t, return immediately.
 		 */
 
 		/*
 		   Block b.
-		   The next code block is executed for the initial call ( *istate = 1 ),
-		   or for a continuation call with parameter changes ( *istate = 3 ).
+		   The next code block is executed for the initial call ( ctx->state = 1 ),
+		   or for a continuation call with parameter changes ( ctx->state = 3 ).
 		   It contains checking of all inputs and various initializations.
 
 		   First check legality of the non-optional inputs neq, itol, iopt,
 		   jt, ml, and mu.
 		 */
 
-		if (*istate == 1 || *istate == 3) {
+		if (ctx->state == 1 || ctx->state == 3) {
 			h0 = opt->h0;
-			if(*istate == 1) {
+			if(ctx->state == 1) {
 				if ((tout - *t) * h0 < 0.) {
 					fprintf(stderr, "[lsoda] tout = %g behind t = %g. integration direction is given by %g\neq",
 							tout, *t, h0);
-					terminate();
-					return;
+					hardfailure();
 				}
 			}
-		}			/* end if ( *istate == 1 || *istate == 3 )   */
+		}			/* end if ( ctx->state == 1 || ctx->state == 3 )   */
 
 		const int itask = opt->itask;
 
 		/*
-		   If *istate = 1, _C(meth) is initialized to 1.
+		   If ctx->state = 1, _C(meth) is initialized to 1.
 
 		 */
 		/*
-		   If *istate = 3, set flag to signal parameter changes to stoda.
+		   If ctx->state = 3, set flag to signal parameter changes to stoda.
 		 */
-		if (*istate == 3) {
+		if (ctx->state == 3) {
 			jstart = -1;
 		}
 		/*
 		   Block c.
-		   The next block is for the initial call only ( *istate = 1 ).
+		   The next block is for the initial call only ( ctx->state = 1 ).
 		   It contains all remaining initializations, the initial call to f,
 		   and the calculation of the initial step size.
 		   The error weights in _C(ewt) are inverted after being loaded.
 		 */
 		const double * rtol = opt->rtol - 1;
 		const double * atol = opt->atol - 1;
-		if (*istate == 1) {
+		if (ctx->state == 1) {
 			_C(meth) = 1;
 			_C(tn) = *t;
 			_C(tsw) = *t;
@@ -502,8 +524,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				tcrit = opt->tcrit;
 				if ((tcrit - tout) * (tout - *t) < 0.) {
 					fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\neq");
-					terminate();
-					return;
+					hardfailure();
 				}
 				if (h0 != 0. && (*t + h0 - tcrit) * h0 > 0.)
 					h0 = tcrit - *t;
@@ -531,8 +552,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			for (i = 1; i <= neq; i++) {
 				if(_C(ewt)[i] <= 0.) {
 					fprintf(stderr, "[lsoda] ewt[%d] = %g <= 0.\n", i, _C(ewt)[i]);
-					terminate2();
-					return;
+					softfailure();
 				}
 			}
 
@@ -561,8 +581,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				w0 = fmax(fabs(*t), fabs(tout));
 				if (tdist < 2. * ETA * w0) {
 					fprintf(stderr, "[lsoda] tout too close to t to start integration\neq ");
-					terminate();
-					return;
+					hardfailure();
 				}
 				tol = 0.;;
 				for (i = 1; i <= neq; i++)
@@ -595,28 +614,19 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			_C(h) = h0;
 			for (i = 1; i <= neq; i++)
 				_C(yh)[2][i] *= h0;
-		}			/* if ( *istate == 1 )   */
+		}			/* if ( ctx->state == 1 )   */
 		/*
 		   Block d.
-		   The next code block is for continuation calls only ( *istate = 2 or 3 )
+		   The next code block is for continuation calls only ( ctx->state = 2 or 3 )
 		   and is to check stop conditions before taking a step.
 		 */
-		if (*istate == 2 || *istate == 3) {
+		if (ctx->state == 2 || ctx->state == 3) {
 			jstart = 1;
 			_C(nslast) = _C(nst);
 			switch (itask) {
 				case 1:
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
-						int iflag = intdy(common, neq, tout, 0, y);
-						if (iflag != 0) {
-							fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\neq", itask, tout);
-							terminate();
-							return;
-						}
-						*t = tout;
-						*istate = 2;
-						_C(illin) = 0;
-						return;
+						intdyreturn();
 					}
 					break;
 				case 2:
@@ -625,61 +635,46 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					tp = _C(tn) - _C(hu) * (1. + 100. * ETA);
 					if ((tp - tout) * _C(h) > 0.) {
 						fprintf(stderr, "[lsoda] itask = %d and tout behind tcur - _C(hu)\neq", itask);
-						terminate();
-						return;
+						hardfailure();
 					}
 					if ((_C(tn) - tout) * _C(h) < 0.) break;
 					successreturn();
-					return;
 				case 4:
 					tcrit = opt->tcrit;
 					if ((_C(tn) - tcrit) * _C(h) > 0.) {
 						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\neq");
-						terminate();
-						return;
+						hardfailure();
 					}
 					if ((tcrit - tout) * _C(h) < 0.) {
 						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\neq");
-						terminate();
-						return;
+						hardfailure();
 					}
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
-						int iflag = intdy(common, neq, tout, 0, y);
-						if (iflag != 0) {
-							fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\neq", itask, tout);
-							terminate();
-							return;
-						}
-						*t = tout;
-						*istate = 2;
-						_C(illin) = 0;
-						return;
+						intdyreturn();
 					}
 				case 5:
 					if (itask == 5) {
 						tcrit = opt->tcrit;
 						if ((_C(tn) - tcrit) * _C(h) > 0.) {
 							fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\neq");
-							terminate();
-							return;
+							hardfailure();
 						}
 					}
 					hmx = fabs(_C(tn)) + fabs(_C(h));
-					ihit = fabs(_C(tn) - tcrit) <= (100. * ETA * hmx);
+					int ihit = fabs(_C(tn) - tcrit) <= (100. * ETA * hmx);
 					if (ihit) {
 						*t = tcrit;
 						successreturn();
-						return;
 					}
 					tnext = _C(tn) + _C(h) * (1. + 4. * ETA);
 					if ((tnext - tcrit) * _C(h) <= 0.)
 						break;
 					_C(h) = (tcrit - _C(tn)) * (1. - 4. * ETA);
-					if (*istate == 2)
+					if (ctx->state == 2)
 						jstart = -2;
 					break;
 			}		/* end switch   */
-		}			/* end if ( *istate == 2 || *istate == 3 )   */
+		}			/* end if ( ctx->state == 2 || ctx->state == 3 )   */
 		/*
 		   Block e.
 		   The next block is normally executed for all calls and contains
@@ -692,20 +687,18 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		   check for _C(h) below the roundoff level in *t.
 		 */
 		while (1) {
-			if (*istate != 1 || _C(nst) != 0) {
+			if (ctx->state != 1 || _C(nst) != 0) {
 				if ((_C(nst) - _C(nslast)) >= opt->mxstep) {
 					fprintf(stderr, "[lsoda] %d steps taken before reaching tout\neq", opt->mxstep);
-					*istate = -1;
-					terminate2();
-					return;
+					ctx->state = -1;
+					softfailure();
 				}
 				ewset(_C(yh)[1]);
 				for (i = 1; i <= neq; i++) {
 					if (_C(ewt)[i] <= 0.) {
 						fprintf(stderr, "[lsoda] ewt[%d] = %g <= 0.\n", i, _C(ewt)[i]);
-						terminate2();
-						*istate = -6;
-						return;
+						ctx->state = -6;
+						softfailure();
 					}
 				}
 			}
@@ -716,15 +709,13 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					fprintf(stderr, "lsoda -- at start of problem, too much accuracy\neq");
 					fprintf(stderr, "         requested for precision of machine,\neq");
 					fprintf(stderr, "         suggested scaling factor = %g\neq", tolsf);
-					terminate();
-					return;
+					hardfailure();
 				}
 				fprintf(stderr, "lsoda -- at t = %g, too much accuracy requested\neq", *t);
 				fprintf(stderr, "         for precision of machine, suggested\neq");
 				fprintf(stderr, "         scaling factor = %g\neq", tolsf);
-				*istate = -2;
-				terminate2();
-				return;
+				ctx->state = -2;
+				softfailure();
 			}
 			if ((_C(tn) + _C(h)) == _C(tn)) {
 				_C(nhnil)++;
@@ -779,18 +770,13 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				if (itask == 1) {
 					if ((_C(tn) - tout) * _C(h) < 0.)
 						continue;
-					int iflag = intdy(common, neq, tout, 0, y);
-					*t = tout;
-					*istate = 2;
-					_C(illin) = 0;
-					return;
+					intdyreturn();
 				}
 				/*
 				   itask = 2.
 				 */
 				if (itask == 2) {
 					successreturn();
-					return;
 				}
 				/*
 				   itask = 3.
@@ -799,7 +785,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				if (itask == 3) {
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
 						successreturn();
-						return;
 					}
 					continue;
 				}
@@ -809,17 +794,12 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				 */
 				if (itask == 4) {
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
-						int iflag = intdy(common, neq, tout, 0, y);
-						*t = tout;
-						*istate = 2;
-						_C(illin) = 0;
-						return;
+						intdyreturn();
 					} else {
 						hmx = fabs(_C(tn)) + fabs(_C(h));
-						ihit = fabs(_C(tn) - tcrit) <= (100. * ETA * hmx);
+						int ihit = fabs(_C(tn) - tcrit) <= (100. * ETA * hmx);
 						if (ihit) {
 							successreturn();
-							return;
 						}
 						tnext = _C(tn) + _C(h) * (1. + 4. * ETA);
 						if ((tnext - tcrit) * _C(h) <= 0.)
@@ -835,9 +815,8 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				 */
 				if (itask == 5) {
 					hmx = fabs(_C(tn)) + fabs(_C(h));
-					ihit = fabs(_C(tn) - tcrit) <= (100. * ETA * hmx);
+					int ihit = fabs(_C(tn) - tcrit) <= (100. * ETA * hmx);
 					successreturn();
-					return;
 				}
 			}		/* end if ( kflag == 0 )   */
 			/*
@@ -849,12 +828,12 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				if (kflag == -1) {
 					fprintf(stderr, "         error test failed repeatedly or\neq");
 					fprintf(stderr, "         with fabs(_C(h)) = hmin\neq");
-					*istate = -4;
+					ctx->state = -4;
 				}
 				if (kflag == -2) {
 					fprintf(stderr, "         corrector convergence failed repeatedly or\neq");
 					fprintf(stderr, "         with fabs(_C(h)) = hmin\neq");
-					*istate = -5;
+					ctx->state = -5;
 				}
 				big = 0.;
 				_C(imxer) = 1;
@@ -865,8 +844,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 						_C(imxer) = i;
 					}
 				}
-				terminate2();
-				return;
+				softfailure();
 			}		/* end if ( kflag == -1 || kflag == -2 )   */
 		}			/* end while   */
 

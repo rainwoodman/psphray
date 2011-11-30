@@ -35,7 +35,7 @@
 }
 
 
-int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int jstart, struct lsoda_opt_t * opt)
+int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int jstart, const struct lsoda_opt_t * opt)
 {
 	int kflag;
 	int             i, i1, j, m, ncf;
@@ -183,7 +183,7 @@ int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {
-				rh = max(rh, hmin / fabs(_C(h)));
+				rh = fmax(rh, hmin / fabs(_C(h)));
 				scaleh(common, neq, &rh, &pdh, hmxi);
 				continue;
 			}
@@ -229,7 +229,7 @@ int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int
 			if (_C(icount) < 0) {
 				methodswitch(common, neq, dsm, pnorm, &pdh, &rh, mxords, mxordn);
 				if (_C(meth) != _C(mused)) {
-					rh = max(rh, hmin / fabs(_C(h)));
+					rh = fmax(rh, hmin / fabs(_C(h)));
 					scaleh(common, neq, &rh, &pdh, hmxi);
 					_C(rmax) = 10.;
 					endstoda();
@@ -261,7 +261,7 @@ int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int
    _C(h) is changed, but not _C(nq).
 */
 				if (orderflag == 1) {
-					rh = max(rh, hmin / fabs(_C(h)));
+					rh = fmax(rh, hmin / fabs(_C(h)));
 					scaleh(common, neq, &rh, &pdh, hmxi);
 					_C(rmax) = 10.;
 					endstoda();
@@ -272,7 +272,7 @@ int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int
 */
 				if (orderflag == 2) {
 					resetcoeff();
-					rh = max(rh, hmin / fabs(_C(h)));
+					rh = fmax(rh, hmin / fabs(_C(h)));
 					scaleh(common, neq, &rh, &pdh, hmxi);
 					_C(rmax) = 10.;
 					endstoda();
@@ -315,13 +315,13 @@ int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int
 				int orderflag = orderswitch(common, neq, 0., dsm, &pdh, &rh, kflag, maxord);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
-						rh = min(rh, 0.2);
-					rh = max(rh, hmin / fabs(_C(h)));
+						rh = fmin(rh, 0.2);
+					rh = fmax(rh, hmin / fabs(_C(h)));
 					scaleh(common, neq, &rh, &pdh, hmxi);
 				}
 				if (orderflag == 2) {
 					resetcoeff();
-					rh = max(rh, hmin / fabs(_C(h)));
+					rh = fmax(rh, hmin / fabs(_C(h)));
 					scaleh(common, neq, &rh, &pdh, hmxi);
 				}
 				continue;
@@ -344,7 +344,7 @@ int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int
 					break;
 				} else {
 					rh = 0.1;
-					rh = max(hmin / fabs(_C(h)), rh);
+					rh = fmax(hmin / fabs(_C(h)), rh);
 					_C(h) *= rh;
 					for (i = 1; i <= neq; i++)
 						y[i] = _C(yh)[1][i];

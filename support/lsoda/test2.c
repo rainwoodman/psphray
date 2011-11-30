@@ -16,9 +16,7 @@ int function(double t, double * y, double * ydot, void * data) {
 
 void main(void) {
 	int i;
-	for(i = 0; i < 1000; i++) {
 		test();
-	}
 }
 int test(void) {
 	struct lsoda_context_t ctx = {
@@ -41,12 +39,17 @@ int test(void) {
 	x[0] = 1.0;
 	double step = 7.3633639519195151e-06;
 	int i;
-	for(i = 0; i < 1001; i ++) {
-		double t = 0;
-		ctx.state = 1;
+	int k;
+	for(k = 0; k < 1000; k++) {
 		lsoda_prepare(&ctx, &opt);
-		lsoda(&ctx, x, &t, step);
+
+		for(i = 0; i < 1001; i ++) {
+			double t = 0;
+			lsoda_reset(&ctx);
+			ctx.state = 1;
+			lsoda(&ctx, x, &t, step);
+		}
+		//printf ("%g %g\n", i * step, x[0]);
 		lsoda_free(&ctx);
-//		printf ("%g %g\n", i * step, x[0]);
 	}
 }

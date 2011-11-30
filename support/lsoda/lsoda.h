@@ -29,6 +29,7 @@ struct lsoda_context_t {
 
 
 int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt);
+void lsoda_reset(struct lsoda_context_t * ctx);
 void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout);
 void lsoda_free(struct lsoda_context_t * ctx);
 

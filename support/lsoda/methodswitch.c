@@ -118,7 +118,7 @@ void methodswitch(struct common_t * common, int neq, double dsm, double pnorm, d
 	rh2 = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
 	if ((rh1 * RATIO) < (5. * rh2))
 		return;
-	alpha = max(0.001, rh1);
+	alpha = fmax(0.001, rh1);
 	dm1 *= pow(alpha, exm1);
 	if (dm1 <= 1000. * ETA * pnorm)
 		return;

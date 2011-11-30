@@ -15,6 +15,9 @@ extern const double   sm1[13];
 /* newly added static variables */
 
 struct common_t {
+	double **yh, **wm, *ewt, *savf, *acor;
+	int     *ipvt;
+	void * memory;
 
 	/* static variables for lsoda() */
 
@@ -34,10 +37,6 @@ struct common_t {
 	double   pdest, pdlast;
 
 	/* static variables for various vectors and the Jacobian. */
-
-	void * memory;
-	double **yh, **wm, *ewt, *savf, *acor;
-	int     *ipvt;
 
 	int      ialth, ipup, nslp;
 	int      icount, irflag;
