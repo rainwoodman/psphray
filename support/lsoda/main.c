@@ -2,7 +2,7 @@
 #include "common.h"
 #include "lsoda.h"
 
-static void fex(double t, double *y, double *ydot, void *data)
+static int fex(double t, double *y, double *ydot, void *data)
 {
 	ydot[0] = 1.0E4 * y[1] * y[2] - .04E0 * y[0];
 	ydot[2] = 3.0E7 * y[1] * y[1];
