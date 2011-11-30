@@ -15,7 +15,7 @@ struct lsoda_opt_t {
 	double *atol;
 };
 
-typedef void    (*_lsoda_f) (double, double *, double *, void *);
+typedef int (*_lsoda_f) (double, double *, double *, void *);
 
 
 struct lsoda_context_t {
