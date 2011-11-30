@@ -451,24 +451,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		   If *istate = 1 and tout = t, return immediately.
 		 */
 
-		if (*istate < 1 || *istate > 3) {
-			fprintf(stderr, "[lsoda] illegal istate = %d\neq", *istate);
-			terminate();
-			return;
-		}
-		if (_C(init) == 0 && (*istate == 2 || *istate == 3)) {
-			fprintf(stderr, "[lsoda] istate > 1 but lsoda not initialized\neq");
-			terminate();
-			return;
-		}
 		if (*istate == 1) {
-			_C(init) = 0;
-			if (tout == *t) {
-				_C(ntrep)++;
-				if (_C(ntrep) < 5) return;
-				fprintf(stderr, "[lsoda] repeated calls with istate = 1 and tout = t. run aborted.. apparent infinite loop\neq");
-				return;
-			}
 		}
 		/*
 		   Block b.
@@ -481,7 +464,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		 */
 
 		if (*istate == 1 || *istate == 3) {
-			_C(ntrep) = 0;
 			h0 = opt->h0;
 			if(*istate == 1) {
 				if ((tout - *t) * h0 < 0.) {
@@ -499,9 +481,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		   If *istate = 1, _C(meth) is initialized to 1.
 
 		 */
-		if (*istate == 1) {
-			_C(meth) = 1;
-		}
 		/*
 		   If *istate = 3, set flag to signal parameter changes to stoda.
 		 */
@@ -518,8 +497,10 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		const double * rtol = opt->rtol - 1;
 		const double * atol = opt->atol - 1;
 		if (*istate == 1) {
+			_C(meth) = 1;
 			_C(tn) = *t;
 			_C(tsw) = *t;
+			_C(init) = 0;
 			if (itask == 4 || itask == 5) {
 				tcrit = opt->tcrit;
 				if ((tcrit - tout) * (tout - *t) < 0.) {
@@ -531,16 +512,9 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					h0 = tcrit - *t;
 			}
 			jstart = 0;
-/*
-			_C(nhnil) = 0;
-			_C(nst) = 0;
-			_C(nje) = 0;
-			_C(nslast) = 0;
-			_C(hu) = 0.;
-			_C(nqu) = 0;
-			_C(mused) = 0;
-			_C(miter) = 0;
-*/
+			/* set the order to 1*/
+			_C(nq) = 1; 
+
 			/*
 			   Initial call to f.
 			 */
@@ -564,10 +538,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					return;
 				}
 			}
-
-			/*		( _C(h) is temporarily set to 1. ) */
-			_C(nq) = 1; 
-			_C(h) = 1.;
 
 			/*
 			   The coding below computes the step size, h0, to be attempted on the
