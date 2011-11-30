@@ -5,8 +5,8 @@
 #include "blas.h"
 #include "lsoda_internal.h"
 
-int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double pnorm, double *del, double *delp, double *told,
-					   int *ncf, double *rh, int *m, double hmin, void *_data)
+int correction(struct common_t * common, struct lsoda_context_t * ctx, double *y, double pnorm, double *del, double *delp, double *told,
+					   int *ncf, double *rh, int *m, double hmin)
 /*
    *corflag = 0 : corrector converged,
               1 : step size to be reduced, redo prediction,
@@ -16,6 +16,7 @@ int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double 
 {
 	int             i;
 	double          rm, rate, dcon;
+	const int neq = ctx->neq;
 /*
    Up to maxcor corrector iterations are taken.  A convergence test is
    made on the r.m.s. norm of each correction, weighted by the error
@@ -28,7 +29,7 @@ int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double 
 	*del = 0.;
 	for (i = 1; i <= neq; i++)
 		y[i] = _C(yh)[1][i];
-	(*f) (_C(tn), y + 1, _C(savf) + 1, _data);
+	(*ctx->function) (_C(tn), y + 1, _C(savf) + 1, ctx->data);
 	_C(nfe)++;
 /*
    If indicated, the matrix P = I - _C(h) * _C(el)[1] * J is reevaluated and
@@ -38,7 +39,7 @@ int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double 
 	while (1) {
 		if (*m == 0) {
 			if (_C(ipup) > 0) {
-				int ierpj = prja(common, neq, y, f, _data);
+				int ierpj = prja(common, ctx, y);
 				_C(jcur) = 1;
 				_C(ipup) = 0;
 				_C(rc) = 1.;
@@ -134,7 +135,7 @@ int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double 
 			*del = 0.;
 			for (i = 1; i <= neq; i++)
 				y[i] = _C(yh)[1][i];
-			(*f) (_C(tn), y + 1, _C(savf) + 1, _data);
+			(*ctx->function) (_C(tn), y + 1, _C(savf) + 1, ctx->data);
 			_C(nfe)++;
 		}
 /*
@@ -142,7 +143,7 @@ int correction(struct common_t * common, int neq, double *y, _lsoda_f f, double 
 */
 		else {
 			*delp = *del;
-			(*f) (_C(tn), y + 1, _C(savf) + 1, _data);
+			(*ctx->function) (_C(tn), y + 1, _C(savf) + 1, ctx->data);
 			_C(nfe)++;
 		}
 	}			/* end while   */

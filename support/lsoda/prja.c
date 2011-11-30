@@ -5,11 +5,11 @@
 #include "common.h"
 #include "lsoda_internal.h"
 
-int prja(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data)
+int prja(struct common_t * common, struct lsoda_context_t * ctx, double *y)
 {
 	int             i, ier, j;
 	double          fac, hl0, r, r0, yj;
-
+	const int neq = ctx->neq;
 /*
    prja is called by stoda to compute and process the matrix
    P = I - _C(h) * _C(el)[1] * J, where J is an approximation to the Jacobian.
@@ -40,7 +40,7 @@ int prja(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data)
 			r = fmax(SQRTETA * fabs(yj), r0 / _C(ewt)[j]);
 			y[j] += r;
 			fac = -hl0 / r;
-			(*f) (_C(tn), y + 1, _C(acor) + 1, _data);
+			(*ctx->function) (_C(tn), y + 1, _C(acor) + 1, ctx->data);
 			for (i = 1; i <= neq; i++)
 				_C(wm)[i][j] = (_C(acor)[i] - _C(savf)[i]) * fac;
 			y[j] = yj;

@@ -1,7 +1,7 @@
 int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int jstart, struct lsoda_opt_t * opt);
-int      correction(struct common_t * common, int neq, double *y, _lsoda_f f, double pnorm, double *del, double *delp, double *told,
-						   int *ncf, double *rh, int *m, double hmin, void *_data);
-int prja(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data);
+int      correction(struct common_t * common, struct lsoda_context_t * ctx, double *y, double pnorm, double *del, double *delp, double *told,
+						   int *ncf, double *rh, int *m, double hmin);
+int prja(struct common_t * common, struct lsoda_context_t * ctx, double *y);
 
 int      ewset(struct common_t * common, const int neq, double ewt[], const double rtol[], const double atol[], const double *ycur);
 void     solsy(struct common_t * common, int neq, double *y);
