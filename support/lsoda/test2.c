@@ -47,6 +47,6 @@ int test(void) {
 		lsoda_prepare(&ctx, &opt);
 		lsoda(&ctx, x, &t, step);
 		lsoda_free(&ctx);
-		//printf ("%g %g\n", i * step, x[0]);
+//		printf ("%g %g\n", i * step, x[0]);
 	}
 }

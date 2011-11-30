@@ -127,24 +127,29 @@ tam@wri.com
 	_C(illin) = 0; \
 }
 
-static int check_opt(struct lsoda_opt_t * opt, int *istate, int neq) {
+static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	const int mxstp0 = 500, mxhnl0 = 10;
 
-	if (*istate == 1) {
+	if (ctx->state == 1) {
 		opt->h0 = 0.;
 		opt->mxordn = mord[1];
 		opt->mxords = mord[2];
 	}
+
+	if (ctx->neq <= 0) {
+		fprintf(stderr, "[lsoda] neq = %d is less than 1\neq", ctx->neq);
+		return 0;
+	}
+	const double * rtol = opt->rtol - 1;
+	const double * atol = opt->atol - 1;
+
 	/*
 	   Check rtol and atol for legality.
 	 */
-	if (*istate == 1 || *istate == 3) {
+	if (ctx->state == 1 || ctx->state == 3) {
 		/* c convention starts from 0. converted fortran code expects 1 */
-		const double * rtol = opt->rtol - 1;
-		const double * atol = opt->atol - 1;
-
 		int i;
-		for (i = 1; i <= neq; i++) {
+		for (i = 1; i <= ctx->neq; i++) {
 			double rtoli = rtol[i];
 			double atoli = atol[i];
 			if (rtoli < 0.) {
@@ -159,6 +164,11 @@ static int check_opt(struct lsoda_opt_t * opt, int *istate, int neq) {
 	}			/* end if ( *istate == 1 || *istate == 3 )   */
 	/* default itask is 1 */
 	if (opt->itask == 0) opt->itask = 1;
+	if (opt->itask < 1 || opt->itask > 5) {
+		fprintf(stderr, "[lsoda] illegal itask = %d\n", opt->itask);
+		return 0;
+	}
+
 	if (opt->ixpr < 0 || opt->ixpr > 1) {
 		fprintf(stderr, "[lsoda] ixpr = %d is illegal\neq", opt->ixpr);
 		return 0;
@@ -172,7 +182,7 @@ static int check_opt(struct lsoda_opt_t * opt, int *istate, int neq) {
 		fprintf(stderr, "[lsoda] mxhnil < 0\neq");
 		return 0;
 	}
-	if (*istate == 1) {
+	if (ctx->state == 1) {
 		if (opt->mxordn < 0) {
 			fprintf(stderr, "[lsoda] mxordn = %d is less than 0\neq", opt->mxordn);
 			return 0;
@@ -384,7 +394,7 @@ int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	/* Default options.   */
 
 	/* Next process and check the optional inpus.   */
-	if(!check_opt(opt, &ctx->state, ctx->neq)) {
+	if(!check_opt(ctx, opt)) {
 		return 0;
 	}
 
@@ -395,6 +405,20 @@ void lsoda_free(struct lsoda_context_t * ctx) {
 	free(((struct common_t *)ctx->common)->memory);
 	free(ctx->common);
 }
+
+#define ewset(ycur)  \
+{ \
+	int             i; \
+ \
+	for (i = 1; i <= neq; i++) \
+		_C(ewt)[i] = rtol[i] * fabs((ycur)[i]) + atol[i]; \
+ \
+	for (i = 1; i <= neq; i++) { \
+		_C(ewt)[i] = 1. / _C(ewt)[i]; \
+	} \
+}		
+
+		/* end ewset   */ 
 
 void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 
@@ -458,11 +482,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 
 		if (*istate == 1 || *istate == 3) {
 			_C(ntrep) = 0;
-			if (ctx->neq <= 0) {
-				fprintf(stderr, "[lsoda] neq = %d is less than 1\neq", ctx->neq);
-				terminate();
-				return;
-			}
 			h0 = opt->h0;
 			if(*istate == 1) {
 				if ((tout - *t) * h0 < 0.) {
@@ -475,12 +494,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		}			/* end if ( *istate == 1 || *istate == 3 )   */
 
 		const int itask = opt->itask;
-
-		if (itask < 1 || itask > 5) {
-			fprintf(stderr, "[lsoda] illegal itask = %d\neq", itask);
-			terminate();
-			return;
-		}
 
 		/*
 		   If *istate = 1, _C(meth) is initialized to 1.
@@ -540,9 +553,14 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			/*
 			   Load and invert the _C(ewt) array.  
 			 */
-			if(!ewset(common, neq, _C(ewt), rtol, atol, y)) {
-				terminate2();
-				return;
+			ewset(y);
+
+			for (i = 1; i <= neq; i++) {
+				if(_C(ewt)[i] <= 0.) {
+					fprintf(stderr, "[lsoda] ewt[%d] = %g <= 0.\n", i, _C(ewt)[i]);
+					terminate2();
+					return;
+				}
 			}
 
 			/*		( _C(h) is temporarily set to 1. ) */
@@ -712,10 +730,14 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					terminate2();
 					return;
 				}
-				if(!ewset(common, neq, _C(ewt), rtol, atol, _C(yh)[1])) {
-					terminate2();
-					*istate = -6;
-					return;
+				ewset(_C(yh)[1]);
+				for (i = 1; i <= neq; i++) {
+					if (_C(ewt)[i] <= 0.) {
+						fprintf(stderr, "[lsoda] ewt[%d] = %g <= 0.\n", i, _C(ewt)[i]);
+						terminate2();
+						*istate = -6;
+						return;
+					}
 				}
 			}
 			tolsf = ETA * vmnorm(neq, _C(yh)[1], _C(ewt));

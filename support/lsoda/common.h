@@ -15,14 +15,10 @@ extern const double   sm1[13];
 /* newly added static variables */
 
 struct common_t {
-	int      imxer;
 
 	/* static variables for lsoda() */
 
 	double   h, hu, rc, tn;
-	int      illin, init, nhnil, ntrep, nslast,
-					jcur, meth, mused, nq, nst,
-					nfe, nje, nqu, miter;
 	double   tsw, pdnorm;
 
 	/* no static variable for prja(), solsy() */
@@ -35,14 +31,19 @@ struct common_t {
 	double elco[13][14], tesco[13][4];
 #endif
 	double hold, rmax;
-	int      ialth, ipup, nslp;
 	double   pdest, pdlast;
-	int      icount, irflag;
 
 	/* static variables for various vectors and the Jacobian. */
 
 	void * memory;
 	double **yh, **wm, *ewt, *savf, *acor;
 	int     *ipvt;
+
+	int      ialth, ipup, nslp;
+	int      icount, irflag;
+	int      imxer;
+	int      illin, init, nhnil, ntrep, nslast,
+					jcur, meth, mused, nq, nst,
+					nfe, nje, nqu, miter;
 };
 #define _C(x) (common->x)
