@@ -135,6 +135,28 @@ static int check_opt(struct lsoda_opt_t * opt, int *istate, int neq) {
 		opt->mxordn = mord[1];
 		opt->mxords = mord[2];
 	}
+	/*
+	   Check rtol and atol for legality.
+	 */
+	if (*istate == 1 || *istate == 3) {
+		double rtoli = opt->rtol[1];
+		double atoli = opt->atol[1];
+		int i;
+		for (i = 1; i <= neq; i++) {
+			if (opt->itol >= 3)
+				rtoli = opt->rtol[i];
+			if (opt->itol == 2 || opt->itol == 4)
+				atoli = opt->atol[i];
+			if (rtoli < 0.) {
+				fprintf(stderr, "[lsoda] rtol = %g is less than 0.\neq", rtoli);
+				return 0;
+			}
+			if (atoli < 0.) {
+				fprintf(stderr, "[lsoda] atol = %g is less than 0.\neq", atoli);
+				return 0;
+			}
+		}		/* end for   */
+	}			/* end if ( *istate == 1 || *istate == 3 )   */
 	/* default itask is 1 */
 	if (opt->itask == 0) opt->itask = 1;
 	if (opt->ixpr < 0 || opt->ixpr > 1) {
@@ -479,29 +501,6 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		if (*istate == 1) {
 			_C(meth) = 1;
 		}
-		/*
-		   Check rtol and atol for legality.
-		 */
-		if (*istate == 1 || *istate == 3) {
-			double rtoli = rtol[1];
-			double atoli = atol[1];
-			for (i = 1; i <= neq; i++) {
-				if (itol >= 3)
-					rtoli = rtol[i];
-				if (itol == 2 || itol == 4)
-					atoli = atol[i];
-				if (rtoli < 0.) {
-					fprintf(stderr, "[lsoda] rtol = %g is less than 0.\neq", rtoli);
-					terminate();
-					return;
-				}
-				if (atoli < 0.) {
-					fprintf(stderr, "[lsoda] atol = %g is less than 0.\neq", atoli);
-					terminate();
-					return;
-				}
-			}		/* end for   */
-		}			/* end if ( *istate == 1 || *istate == 3 )   */
 		/*
 		   If *istate = 3, set flag to signal parameter changes to stoda.
 		 */
