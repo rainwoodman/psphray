@@ -35,12 +35,18 @@
 }
 
 
-int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int mxordn)
+int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int jstart, struct lsoda_opt_t * opt)
 {
 	int kflag;
 	int             i, i1, j, m, ncf;
 	double          del, delp, dsm, dup, exup, r, rh, told;
 	double          pdh, pnorm;
+	
+ 	const double hmxi = opt->hmxi;
+	const double hmin = opt->hmin;
+	const int mxords = opt->mxords;
+	const int mxordn = opt->mxordn;
+	const int neq = ctx->neq;
 	
 /*
    stoda performs one step of the integration of an initial value
@@ -173,7 +179,7 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
 				}
 			pnorm = vmnorm(neq, _C(yh)[1], _C(ewt));
 
-			int corflag = correction(common, neq, y, f, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, _data);
+			int corflag = correction(common, neq, y, ctx->function, pnorm, &del, &delp, &told, &ncf, &rh, &m, hmin, ctx->data);
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {
@@ -342,7 +348,7 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
 					_C(h) *= rh;
 					for (i = 1; i <= neq; i++)
 						y[i] = _C(yh)[1][i];
-					(*f) (_C(tn), y + 1, _C(savf) + 1, _data);
+					(*ctx->function) (_C(tn), y + 1, _C(savf) + 1, ctx->data);
 					_C(nfe)++;
 					for (i = 1; i <= neq; i++)
 						_C(yh)[2][i] = _C(h) * _C(savf)[i];

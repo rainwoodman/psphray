@@ -1,4 +1,4 @@
-int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int msordn);
+int stoda(struct common_t * common, struct lsoda_context_t * ctx, double *y, int jstart, struct lsoda_opt_t * opt);
 int      correction(struct common_t * common, int neq, double *y, _lsoda_f f, double pnorm, double *del, double *delp, double *told,
 						   int *ncf, double *rh, int *m, double hmin, void *_data);
 int prja(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data);

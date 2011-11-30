@@ -741,7 +741,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			/*
 			   Call stoda
 			 */
-			kflag = stoda(common, neq, y, ctx->function, ctx->data, jstart, opt->hmxi, opt->hmin, opt->mxords, opt->mxordn);
+			kflag = stoda(common, ctx, y, jstart, opt);
 			/*
 			   printf( "_C(meth)= %d,   order= %d,   _C(nfe)= %d,   _C(nje)= %d\neq",
 			   _C(meth), _C(nq), _C(nfe), _C(nje) );
