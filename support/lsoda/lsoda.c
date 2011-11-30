@@ -431,7 +431,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
          * in C y[] starts from 0, but the converted fortran code starts from 1 */
 		y--;
 
-		int             i, iflag, lenyh, ihit;
+		int             i, lenyh, ihit;
 		const int neq = ctx->neq;
 		double          big, h0, hmx, rh, tcrit, tdist, tnext, tol,
 						tolsf, tp, size, sum, w0;
@@ -564,8 +564,8 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					terminate();
 					return;
 				}
-				tol = rtol[1];
-				for (i = 2; i <= neq; i++)
+				tol = 0.;;
+				for (i = 1; i <= neq; i++)
 					tol = fmax(tol, rtol[i]);
 				if (tol <= 0.) {
 					for (i = 1; i <= neq; i++) {
@@ -607,7 +607,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			switch (itask) {
 				case 1:
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
-						intdy(common, neq, tout, 0, y, &iflag);
+						int iflag = intdy(common, neq, tout, 0, y);
 						if (iflag != 0) {
 							fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\neq", itask, tout);
 							terminate();
@@ -644,7 +644,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 						return;
 					}
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
-						intdy(common, neq, tout, 0, y, &iflag);
+						int iflag = intdy(common, neq, tout, 0, y);
 						if (iflag != 0) {
 							fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\neq", itask, tout);
 							terminate();
@@ -779,7 +779,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				if (itask == 1) {
 					if ((_C(tn) - tout) * _C(h) < 0.)
 						continue;
-					intdy(common, neq, tout, 0, y, &iflag);
+					int iflag = intdy(common, neq, tout, 0, y);
 					*t = tout;
 					*istate = 2;
 					_C(illin) = 0;
@@ -809,7 +809,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				 */
 				if (itask == 4) {
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
-						intdy(common, neq, tout, 0, y, &iflag);
+						int iflag = intdy(common, neq, tout, 0, y);
 						*t = tout;
 						*istate = 2;
 						_C(illin) = 0;
