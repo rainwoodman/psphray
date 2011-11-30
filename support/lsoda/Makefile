@@ -18,14 +18,13 @@ main.c \
 methodswitch.c \
 orderswitch.c \
 prja.c \
-resetcoeff.c \
 scaleh.c \
 solsy.c \
 stoda.c \
 vmnorm.c
 
 all: main.o liblsoda.a
-	gcc -std=c99 -g -O0 -o a.out $^ -lm -lgfortran
+	gcc -std=c99 -g -pg -O0 -o a.out $^ -lm -lgfortran
 printcf: printcf.o liblsoda.a
 	gcc -std=c99 -g -O0 -o printcf $^ -lm -lgfortran
 test2: test2.o liblsoda.a
@@ -37,6 +36,6 @@ liblsoda.a: $(SRC:.c=.o)
 	ar cur $@ $^
 
 .c.o:
-	gcc -DCFODE_STATIC -std=c99 -g -O3 -fopenmp -ffast-math -c -o $@ $<
+	gcc -DCFODE_STATIC -std=c99 -g -pg -O0 -fopenmp -c -o $@ $<
 
 

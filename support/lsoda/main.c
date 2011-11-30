@@ -9,7 +9,13 @@ static int fex(double t, double *y, double *ydot, void *data)
 	ydot[1] = -1.0 * (ydot[0] + ydot[2]);
 }
 
-int main(void)
+int main(void) {
+	int i;
+	for(i = 0; i < 10000; i++) {
+		test();
+	}
+}
+int test(void)
 {
 	double          atol[3], rtol[3], t, tout, y[3];
 	int             neq = 3;
@@ -21,7 +27,7 @@ int main(void)
 	t = 0.0E0;
 	tout = 0.4E0;
 	struct lsoda_opt_t opt = {0};
-	opt.ixpr = 1;
+	opt.ixpr = 0;
 	opt.itol = 2;
 	opt.rtol = rtol;
 	opt.atol = atol;
@@ -46,15 +52,15 @@ int main(void)
 
 	for (iout = 1; iout <= 12; iout++) {
 		lsoda(&ctx, y, &t, tout);
-		printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[0], y[1], y[2]);
+		//printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[0], y[1], y[2]);
 		if (ctx.state <= 0) {
-			printf("error istate = %d\n", ctx.state);
+			//printf("error istate = %d\n", ctx.state);
 			exit(0);
 		}
 		tout = tout * 10.0E0;
 	}
 	lsoda_free(&ctx);
-	printcm12();
+//	printcm12();
 	return 0;
 }
 /*

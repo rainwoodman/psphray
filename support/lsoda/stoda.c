@@ -20,6 +20,21 @@
 	_C(hold) = _C(h); \
 }
 
+/*
+   The _C(el) vector and related constants are reset
+   whenever the order _C(nq) is changed, or at the start of the problem.
+*/
+#define resetcoeff() \
+{ \
+	int             i; \
+ \
+	double el0 = _C(el)[1]; \
+	for (i = 1; i <= (_C(nq) + 1); i++) \
+		_C(el)[i] = _C(elco)[_C(nq)][i]; \
+	_C(rc) = _C(rc) * _C(el)[1] / el0; \
+}
+
+
 int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data, int jstart, double hmxi, double hmin, int mxords, int mxordn)
 {
 	int kflag;
@@ -95,7 +110,7 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
 		_C(pdlast) = 0.;
 
 		cfode(common, 1);
-		resetcoeff(common);
+		resetcoeff();
 	}			/* end if ( jstart == 0 )   */
 	/*
 	   The following block handles preliminaries needed when jstart = -1.
@@ -115,7 +130,7 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
 		if (_C(meth) != _C(mused)) {
 			cfode(common, _C(meth));
 			_C(ialth) = (_C(nq) + 1);
-			resetcoeff(common);
+			resetcoeff();
 		}
 		if (_C(h) != _C(hold)) {
 			rh = _C(h) / _C(hold);
@@ -250,7 +265,7 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
    both _C(nq) and _C(h) are changed.
 */
 				if (orderflag == 2) {
-					resetcoeff(common);
+					resetcoeff();
 					rh = max(rh, hmin / fabs(_C(h)));
 					scaleh(common, neq, &rh, &pdh, hmxi);
 					_C(rmax) = 10.;
@@ -299,7 +314,7 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
 					scaleh(common, neq, &rh, &pdh, hmxi);
 				}
 				if (orderflag == 2) {
-					resetcoeff(common);
+					resetcoeff();
 					rh = max(rh, hmin / fabs(_C(h)));
 					scaleh(common, neq, &rh, &pdh, hmxi);
 				}
@@ -336,7 +351,7 @@ int stoda(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data,
 					if (_C(nq) == 1)
 						continue;
 					_C(nq) = 1;
-					resetcoeff(common);
+					resetcoeff();
 					continue;
 				}
 			}	/* end else -- kflag <= -3 */

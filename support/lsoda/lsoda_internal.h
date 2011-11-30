@@ -4,7 +4,6 @@ int      correction(struct common_t * common, int neq, double *y, _lsoda_f f, do
 int prja(struct common_t * common, int neq, double *y, _lsoda_f f, void *_data);
 
 int      ewset(struct common_t * common, const int neq, double ewt[], const int itol, const double rtol[], const double atol[], const double *ycur);
-void     resetcoeff(struct common_t * common);
 void     solsy(struct common_t * common, int neq, double *y);
 int      orderswitch(struct common_t * common, int neq, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord);
 void     intdy(struct common_t * common, int neq, double t, int k, double *dky, int *iflag);
