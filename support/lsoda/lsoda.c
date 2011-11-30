@@ -45,6 +45,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 #include "lsoda.h"
 #include "common.h"
 

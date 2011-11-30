@@ -36,7 +36,7 @@ liblsoda.a: $(SRC:.c=.o)
 	ar cur $@ $^
 
 .c.o:
-	gcc -DCFODE_STATIC -std=c99 -g -pg -O3 -ffast-math -fopenmp -c -o $@ $<
-	gcc -DCFODE_STATIC -std=c99 -g -pg -O0 -ffast-math -fopenmp -S -o $(<:.c=.s) $<
+	gcc -DCFODE_STATIC -std=c99 -g -O3 -ffast-math -fopenmp -c -o $@ $<
+	gcc -DCFODE_STATIC -std=c99 -g -O0 -ffast-math -fopenmp -S -o $(<:.c=.s) $<
 
 
