@@ -178,7 +178,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				}
 			pnorm = vmnorm(neq, _C(yh)[1], _C(ewt));
 
-			int corflag = correction(ctx, y, pnorm, &del, &delp, &told, &m);
+			int corflag = correction(ctx, y, pnorm, &del, &delp, told, &m);
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {

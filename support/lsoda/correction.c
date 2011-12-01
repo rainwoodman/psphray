@@ -6,7 +6,7 @@
 #include "lsoda_internal.h"
 
 /* m is the correction count */
-int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *del, double *delp, double *told, int *m)
+int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *del, double *delp, double told, int *m)
 /*
    *corflag = 0 : corrector converged,
               1 : step size to be reduced, redo prediction,
