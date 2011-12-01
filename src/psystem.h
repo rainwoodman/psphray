@@ -96,6 +96,8 @@ typedef struct _Step {
 	double yGrecHII;
 	double yGrecHeII;
 	double yGrecHeIII;
+
+	double step_remain; /* how much (0. - 1.0) of the step remains after the solver */
 	int refined; /* if the time step is too large and a refining is done in the intergrator */
 	intptr_t ipar; /* debugging only the ipar used in this step */
 } Step;
@@ -123,11 +125,11 @@ static inline const double lambdaHe_to_xHeI(const double lambdaHeI, const double
 	return lambdaHeI;
 }
 static inline const double lambdaHe_to_xHeII(const double lambdaHeI, const double lambdaHeII) {
-	return 1.0 - lambdaHeI - lambdaHeII;
+	return lambdaHeII;
 }
 
 static inline const double lambdaHe_to_xHeIII(const double lambdaHeI, const double lambdaHeII) {
-	return lambdaHeII;
+	return 1.0 - lambdaHeII - lambdaHeI;
 }
 static inline const double lambda_to_ye(const double lambdaH, double lambdaHeI, double lambdaHeII) {
 	return lambdaH_to_xHII(lambdaH) 
@@ -161,9 +163,9 @@ static inline void psys_set_lambdaHe(const intptr_t i, const double xHeI, const 
 	else if(xHeI <= 0.0 || (xHeII + xHeIII) >=1.0) psys.lambdaHeI[i] = 0.0;
 	else psys.lambdaHeI[i] = xHeI;
 
-	if(xHeIII >= 1.0 || (xHeI + xHeII) <= 0.0) psys.lambdaHeII[i] = 1.0;
-	else if(xHeIII <= 0.0 || (xHeII + xHeI) >=1.0) psys.lambdaHeII[i] = 0.0;
-	else psys.lambdaHeII[i] = xHeIII;
+	if(xHeII >= 1.0 || (xHeI + xHeIII) <= 0.0) psys.lambdaHeII[i] = 1.0;
+	else if(xHeII <= 0.0 || (xHeIII + xHeI) >=1.0) psys.lambdaHeII[i] = 0.0;
+	else psys.lambdaHeII[i] = xHeII;
 }
 
 static inline const double psys_NH(const intptr_t i) {

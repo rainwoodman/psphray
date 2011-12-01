@@ -90,7 +90,7 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 			dxdt[5] = 0.0;
 		} else {
 			dxdt[1] = -step->yGdepHeI / step->time + (- gamma_HeI * ye * xHeI + alpha_HeII_A * ye * xHeII);
-			dxdt[2] = step->yGdepHeII / step->time + (gamma_HeII * ye * xHeII - alpha_HeIII_A * ye * xHeIII);
+			dxdt[2] = -step->yGdepHeII / step->time + (- gamma_HeII * ye * xHeII - alpha_HeII_A * ye * xHeII + alpha_HeIII_A * ye * xHeIII);
 			dxdt[4] = alpha_HeII_AB * ye * xHeII;
 			dxdt[5] = alpha_HeIII_AB * ye * xHeIII;
 		}
@@ -101,7 +101,7 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 			dxdt[2] = 0.0;
 		} else {
 			dxdt[1] = -step->yGdepHeI / step->time + (-gamma_HeI * ye * xHI + alpha_HeII_B * ye * xHeII);
-			dxdt[2] = step->yGdepHeII / step->time + (gamma_HeII * ye * xHI - alpha_HeIII_B * ye * xHeIII);
+			dxdt[2] = -step->yGdepHeII / step->time + (-gamma_HeII * ye * xHI - alpha_HeII_B * ye * xHeII + alpha_HeIII_B * ye * xHeIII);
 		}
 		dxdt[3] = 0;
 		dxdt[4] = 0;
@@ -118,10 +118,12 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 		dxdt[6] = step->heat / step->time - L;
 	}
 	for(i = 0; i < 7; i++) {
+		dxdt[i] *= step->time;
 		if(isinf(dxdt[i]) || isnan(dxdt[i])) {
 			ERROR("nan found in dxdt[%d]", i);
 		}
 	}
+/*
 	if(dxdt[3] < 0) {
 		ERROR("dxdt[3] < 0");
 	}
@@ -131,14 +133,88 @@ static int function(double t, const double x[], double dxdt[], Step * step){
 	if(dxdt[5] < 0) {
 		ERROR("dxdt[5] < 0");
 	}
+*/
 	if(x[6] + dxdt[6] < 0) {
 		ERROR("x[6] < 0");
 	}
 	return GSL_SUCCESS;
 }
 
+#include <lsoda/lsoda.h>
+struct step_evolve_t {
+	struct lsoda_context_t ctx;
+	struct lsoda_opt_t opt;
+};
+static int mxstep = 1000;
+void * step_evolve_prepare() {
+	struct step_evolve_t * control;
+	static double rtol[7] = {1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7};
+	static double atol[7] = {1e-7, 1e-7, 1e-7, 1e-8, 1e-8, 1e-8, 1.};
 
-int step_evolve(Step * step) {
+	control = calloc(1, sizeof(struct step_evolve_t));
+	control->ctx.function = function;
+	control->ctx.neq = 7;
+	control->opt.ixpr = 0;
+	control->opt.mxstep = mxstep;
+	control->opt.rtol = rtol;
+	control->opt.atol = atol;
+	control->opt.itask = 1;
+	lsoda_prepare(&control->ctx, &control->opt);
+	return control;
+}
+void step_evolve_free(void * control) {
+	struct step_evolve_t * e = control;
+	lsoda_free(&e->ctx);
+	free(control);
+}
+int step_evolve_lsoda(void * control, Step * step) {
+	struct step_evolve_t * e = control;
+	e->ctx.data = step;
+	e->ctx.state = 1;
+
+	lsoda_reset(&e->ctx);
+
+	double x[7];
+	double dxdt[7];
+	double t = 0;
+	x[0] = step->lambdaH;
+	x[1] = step->lambdaHeI;
+	x[2] = step->lambdaHeII;
+	x[3] = step->yGrecHII;
+	x[4] = step->yGrecHeII;
+	x[5] = step->yGrecHeIII;
+	x[6] = step->ie;
+	do {
+		e->ctx.state = 1;
+		lsoda(&e->ctx, x, &t, 1.);
+		if(e->ctx.state == -1) {
+			e->opt.mxstep = e->opt.mxstep * 2;
+			if(mxstep < e->opt.mxstep) mxstep = e->opt.mxstep;
+			WARNING("continuing with new mxstep = %d", e->opt.mxstep);
+		}
+	} while(e->ctx.state == -1 && t < 1.);
+
+	if(e->ctx.state != 2) {
+		ERROR("lsoda failed");
+	}
+	x[0] = fmin(1., fmax(0., x[0]));
+	x[1] = fmin(1., fmax(0., x[1]));
+	x[2] = fmin(1. - x[1], fmax(0., x[2]));
+	x[3] = fmax(0., x[3]);
+	x[4] = fmax(0., x[4]);
+	x[5] = fmax(0., x[5]);
+
+	step->lambdaH = x[0];
+	step->lambdaHeI = x[1];
+	step->lambdaHeII = x[2];
+	step->yGrecHII = x[3];
+	step->yGrecHeII = x[4];
+	step->yGrecHeIII = x[5];
+	step->ie = x[6];
+	step->step_remain = 0.0;
+	return 1;
+}
+int step_evolve_euler(void * control, Step * step) {
 
 //	MESSAGE("x1 = %le , x2 = %le x[0] - B %g", x1, x2, x[0] - B);
 
@@ -167,12 +243,12 @@ int step_evolve(Step * step) {
 		iontime = fmin(iontime, 1.0 / gamma_HeI);
 		iontime = fmin(iontime, 1.0 / gamma_HeII);
 	}
-	double internal_step = fmin(rectime / 200, step->time);
-	internal_step = fmin(iontime / 200, step->time);
+	double internal_time = fmin(rectime, iontime) / 200.;
+	internal_time = fmin(internal_time, step->time);
 
-	int nsteps = step->time / internal_step;
+	int nsteps = step->time / internal_time;
 	if(nsteps > 200) nsteps = 200;
-	internal_step = step->time / nsteps;
+	double internal_step = 1.0 / nsteps;
 
 	if(nsteps > 1) step->refined = 1;
 	int k;
@@ -227,11 +303,13 @@ int step_evolve(Step * step) {
 	step->yGrecHeIII = x[5];
 	step->ie = x[6];
 
-	double used = 1.0 - (float) k / nsteps;
-	step->yGdepHI *= used;
-	step->yGdepHeI *= used;
-	step->yGdepHeII *= used;
-
+	step->step_remain = 1.0 - (float) k / nsteps;
 	return 1;
 }
-
+int step_evolve(void * control, Step * step) {
+#ifdef USE_LSODA
+	return step_evolve_lsoda(control, step);
+#else
+	return step_evolve_euler(control, step);
+#endif
+}

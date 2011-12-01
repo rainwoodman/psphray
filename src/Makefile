@@ -1,12 +1,12 @@
 CC = gcc
 LD = gcc
-CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support 
+CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support  -DUSE_LSODA
 OPT= -O3 -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort
-LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc 
+LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc -L ../support/lsoda
 #LIBS += -ljemalloc
-LIBS = -lconfig -lgfortran -lgsl -lgslcblas -limf -liomp5 -lpthread
+LIBS = -lconfig -lgfortran -lgsl -lgslcblas -llsoda -limf -liomp5 -lpthread
 include Makefile.local
 
 SOURCES = \

@@ -50,7 +50,9 @@ extern PSystem psys;
 extern double sph_depth(const double r_h);
 extern double sph_Wh3(const double r_h);
 
-extern int step_evolve(Step * step);
+extern int step_evolve(void * control, Step * step);
+extern void * step_evolve_prepare();
+extern void step_evolve_free(void * control);
 
 size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype ** pars, size_t * size);
 
@@ -626,7 +628,11 @@ static void update_pars() {
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1.0):1.0;
 	const double scaling_fac3_inv = 1.0/(scaling_fac * scaling_fac * scaling_fac);
 	const double t0 = omp_get_wtime();
-	#pragma omp parallel for reduction(+: d1, d2, increase_recomb) private(j) schedule(static)
+	void * control = NULL;
+	#pragma omp parallel reduction(+: d1, d2, increase_recomb) private(j, control)
+	{
+	control = step_evolve_prepare();
+	#pragma omp for schedule(dynamic, 100)
 	for(j = 0; j < x_length; j++) {
 		const intptr_t ipar = x[j].ipar;
 		const double xHI = psys_xHI(ipar);
@@ -683,7 +689,7 @@ static void update_pars() {
 		maybe_write_particle(ipar, stat.parlogfile, "%lu %lu %g %g %g %g %g %g %g\n",
 				psys.tick, ipar, step.time, step.T, step.lambdaH, step.nH, step.yGdepHI, step.ie, step.heat);
 
-		if(!step_evolve(&step)) {
+		if(!step_evolve(control, &step)) {
 			const double xHI = lambdaH_to_xHI(step.lambdaH);
 			const double xHII = lambdaH_to_xHII(step.lambdaH);
 			WARNING("evolve failed: "
@@ -712,6 +718,10 @@ static void update_pars() {
 			increase_recomb += (step.yGrecHeII - psys.yGrecHeII[ipar])* NHe;
 			increase_recomb += (step.yGrecHeIII - psys.yGrecHeIII[ipar])* NHe;
 
+			psys.yGdepHI[ipar] *= step.step_remain;
+			psys.yGdepHeI[ipar] *= step.step_remain;
+			psys.yGdepHeII[ipar] *= step.step_remain;
+
 			psys.yGrecHII[ipar] = step.yGrecHII;
 			psys.yGrecHeII[ipar] = step.yGrecHeII;
 			psys.yGrecHeIII[ipar] = step.yGrecHeIII;
@@ -728,12 +738,12 @@ static void update_pars() {
 			if(CFG_ISOTHERMAL) {
 				psys.ie[ipar] = Tye2ie(step.T, psys_ye(ipar));
 			}
-			psys.yGdepHI[ipar] = step.yGdepHI;
-			psys.yGdepHeI[ipar] = step.yGdepHeI;
-			psys.yGdepHeII[ipar] = step.yGdepHeII;
+
 			psys.heat[ipar] = 0.0;
 		}
 		d2++;
+	}
+	step_evolve_free(control);
 	}
 	stat.gsl_error_count += d1;
 	stat.evolve_count += d2;
