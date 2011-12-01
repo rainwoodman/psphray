@@ -1,7 +1,8 @@
+#include "lsoda.h"
 #include "common.h"
 #include "cfode_static.inc"
 
-void cfode_static (struct common_t * common, int meth)
+void cfode_static (struct lsoda_context_t * ctx, int meth)
 {
 #ifdef CFODE_STATIC
 	if (meth == 1) {

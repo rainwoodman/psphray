@@ -2,7 +2,7 @@
 #include "common.h"
 #include "lsoda_internal.h"
 #include <math.h>
-void scaleh(struct common_t * common, int neq, double *rh, double *pdh, double hmxi)
+void scaleh(struct lsoda_context_t * ctx, int neq, double *rh, double *pdh, double hmxi)
 {
 	double          r;
 	int             j, i;

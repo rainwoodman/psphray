@@ -4,7 +4,7 @@
 #include <math.h>
 #include "blas.h"
 
-int orderswitch(struct common_t * common, int neq, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord)
+int orderswitch(struct lsoda_context_t * ctx, int neq, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord)
 
 /*
    Regardless of the success or failure of the step, factors

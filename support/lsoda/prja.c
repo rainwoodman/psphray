@@ -5,7 +5,7 @@
 #include "common.h"
 #include "lsoda_internal.h"
 
-int prja(struct common_t * common, struct lsoda_context_t * ctx, double *y)
+int prja(struct lsoda_context_t * ctx, double *y)
 {
 	int             i, ier, j;
 	double          fac, hl0, r, r0, yj;

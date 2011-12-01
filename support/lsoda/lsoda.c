@@ -134,7 +134,7 @@ tam@wri.com
 
 #define intdyreturn() \
 { \
-	int iflag = intdy(common, neq, tout, 0, y);  \
+	int iflag = intdy(ctx, neq, tout, 0, y);  \
 	if (iflag != 0) { \
 		fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\n", itask, tout); \
 		for (i = 1; i <= neq; i++) \
@@ -231,9 +231,9 @@ static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	}
 	return 1;
 }
-static int alloc_mem(struct common_t * common, struct lsoda_opt_t * opt, int neq) {
-	int nyh = neq;
-	int lenyh = 1 + max(opt->mxordn, opt->mxords);
+static int alloc_mem(struct lsoda_context_t * ctx) {
+	int nyh = ctx->neq;
+	int lenyh = 1 + max(ctx->opt->mxordn, ctx->opt->mxords);
 	long offset = 0;
 	int i;
 	long yhoff = offset;
@@ -409,7 +409,7 @@ c-----------------------------------------------------------------------
  */
 
 int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
-	ctx->common = calloc(1, sizeof(struct common_t));
+	ctx->common = calloc(1, sizeof(struct lsoda_common_t));
 	ctx->opt = opt;
 
 	/* Default options.   */
@@ -419,17 +419,17 @@ int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 		return 0;
 	}
 
-	return alloc_mem(ctx->common, opt, ctx->neq);
+	return alloc_mem(ctx);
 }
 
 void lsoda_reset(struct lsoda_context_t * ctx) {
 
-	int offset = offsetof(struct common_t, memory) + sizeof(void*);
-	memset(ctx->common + offset, 0, sizeof(struct common_t) - offset);
+	int offset = offsetof(struct lsoda_common_t, memory) + sizeof(void*);
+	memset(ctx->common + offset, 0, sizeof(struct lsoda_common_t) - offset);
 }
 
 void lsoda_free(struct lsoda_context_t * ctx) {
-	free(((struct common_t *)ctx->common)->memory);
+	free(((struct lsoda_common_t *)ctx->common)->memory);
 	free(ctx->common);
 }
 
@@ -452,7 +452,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		int kflag;
 		int jstart;
 
-		struct common_t * common = ctx->common;
+		struct lsoda_common_t * common = ctx->common;
 		const struct lsoda_opt_t * opt = ctx->opt;
 		/* C convention to Fortran convention:
          * in C y[] starts from 0, but the converted fortran code starts from 1 */
@@ -734,7 +734,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			/*
 			   Call stoda
 			 */
-			kflag = stoda(common, ctx, y, jstart, opt);
+			kflag = stoda(ctx, y, jstart);
 			/*
 			   printf( "_C(meth)= %d,   order= %d,   _C(nfe)= %d,   _C(nje)= %d\n",
 			   _C(meth), _C(nq), _C(nfe), _C(nje) );

@@ -22,8 +22,9 @@ struct lsoda_context_t {
 	void * data;
 	int neq;
 	int state;
+	char * error;
 /* private for lsoda */
-	void * common;
+	struct lsoda_common_t * common;
 	struct lsoda_opt_t * opt;
 };
 

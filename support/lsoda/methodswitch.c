@@ -22,7 +22,7 @@ static double cm2[13] = {
   0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18, 
   0x1.ac0fa4b46f6c6p-22, };
 
-void methodswitch(struct common_t * common, int neq, double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn)
+void methodswitch(struct lsoda_context_t * ctx, int neq, double dsm, double pnorm, double *pdh, double *rh, int mxords, int mxordn)
 {
 	int             lm1, lm1p1, lm2, lm2p1, nqm1, nqm2;
 	double          rh1, rh2, rh1it, exm2, dm2, exm1, dm1, alpha, exsm;

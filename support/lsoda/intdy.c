@@ -4,7 +4,7 @@
 #include "common.h"
 #include "lsoda_internal.h"
 
-int intdy(struct common_t * common, int neq, double t, int k, double *dky)
+int intdy(struct lsoda_context_t * ctx, int neq, double t, int k, double *dky)
 
 /*
    Intdy computes interpolated values of the k-th derivative of the

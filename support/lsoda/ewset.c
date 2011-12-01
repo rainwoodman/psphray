@@ -1,7 +1,7 @@
-
+#include "lsoda.h"
 #include <math.h>
 #include <stdio.h>
-int ewset(struct common_t * common, const int neq, double * ewt, const double *rtol, const double *atol, const double *ycur)
+int ewset(struct lsoda_context_t * ctx, const int neq, double * ewt, const double *rtol, const double *atol, const double *ycur)
 {
 	int             i;
 

@@ -13,7 +13,7 @@
 extern double   sm1[13];
 /* newly added static variables */
 
-struct common_t {
+struct lsoda_common_t {
 	double **yh, **wm, *ewt, *savf, *acor;
 	int     *ipvt;
 	void * memory;
@@ -44,4 +44,4 @@ struct common_t {
 					jcur, meth, mused, nq, nst,
 					nfe, nje, nqu, miter;
 };
-#define _C(x) (common->x)
+#define _C(x) (ctx->common->x)
