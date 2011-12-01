@@ -1,24 +1,40 @@
 /*
-  This is a C version of the LSODA library. I acquired the original
-  source code from this web page:
+  This is a reentrant-friendly version of the LSODA library. 
 
-    http://www.ccl.net/cca/software/SOURCES/C/kinetics2/index.shtml
+  An example is in main.c. The public interface is declareed in lsoda.h.
 
-  I merged several C files into one and added a simpler interface. I
-  also made the array start from zero in functions called by lsoda(),
-  and fixed two minor bugs: a) small _C(memory) leak in freevectors(); and
-  b) misuse of lsoda() in the example.
+  I acquired the original source code from this web page:
 
-  The original source code came with no license or copyright
-  information. I now release this file under the MIT/X11 license. All
-  authors' notes are kept in this file.
+  http://lh3lh3.users.sourceforge.net/solveode.shtml
 
-  - Heng Li <lh3lh3@gmail.com>
+  Unlike the original code, this version of lsoda is reentrant friendly.
+  One can use it with threads and OpenMP as long as different instances
+  of the solver uses different context.
+    All global variables are either 
+      (i) moved to a minimal local scope if possile.
+      (ii) merged into a context variable that is passed around for all 
+           subroutine calls.
+
+  Other differences:
+    (i) this code the input variables follow the C convention
+        y, opt->atol, rtol, as well as parameters of context->function 
+        all indexes from 0.
+    (ii) itol is eliminated. rtol and atol all has to be the same length of
+        number of variables.
+    (iii) number of variables == number of equations is hard coded in the program
+
+  The original source code came with an MIT/X11 license. Hereby I release this
+  code with MIT/X11 license too. Most of original notes are kept with the source
+  code, when they are applicable.
+
+     - Yu Feng
  */
+
+/* Contact: Yu Feng <rainwoodman@gmail.com> */
 
 /* The MIT License
 
-   Copyright (c) 2009 Genome Research Ltd (GRL).
+   Copyright (c) 2011 McWilliam Cosmology Center, Carnegie Mellon University.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -41,13 +57,19 @@
    SOFTWARE.
 */
 
-/* Contact: Heng Li <lh3@sanger.ac.uk> */
 
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stddef.h>
+
+#include "blas.h"
 #include "lsoda.h"
 #include "common.h"
+#include "lsoda_internal.h"
+
 
 /***********
  * lsoda.c *
@@ -75,13 +97,6 @@ Hon Wah Tam
 Wolfram Research, Inc.
 tam@wri.com
 */
-
-#include <stdio.h>
-#include <math.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include "lsoda_internal.h"
-#include "blas.h"
 
 /* Terminate lsoda due to illegal input. */
 #define hardfailure() \
@@ -147,6 +162,7 @@ tam@wri.com
 	return; \
 }
 
+/* check the consistency and set up default options */
 static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	const int mxstp0 = 500, mxhnl0 = 10;
 	const int      mord[3] = {0, 12, 5};
@@ -231,6 +247,14 @@ static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	}
 	return 1;
 }
+/* allocate memory with one malloc request and ensure compatibility with the solver's way of
+ * accessing memory. 
+ *
+ * only elements starting from 1 are useful in the solver, the 0th elements are allocated anyways
+ *
+ * the reason only 1 malloc is called is because malloc with threading of such large 
+ * block size may be slow. I wanted to minimize the overhead of starting the solver.
+ * */
 static int alloc_mem(struct lsoda_context_t * ctx) {
 	int nyh = ctx->neq;
 	int lenyh = 1 + max(ctx->opt->mxordn, ctx->opt->mxords);
@@ -286,6 +310,7 @@ static int alloc_mem(struct lsoda_context_t * ctx) {
 
 	return _C(memory) != NULL;
 }
+
 /*
 c-----------------------------------------------------------------------
 c this is the march 30, 1987 version of
@@ -405,9 +430,14 @@ c-----------------------------------------------------------------------
 */
 
 /*
-   allocate _C(memory) for _C(yh), _C(wm), _C(ewt), _C(savf), _C(acor), _C(ipvt).
+ * prepares a lsoda_context_t with options. use lsoda_free on the context
+ * after the context is no longer used.
+ *
+ * notice that a context can be reused to solve different problems, 
+ * in that case call lsoda_reset before starting to solve the new problem
+ * with lsoda. 
+ *
  */
-
 int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	ctx->common = calloc(1, sizeof(struct lsoda_common_t));
 	ctx->opt = opt;
@@ -422,12 +452,23 @@ int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	return alloc_mem(ctx);
 }
 
+/*
+ * To reuse a context for a different problem (not continuing 
+ * the current problem!), call lsoda_reset. 
+ *
+ * All options are preserved, no new memory allocation is performed.
+ * this function merely resets all internal variables to their default value.
+ */
 void lsoda_reset(struct lsoda_context_t * ctx) {
 
 	int offset = offsetof(struct lsoda_common_t, memory) + sizeof(void*);
 	memset(((char*) ctx->common) + offset, 0, sizeof(struct lsoda_common_t) - offset);
 }
 
+/**
+ * destory a context, notice that the memory holding the context is not freed,
+ * since it may be an auto variable on the caller's stack.
+ */
 void lsoda_free(struct lsoda_context_t * ctx) {
 	free(ctx->common->memory);
 	free(ctx->common);
@@ -447,6 +488,9 @@ void lsoda_free(struct lsoda_context_t * ctx) {
 
 		/* end ewset   */ 
 
+/** 
+ * integrate from t towards tout on context ctx.
+ */
 void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 
 		int kflag;
