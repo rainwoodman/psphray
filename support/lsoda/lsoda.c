@@ -134,7 +134,7 @@ tam@wri.com
 
 #define intdyreturn() \
 { \
-	int iflag = intdy(ctx, neq, tout, 0, y);  \
+	int iflag = intdy(ctx, tout, 0, y);  \
 	if (iflag != 0) { \
 		fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\n", itask, tout); \
 		for (i = 1; i <= neq; i++) \

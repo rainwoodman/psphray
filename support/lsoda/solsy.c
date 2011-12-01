@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "blas.h"
 
-int solsy(struct lsoda_context_t * ctx, int neq, double *y)
+int solsy(struct lsoda_context_t * ctx, double *y)
 
 /*
    This routine manages the solution of the linear system arising from
@@ -16,6 +16,7 @@ int solsy(struct lsoda_context_t * ctx, int neq, double *y)
 */
 
 {
+	const int neq = ctx->neq;
 	if (_C(miter) != 2) {
 		printf("solsy -- _C(miter) != 2\n");
 		return 0;

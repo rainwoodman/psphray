@@ -4,7 +4,7 @@
 #include "common.h"
 #include "lsoda_internal.h"
 
-int intdy(struct lsoda_context_t * ctx, int neq, double t, int k, double *dky)
+int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
 
 /*
    Intdy computes interpolated values of the k-th derivative of the
@@ -33,6 +33,7 @@ int intdy(struct lsoda_context_t * ctx, int neq, double t, int k, double *dky)
 	int             i, ic, j, jj, jp1;
 	double          c, r, s, tp;
 
+	const int neq = ctx->neq;
 	if (k < 0 || k > _C(nq)) {
 		fprintf(stderr, "[intdy] k = %d illegal\n", k);
 		return -1;

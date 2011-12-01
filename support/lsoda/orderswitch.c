@@ -4,7 +4,7 @@
 #include <math.h>
 #include "blas.h"
 
-int orderswitch(struct lsoda_context_t * ctx, int neq, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord)
+int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord)
 
 /*
    Regardless of the success or failure of the step, factors
@@ -23,7 +23,7 @@ int orderswitch(struct lsoda_context_t * ctx, int neq, double rhup, double dsm, 
 {
 	int             newq, i;
 	double          exsm, rhdn, rhsm, ddn, exdn, r;
-
+	const int neq = ctx->neq;
 	exsm = 1. / (double) (_C(nq) + 1);
 	rhsm = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
 

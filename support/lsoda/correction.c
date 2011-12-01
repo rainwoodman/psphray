@@ -46,7 +46,7 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 				_C(nslp) = _C(nst);
 				_C(crate) = 0.7;
 				if (!ierpj) {
-					return corfailure(ctx, neq, told, rh, ncf, hmin);
+					return corfailure(ctx, told, rh, ncf, hmin);
 				}
 			}
 			for (i = 1; i <= neq; i++)
@@ -76,7 +76,7 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 		else {
 			for (i = 1; i <= neq; i++)
 				y[i] = _C(h) * _C(savf)[i] - (_C(yh)[2][i] + _C(acor)[i]);
-			solsy(ctx, neq, y);
+			solsy(ctx, y);
 			*del = vmnorm(neq, y, _C(ewt));
 			for (i = 1; i <= neq; i++) {
 				_C(acor)[i] += y[i];
@@ -124,7 +124,7 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 		(*m)++;
 		if (*m == MAXCOR || (*m >= 2 && *del > 2. * *delp)) {
 			if (_C(miter) == 0 || _C(jcur) == 1) {
-				return corfailure(ctx, neq, told, rh, ncf, hmin);
+				return corfailure(ctx, told, rh, ncf, hmin);
 			}
 			_C(ipup) = _C(miter);
 /*
