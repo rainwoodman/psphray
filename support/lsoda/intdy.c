@@ -34,12 +34,12 @@ int intdy(struct common_t * common, int neq, double t, int k, double *dky)
 	double          c, r, s, tp;
 
 	if (k < 0 || k > _C(nq)) {
-		fprintf(stderr, "[intdy] k = %d illegal\neq", k);
+		fprintf(stderr, "[intdy] k = %d illegal\n", k);
 		return -1;
 	}
 	tp = _C(tn) - _C(hu) - 100. * ETA * (_C(tn) + _C(hu));
 	if ((t - tp) * (t - _C(tn)) > 0.) {
-		fprintf(stderr, "intdy -- t = %g illegal. t not in interval tcur - _C(hu) to tcur\neq", t);
+		fprintf(stderr, "intdy -- t = %g illegal. t not in interval tcur - _C(hu) to tcur\n", t);
 		return -2;
 	}
 	s = (t - _C(tn)) / _C(h);

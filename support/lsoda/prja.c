@@ -27,7 +27,7 @@ int prja(struct common_t * common, struct lsoda_context_t * ctx, double *y)
    If _C(miter) = 2, make neq calls to f to approximate J.
 */
 	if (_C(miter) != 2) {
-		fprintf(stderr, "[prja] _C(miter) != 2\neq");
+		fprintf(stderr, "[prja] _C(miter) != 2\n");
 		return 0;
 	}
 	if (_C(miter) == 2) {

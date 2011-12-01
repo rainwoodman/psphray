@@ -87,7 +87,7 @@ tam@wri.com
 #define hardfailure() \
 { \
 	if (_C(illin) == 5) { \
-		fprintf(stderr, "[lsoda] repeated occurrence of illegal input. run aborted.. apparent infinite loop\neq"); \
+		fprintf(stderr, "[lsoda] repeated occurrence of illegal input. run aborted.. apparent infinite loop\n"); \
 	} else { \
 		_C(illin)++; \
 		ctx->state = -3; \
@@ -136,7 +136,7 @@ tam@wri.com
 { \
 	int iflag = intdy(common, neq, tout, 0, y);  \
 	if (iflag != 0) { \
-		fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\neq", itask, tout); \
+		fprintf(stderr, "[lsoda] trouble from intdy, itask = %d, tout = %g\n", itask, tout); \
 		for (i = 1; i <= neq; i++) \
 			y[i] = _C(yh)[1][i]; \
 		*t = _C(tn); \
@@ -159,7 +159,7 @@ static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	}
 
 	if (ctx->neq <= 0) {
-		fprintf(stderr, "[lsoda] neq = %d is less than 1\neq", ctx->neq);
+		fprintf(stderr, "[lsoda] neq = %d is less than 1\n", ctx->neq);
 		return 0;
 	}
 	const double * rtol = opt->rtol - 1;
@@ -175,11 +175,11 @@ static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 			double rtoli = rtol[i];
 			double atoli = atol[i];
 			if (rtoli < 0.) {
-				fprintf(stderr, "[lsoda] rtol = %g is less than 0.\neq", rtoli);
+				fprintf(stderr, "[lsoda] rtol = %g is less than 0.\n", rtoli);
 				return 0;
 			}
 			if (atoli < 0.) {
-				fprintf(stderr, "[lsoda] atol = %g is less than 0.\neq", atoli);
+				fprintf(stderr, "[lsoda] atol = %g is less than 0.\n", atoli);
 				return 0;
 			}
 		}		/* end for   */
@@ -192,41 +192,41 @@ static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	}
 
 	if (opt->ixpr < 0 || opt->ixpr > 1) {
-		fprintf(stderr, "[lsoda] ixpr = %d is illegal\neq", opt->ixpr);
+		fprintf(stderr, "[lsoda] ixpr = %d is illegal\n", opt->ixpr);
 		return 0;
 	}
 	if (opt->mxstep < 0) {
-		fprintf(stderr, "[lsoda] mxstep < 0\neq");
+		fprintf(stderr, "[lsoda] mxstep < 0\n");
 		return 0;
 	}
 	if (opt->mxstep == 0) opt->mxstep = mxstp0;
 	if (opt->mxhnil < 0) {
-		fprintf(stderr, "[lsoda] mxhnil < 0\neq");
+		fprintf(stderr, "[lsoda] mxhnil < 0\n");
 		return 0;
 	}
 	if (ctx->state == 1) {
 		if (opt->mxordn < 0) {
-			fprintf(stderr, "[lsoda] mxordn = %d is less than 0\neq", opt->mxordn);
+			fprintf(stderr, "[lsoda] mxordn = %d is less than 0\n", opt->mxordn);
 			return 0;
 		}
 		if (opt->mxordn == 0) opt->mxordn = 100;
 		opt->mxordn = min(opt->mxordn, mord[1]);
 		if (opt->mxords < 0) {
-			fprintf(stderr, "[lsoda] mxords = %d is less than 0\neq", opt->mxords);
+			fprintf(stderr, "[lsoda] mxords = %d is less than 0\n", opt->mxords);
 			return 0;
 		}
 		if (opt->mxords == 0) opt->mxords = 100;
 		opt->mxords = min(opt->mxords, mord[2]);
 	}	/* end if ( ctx->state == 1 )  */
 	if (opt->hmax < 0.) {
-		fprintf(stderr, "[lsoda] hmax < 0.\neq");
+		fprintf(stderr, "[lsoda] hmax < 0.\n");
 		return 0;
 	}
 	opt->hmxi = 0.;
 	if (opt->hmax > 0)
 		opt->hmxi = 1. / opt->hmax;
 	if (opt->hmin < 0.) {
-		fprintf(stderr, "[lsoda] hmin < 0.\neq");
+		fprintf(stderr, "[lsoda] hmin < 0.\n");
 		return 0;
 	}
 	return 1;
@@ -490,7 +490,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			h0 = opt->h0;
 			if(ctx->state == 1) {
 				if ((tout - *t) * h0 < 0.) {
-					fprintf(stderr, "[lsoda] tout = %g behind t = %g. integration direction is given by %g\neq",
+					fprintf(stderr, "[lsoda] tout = %g behind t = %g. integration direction is given by %g\n",
 							tout, *t, h0);
 					hardfailure();
 				}
@@ -525,7 +525,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			if (itask == 4 || itask == 5) {
 				tcrit = opt->tcrit;
 				if ((tcrit - tout) * (tout - *t) < 0.) {
-					fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\neq");
+					fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\n");
 					hardfailure();
 				}
 				if (h0 != 0. && (*t + h0 - tcrit) * h0 > 0.)
@@ -582,7 +582,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				tdist = fabs(tout - *t);
 				w0 = fmax(fabs(*t), fabs(tout));
 				if (tdist < 2. * ETA * w0) {
-					fprintf(stderr, "[lsoda] tout too close to t to start integration\neq ");
+					fprintf(stderr, "[lsoda] tout too close to t to start integration\n ");
 					hardfailure();
 				}
 				tol = 0.;;
@@ -636,7 +636,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				case 3:
 					tp = _C(tn) - _C(hu) * (1. + 100. * ETA);
 					if ((tp - tout) * _C(h) > 0.) {
-						fprintf(stderr, "[lsoda] itask = %d and tout behind tcur - _C(hu)\neq", itask);
+						fprintf(stderr, "[lsoda] itask = %d and tout behind tcur - _C(hu)\n", itask);
 						hardfailure();
 					}
 					if ((_C(tn) - tout) * _C(h) < 0.) break;
@@ -644,11 +644,11 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				case 4:
 					tcrit = opt->tcrit;
 					if ((_C(tn) - tcrit) * _C(h) > 0.) {
-						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\neq");
+						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\n");
 						hardfailure();
 					}
 					if ((tcrit - tout) * _C(h) < 0.) {
-						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\neq");
+						fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tout\n");
 						hardfailure();
 					}
 					if ((_C(tn) - tout) * _C(h) >= 0.) {
@@ -658,7 +658,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 					if (itask == 5) {
 						tcrit = opt->tcrit;
 						if ((_C(tn) - tcrit) * _C(h) > 0.) {
-							fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\neq");
+							fprintf(stderr, "[lsoda] itask = 4 or 5 and tcrit behind tcur\n");
 							hardfailure();
 						}
 					}
@@ -691,7 +691,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		while (1) {
 			if (ctx->state != 1 || _C(nst) != 0) {
 				if ((_C(nst) - _C(nslast)) >= opt->mxstep) {
-					fprintf(stderr, "[lsoda] %d steps taken before reaching tout\neq", opt->mxstep);
+					fprintf(stderr, "[lsoda] %d steps taken before reaching tout\n", opt->mxstep);
 					ctx->state = -1;
 					softfailure();
 				}
@@ -708,26 +708,26 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			if (tolsf > 0.01) {
 				tolsf = tolsf * 200.;
 				if (_C(nst) == 0) {
-					fprintf(stderr, "lsoda -- at start of problem, too much accuracy\neq");
-					fprintf(stderr, "         requested for precision of machine,\neq");
-					fprintf(stderr, "         suggested scaling factor = %g\neq", tolsf);
+					fprintf(stderr, "lsoda -- at start of problem, too much accuracy\n");
+					fprintf(stderr, "         requested for precision of machine,\n");
+					fprintf(stderr, "         suggested scaling factor = %g\n", tolsf);
 					hardfailure();
 				}
-				fprintf(stderr, "lsoda -- at t = %g, too much accuracy requested\neq", *t);
-				fprintf(stderr, "         for precision of machine, suggested\neq");
-				fprintf(stderr, "         scaling factor = %g\neq", tolsf);
+				fprintf(stderr, "lsoda -- at t = %g, too much accuracy requested\n", *t);
+				fprintf(stderr, "         for precision of machine, suggested\n");
+				fprintf(stderr, "         scaling factor = %g\n", tolsf);
 				ctx->state = -2;
 				softfailure();
 			}
 			if ((_C(tn) + _C(h)) == _C(tn)) {
 				_C(nhnil)++;
 				if (_C(nhnil) <= opt->mxhnil) {
-					fprintf(stderr, "lsoda -- warning..internal t = %g and _C(h) = %g are\neq", _C(tn), _C(h));
-					fprintf(stderr, "         such that in the machine, t + _C(h) = t on the next step\neq");
-					fprintf(stderr, "         solver will continue anyway.\neq");
+					fprintf(stderr, "lsoda -- warning..internal t = %g and _C(h) = %g are\n", _C(tn), _C(h));
+					fprintf(stderr, "         such that in the machine, t + _C(h) = t on the next step\n");
+					fprintf(stderr, "         solver will continue anyway.\n");
 					if (_C(nhnil) == opt->mxhnil) {
-						fprintf(stderr, "lsoda -- above warning has been issued %d times,\neq", _C(nhnil));
-						fprintf(stderr, "         it will not be issued again for this problem\neq");
+						fprintf(stderr, "lsoda -- above warning has been issued %d times,\n", _C(nhnil));
+						fprintf(stderr, "         it will not be issued again for this problem\n");
 					}
 				}
 			}
@@ -736,10 +736,10 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			 */
 			kflag = stoda(common, ctx, y, jstart, opt);
 			/*
-			   printf( "_C(meth)= %d,   order= %d,   _C(nfe)= %d,   _C(nje)= %d\neq",
+			   printf( "_C(meth)= %d,   order= %d,   _C(nfe)= %d,   _C(nje)= %d\n",
 			   _C(meth), _C(nq), _C(nfe), _C(nje) );
-			   printf( "t= %20.15e,   _C(h)= %20.15e,   _C(nst)=%d\neq", _C(tn), _C(h), _C(nst) );
-			   printf( "y= %20.15e,   %20.15e,   %20.15e\neq\neq\neq",
+			   printf( "t= %20.15e,   _C(h)= %20.15e,   _C(nst)=%d\n", _C(tn), _C(h), _C(nst) );
+			   printf( "y= %20.15e,   %20.15e,   %20.15e\n\n\n",
 			   _C(yh)[1][1], _C(yh)[1][2], _C(yh)[1][3] );
 			 */
 
@@ -762,7 +762,7 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 							fprintf(stderr, "[lsoda] a switch to the stiff method has occurred ");
 						if (_C(meth) == 1)
 							fprintf(stderr, "[lsoda] a switch to the nonstiff method has occurred");
-						fprintf(stderr, "at t = %g, tentative step size _C(h) = %g, step _C(nst) = %d\neq", _C(tn), _C(h), _C(nst));
+						fprintf(stderr, "at t = %g, tentative step size _C(h) = %g, step _C(nst) = %d\n", _C(tn), _C(h), _C(nst));
 					}
 				}	/* end if ( _C(meth) != _C(mused) )   */
 				/*
@@ -826,15 +826,15 @@ void lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			   kflag = -2, convergence failed repeatedly or with fabs(_C(h)) = hmin.
 			 */
 			if (kflag == -1 || kflag == -2) {
-				fprintf(stderr, "lsoda -- at t = %g and step size _C(h) = %g, the\neq", _C(tn), _C(h));
+				fprintf(stderr, "lsoda -- at t = %g and step size _C(h) = %g, the\n", _C(tn), _C(h));
 				if (kflag == -1) {
-					fprintf(stderr, "         error test failed repeatedly or\neq");
-					fprintf(stderr, "         with fabs(_C(h)) = hmin\neq");
+					fprintf(stderr, "         error test failed repeatedly or\n");
+					fprintf(stderr, "         with fabs(_C(h)) = hmin\n");
 					ctx->state = -4;
 				}
 				if (kflag == -2) {
-					fprintf(stderr, "         corrector convergence failed repeatedly or\neq");
-					fprintf(stderr, "         with fabs(_C(h)) = hmin\neq");
+					fprintf(stderr, "         corrector convergence failed repeatedly or\n");
+					fprintf(stderr, "         with fabs(_C(h)) = hmin\n");
 					ctx->state = -5;
 				}
 				big = 0.;
