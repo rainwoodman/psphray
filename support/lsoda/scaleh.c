@@ -2,11 +2,12 @@
 #include "common.h"
 #include "lsoda_internal.h"
 #include <math.h>
-void scaleh(struct lsoda_context_t * ctx, double *rh, double *pdh, double hmxi)
+void scaleh(struct lsoda_context_t * ctx, double *rh, double *pdh)
 {
 	double          r;
 	int             j, i;
 	const int neq = ctx->neq;
+	const double hmxi = ctx->opt->hmxi;
 /*
    If _C(h) is being changed, the _C(h) ratio rh is checked against _C(rmax), hmin,
    and hmxi, and the _C(yh) array is rescaled.  _C(ialth) is set to (_C(nq) + 1) = _C(nq) + 1

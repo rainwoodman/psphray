@@ -42,7 +42,6 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 	double          del, delp, dsm, dup, exup, r, rh, told;
 	double          pdh, pnorm;
 	
- 	const double hmxi = ctx->opt->hmxi;
 	const double hmin = ctx->opt->hmin;
 	const int mxords = ctx->opt->mxords;
 	const int mxordn = ctx->opt->mxordn;
@@ -141,14 +140,14 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 		if (_C(h) != _C(hold)) {
 			rh = _C(h) / _C(hold);
 			_C(h) = _C(hold);
-			scaleh(ctx, &rh, &pdh, hmxi);
+			scaleh(ctx, &rh, &pdh);
 		}
 	}			/* if ( jstart == -1 )   */
 	if (jstart == -2) {
 		if (_C(h) != _C(hold)) {
 			rh = _C(h) / _C(hold);
 			_C(h) = _C(hold);
-			scaleh(ctx, &rh, &pdh, hmxi);
+			scaleh(ctx, &rh, &pdh);
 		}
 	}			/* if ( jstart == -2 )   */
 	/*
@@ -184,7 +183,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				break;
 			if (corflag == 1) {
 				rh = fmax(rh, hmin / fabs(_C(h)));
-				scaleh(ctx, &rh, &pdh, hmxi);
+				scaleh(ctx, &rh, &pdh);
 				continue;
 			}
 			if (corflag == 2) {
@@ -230,7 +229,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				methodswitch(ctx, dsm, pnorm, &pdh, &rh);
 				if (_C(meth) != _C(mused)) {
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, &rh, &pdh, hmxi);
+					scaleh(ctx, &rh, &pdh);
 					_C(rmax) = 10.;
 					endstoda();
 					break;
@@ -262,7 +261,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 */
 				if (orderflag == 1) {
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, &rh, &pdh, hmxi);
+					scaleh(ctx, &rh, &pdh);
 					_C(rmax) = 10.;
 					endstoda();
 					break;
@@ -273,7 +272,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, &rh, &pdh, hmxi);
+					scaleh(ctx, &rh, &pdh);
 					_C(rmax) = 10.;
 					endstoda();
 					break;
@@ -317,12 +316,12 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 					if (orderflag == 0)
 						rh = fmin(rh, 0.2);
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, &rh, &pdh, hmxi);
+					scaleh(ctx, &rh, &pdh);
 				}
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, &rh, &pdh, hmxi);
+					scaleh(ctx, &rh, &pdh);
 				}
 				continue;
 			}
