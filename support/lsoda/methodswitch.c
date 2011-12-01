@@ -22,6 +22,7 @@ static double cm2[13] = {
   0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18, 
   0x1.ac0fa4b46f6c6p-22, };
 
+/* rh is an output. pdh is an output only if the new method is 1*/
 void methodswitch(struct lsoda_context_t * ctx, double dsm, double pnorm, double *pdh, double *rh)
 {
 	int             lm1, lm1p1, lm2, lm2p1, nqm1, nqm2;

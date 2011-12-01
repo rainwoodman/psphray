@@ -4,6 +4,7 @@
 #include <math.h>
 #include "blas.h"
 
+/* rh is an output. pdh is an output and only for meth=1*/
 int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord)
 
 /*

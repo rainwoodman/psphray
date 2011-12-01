@@ -5,6 +5,7 @@
 #include "blas.h"
 #include "lsoda_internal.h"
 
+/* m is the correction count */
 int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *del, double *delp, double *told,
 					   double *rh, int *m)
 /*
