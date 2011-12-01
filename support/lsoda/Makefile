@@ -20,7 +20,8 @@ prja.c \
 scaleh.c \
 solsy.c \
 stoda.c \
-vmnorm.c
+vmnorm.c \
+strdup_printf.c
 
 all: main.o liblsoda.a
 	gcc -std=c99 -g -pg -O0 -o a.out $^ -lm -lgfortran

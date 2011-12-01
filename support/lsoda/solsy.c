@@ -1,6 +1,8 @@
 #include "lsoda.h"
+#include "lsoda_internal.h"
 #include "common.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include "blas.h"
 
 int solsy(struct lsoda_context_t * ctx, double *y)
@@ -18,8 +20,8 @@ int solsy(struct lsoda_context_t * ctx, double *y)
 {
 	const int neq = ctx->neq;
 	if (_C(miter) != 2) {
-		printf("solsy -- _C(miter) != 2\n");
-		return 0;
+		/* miter has to be 2. the miter=5 case is not implemented. */
+		abort();
 	}
 	if (_C(miter) == 2)
 		dgesl(_C(wm), neq, _C(ipvt), y, 0);
