@@ -3,7 +3,6 @@ int      correction(struct lsoda_context_t * ctx, double *y, double pnorm, doubl
 						   double *rh, int *m);
 int prja(struct lsoda_context_t * ctx, double *y);
 
-int      ewset(struct lsoda_context_t * ctx, double ewt[], const double rtol[], const double atol[], const double *ycur);
 void     solsy(struct lsoda_context_t * ctx, double *y);
 int      orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord);
 int      intdy(struct lsoda_context_t * ctx, double t, int k, double *dky);

@@ -9,7 +9,6 @@ ddot.c \
 dgefa.c \
 dgesl.c \
 dscal.c \
-ewset.c \
 fnorm.c \
 idamax.c \
 intdy.c \

@@ -1,3 +1,6 @@
+#error this file is deprecated ewset is a marco in lsoda.c
+#if 0
+
 #include "lsoda.h"
 #include <math.h>
 #include <stdio.h>
@@ -13,4 +16,4 @@ int ewset(struct lsoda_context_t * ctx, const int neq, double * ewt, const doubl
 	}
 	return 1;
 }				/* end ewset   */
-
+#endif
