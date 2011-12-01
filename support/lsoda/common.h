@@ -42,6 +42,6 @@ struct lsoda_common_t {
 	int      imxer;
 	int      illin, nhnil, nslast,
 					jcur, meth, mused, nq, nst,
-					nfe, nje, nqu, miter;
+					ncf, nfe, nje, nqu, miter;
 };
 #define _C(x) (ctx->common->x)

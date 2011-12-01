@@ -6,7 +6,7 @@
 #include "lsoda_internal.h"
 
 int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *del, double *delp, double *told,
-					   int *ncf, double *rh, int *m)
+					   double *rh, int *m)
 /*
    *corflag = 0 : corrector converged,
               1 : step size to be reduced, redo prediction,
@@ -46,7 +46,7 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 				_C(nslp) = _C(nst);
 				_C(crate) = 0.7;
 				if (!ierpj) {
-					return corfailure(ctx, told, rh, ncf);
+					return corfailure(ctx, told, rh);
 				}
 			}
 			for (i = 1; i <= neq; i++)
@@ -124,7 +124,7 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 		(*m)++;
 		if (*m == MAXCOR || (*m >= 2 && *del > 2. * *delp)) {
 			if (_C(miter) == 0 || _C(jcur) == 1) {
-				return corfailure(ctx, told, rh, ncf);
+				return corfailure(ctx, told, rh);
 			}
 			_C(ipup) = _C(miter);
 /*

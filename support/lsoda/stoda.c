@@ -38,7 +38,7 @@
 int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 {
 	int kflag;
-	int             i, i1, j, m, ncf;
+	int             i, i1, j, m;
 	double          del, delp, dsm, dup, exup, r, rh, told;
 	double          pdh, pnorm;
 	
@@ -80,7 +80,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 */
 	kflag = 0;
 	told = _C(tn);
-	ncf = 0;
+	_C(ncf) = 0;
 	delp = 0.;
 
 /*
@@ -178,7 +178,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				}
 			pnorm = vmnorm(neq, _C(yh)[1], _C(ewt));
 
-			int corflag = correction(ctx, y, pnorm, &del, &delp, &told, &ncf, &rh, &m);
+			int corflag = correction(ctx, y, pnorm, &del, &delp, &told, &rh, &m);
 			if (corflag == 0)
 				break;
 			if (corflag == 1) {
