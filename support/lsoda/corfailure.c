@@ -3,10 +3,11 @@
 #include "lsoda_internal.h"
 #include <math.h>
 
-int corfailure(struct lsoda_context_t * ctx, double *told, double *rh, int *ncf, double hmin)
+int corfailure(struct lsoda_context_t * ctx, double *told, double *rh, int *ncf)
 {
 	int             j, i1, i;
 	const int neq = ctx->neq;
+	const double hmin = ctx->opt->hmin;
 	(*ncf)++;
 	_C(rmax) = 2.;
 	_C(tn) = *told;
