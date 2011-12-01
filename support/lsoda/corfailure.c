@@ -3,7 +3,7 @@
 #include "lsoda_internal.h"
 #include <math.h>
 
-int corfailure(struct lsoda_context_t * ctx, double *told, double *rh)
+int corfailure(struct lsoda_context_t * ctx, double *told)
 {
 	int             j, i1, i;
 	const int neq = ctx->neq;
@@ -19,7 +19,6 @@ int corfailure(struct lsoda_context_t * ctx, double *told, double *rh)
 	if (fabs(_C(h)) <= hmin * 1.00001 || _C(ncf) == MXNCF) {
 		return 2;
 	}
-	*rh = 0.25;
 	_C(ipup) = _C(miter);
 	return 1;
 }
