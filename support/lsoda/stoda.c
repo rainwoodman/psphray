@@ -40,7 +40,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 	int kflag;
 	int             i, i1, j, m;
 	double          del, delp, dsm, dup, exup, r, rh, told;
-	double          pdh, pnorm;
+	double          pnorm;
 	
 	const double hmin = ctx->opt->hmin;
 	const int mxords = ctx->opt->mxords;
@@ -226,7 +226,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 			}
 			_C(icount)--;
 			if (_C(icount) < 0) {
-				methodswitch(ctx, dsm, pnorm, &pdh, &rh);
+				methodswitch(ctx, dsm, pnorm, &rh);
 				if (_C(meth) != _C(mused)) {
 					rh = fmax(rh, hmin / fabs(_C(h)));
 					scaleh(ctx, rh);
@@ -248,7 +248,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 					exup = 1. / (double) ((_C(nq) + 1) + 1);
 					rhup = 1. / (1.4 * pow(dup, exup) + 0.0000014);
 				}
-				int orderflag = orderswitch(ctx, rhup, dsm, &pdh, &rh, kflag, maxord);
+				int orderflag = orderswitch(ctx, rhup, dsm, &rh, kflag, maxord);
 /*
    No change in _C(h) or _C(nq).
 */
@@ -311,7 +311,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				break;
 			}
 			if (kflag > -3) {
-				int orderflag = orderswitch(ctx, 0., dsm, &pdh, &rh, kflag, maxord);
+				int orderflag = orderswitch(ctx, 0., dsm, &rh, kflag, maxord);
 				if (orderflag == 1 || orderflag == 0) {
 					if (orderflag == 0)
 						rh = fmin(rh, 0.2);

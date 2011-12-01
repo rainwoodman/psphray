@@ -22,11 +22,12 @@ static double cm2[13] = {
   0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18, 
   0x1.ac0fa4b46f6c6p-22, };
 
-/* rh is an output. pdh is an output only if the new method is 1*/
-void methodswitch(struct lsoda_context_t * ctx, double dsm, double pnorm, double *pdh, double *rh)
+/* rh is an output. */
+void methodswitch(struct lsoda_context_t * ctx, double dsm, double pnorm, double *rh)
 {
 	int             lm1, lm1p1, lm2, lm2p1, nqm1, nqm2;
 	double          rh1, rh2, rh1it, exm2, dm2, exm1, dm1, alpha, exsm;
+	double pdh;
 	const int neq = ctx->neq;
 	const int mxordn = ctx->opt->mxordn;
 	const int mxords = ctx->opt->mxords;
@@ -60,9 +61,9 @@ void methodswitch(struct lsoda_context_t * ctx, double dsm, double pnorm, double
 			exsm = 1. / (double) (_C(nq) + 1);
 			rh1 = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
 			rh1it = 2. * rh1;
-			*pdh = _C(pdlast) * fabs(_C(h));
-			if ((*pdh * rh1) > 0.00001)
-				rh1it = sm1[_C(nq)] / *pdh;
+			pdh = _C(pdlast) * fabs(_C(h));
+			if ((pdh * rh1) > 0.00001)
+				rh1it = sm1[_C(nq)] / pdh;
 			rh1 = min(rh1, rh1it);
 			if (_C(nq) > mxords) {
 				nqm2 = mxords;
@@ -115,9 +116,9 @@ void methodswitch(struct lsoda_context_t * ctx, double dsm, double pnorm, double
 		exm1 = exsm;
 	}
 	rh1it = 2. * rh1;
-	*pdh = _C(pdnorm) * fabs(_C(h));
-	if ((*pdh * rh1) > 0.00001)
-		rh1it = sm1[nqm1] / *pdh;
+	pdh = _C(pdnorm) * fabs(_C(h));
+	if ((pdh * rh1) > 0.00001)
+		rh1it = sm1[nqm1] / pdh;
 	rh1 = min(rh1, rh1it);
 	rh2 = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
 	if ((rh1 * RATIO) < (5. * rh2))

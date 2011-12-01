@@ -5,7 +5,7 @@
 #include "blas.h"
 
 /* rh is an output. pdh is an output and only for meth=1*/
-int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *pdh, double *rh, int kflag, int maxord)
+int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *rh, int kflag, int maxord)
 
 /*
    Regardless of the success or failure of the step, factors
@@ -24,6 +24,7 @@ int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *p
 {
 	int             newq, i;
 	double          exsm, rhdn, rhsm, ddn, exdn, r;
+	double pdh;
 	const int neq = ctx->neq;
 	exsm = 1. / (double) (_C(nq) + 1);
 	rhsm = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
@@ -38,12 +39,12 @@ int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *p
    If _C(meth) = 1, limit rh accordinfg to the stability region also.
 */
 	if (_C(meth) == 1) {
-		*pdh = max(fabs(_C(h)) * _C(pdlast), 0.000001);
+		pdh = max(fabs(_C(h)) * _C(pdlast), 0.000001);
 		if ((_C(nq) + 1) < maxord + 1)
-			rhup = min(rhup, sm1[(_C(nq) + 1)] / *pdh);
-		rhsm = min(rhsm, sm1[_C(nq)] / *pdh);
+			rhup = min(rhup, sm1[(_C(nq) + 1)] / pdh);
+		rhsm = min(rhsm, sm1[_C(nq)] / pdh);
 		if (_C(nq) > 1)
-			rhdn = min(rhdn, sm1[_C(nq) - 1] / *pdh);
+			rhdn = min(rhdn, sm1[_C(nq) - 1] / pdh);
 		_C(pdest) = 0.;
 	}
 	if (rhsm >= rhup) {
@@ -80,7 +81,7 @@ int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *p
    If _C(meth) = 1 and _C(h) is restricted by stability, bypass 10 percent test.
 */
 	if (_C(meth) == 1) {
-		if ((*rh * *pdh * 1.00001) < sm1[newq])
+		if ((*rh * pdh * 1.00001) < sm1[newq])
 			if (kflag == 0 && *rh < 1.1) {
 				_C(ialth) = 3;
 				return 0;
