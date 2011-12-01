@@ -2,7 +2,7 @@
 #include "common.h"
 #include "lsoda_internal.h"
 #include <math.h>
-void scaleh(struct lsoda_context_t * ctx, double rh, double *pdh)
+void scaleh(struct lsoda_context_t * ctx, double rh)
 {
 	double          r;
 	int             j, i;
@@ -23,9 +23,9 @@ void scaleh(struct lsoda_context_t * ctx, double rh, double *pdh)
 */
 	if (_C(meth) == 1) {
 		_C(irflag) = 0;
-		*pdh = fmax(fabs(_C(h)) * _C(pdlast), 0.000001);
-		if ((rh * *pdh * 1.00001) >= sm1[_C(nq)]) {
-			rh = sm1[_C(nq)] / *pdh;
+		double pdh = fmax(fabs(_C(h)) * _C(pdlast), 0.000001);
+		if ((rh * pdh * 1.00001) >= sm1[_C(nq)]) {
+			rh = sm1[_C(nq)] / pdh;
 			_C(irflag) = 1;
 		}
 	}

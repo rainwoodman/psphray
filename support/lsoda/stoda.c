@@ -140,14 +140,14 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 		if (_C(h) != _C(hold)) {
 			rh = _C(h) / _C(hold);
 			_C(h) = _C(hold);
-			scaleh(ctx, rh, &pdh);
+			scaleh(ctx, rh);
 		}
 	}			/* if ( jstart == -1 )   */
 	if (jstart == -2) {
 		if (_C(h) != _C(hold)) {
 			rh = _C(h) / _C(hold);
 			_C(h) = _C(hold);
-			scaleh(ctx, rh, &pdh);
+			scaleh(ctx, rh);
 		}
 	}			/* if ( jstart == -2 )   */
 	/*
@@ -183,7 +183,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				break;
 			if (corflag == 1) {
 				rh = fmax(0.25, hmin / fabs(_C(h)));
-				scaleh(ctx, rh, &pdh);
+				scaleh(ctx, rh);
 				continue;
 			}
 			if (corflag == 2) {
@@ -229,7 +229,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				methodswitch(ctx, dsm, pnorm, &pdh, &rh);
 				if (_C(meth) != _C(mused)) {
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, rh, &pdh);
+					scaleh(ctx, rh);
 					_C(rmax) = 10.;
 					endstoda();
 					break;
@@ -261,7 +261,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 */
 				if (orderflag == 1) {
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, rh, &pdh);
+					scaleh(ctx, rh);
 					_C(rmax) = 10.;
 					endstoda();
 					break;
@@ -272,7 +272,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, rh, &pdh);
+					scaleh(ctx, rh);
 					_C(rmax) = 10.;
 					endstoda();
 					break;
@@ -316,12 +316,12 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 					if (orderflag == 0)
 						rh = fmin(rh, 0.2);
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, rh, &pdh);
+					scaleh(ctx, rh);
 				}
 				if (orderflag == 2) {
 					resetcoeff();
 					rh = fmax(rh, hmin / fabs(_C(h)));
-					scaleh(ctx, rh, &pdh);
+					scaleh(ctx, rh);
 				}
 				continue;
 			}
