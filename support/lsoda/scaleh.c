@@ -2,7 +2,7 @@
 #include "common.h"
 #include "lsoda_internal.h"
 #include <math.h>
-void scaleh(struct lsoda_context_t * ctx, double *rh, double *pdh)
+void scaleh(struct lsoda_context_t * ctx, double rh, double *pdh)
 {
 	double          r;
 	int             j, i;
@@ -14,8 +14,8 @@ void scaleh(struct lsoda_context_t * ctx, double *rh, double *pdh)
    to prevent a change of _C(h) for that many steps, unless forced by a
    convergence or error test failure.
 */
-	*rh = fmin(*rh, _C(rmax));
-	*rh = *rh / fmax(1., fabs(_C(h)) * hmxi * *rh);
+	rh = fmin(rh, _C(rmax));
+	rh = rh / fmax(1., fabs(_C(h)) * hmxi * rh);
 /*
    If _C(meth) = 1, also restrict the new step size by the stability region.
    If this reduces _C(h), set _C(irflag) to 1 so that if there are roundoff
@@ -24,19 +24,19 @@ void scaleh(struct lsoda_context_t * ctx, double *rh, double *pdh)
 	if (_C(meth) == 1) {
 		_C(irflag) = 0;
 		*pdh = fmax(fabs(_C(h)) * _C(pdlast), 0.000001);
-		if ((*rh * *pdh * 1.00001) >= sm1[_C(nq)]) {
-			*rh = sm1[_C(nq)] / *pdh;
+		if ((rh * *pdh * 1.00001) >= sm1[_C(nq)]) {
+			rh = sm1[_C(nq)] / *pdh;
 			_C(irflag) = 1;
 		}
 	}
 	r = 1.;
 	for (j = 2; j <= (_C(nq) + 1); j++) {
-		r *= *rh;
+		r *= rh;
 		for (i = 1; i <= neq; i++)
 			_C(yh)[j][i] *= r;
 	}
-	_C(h) *= *rh;
-	_C(rc) *= *rh;
+	_C(h) *= rh;
+	_C(rc) *= rh;
 	_C(ialth) = (_C(nq) + 1);
 
 }				/* end scaleh   */

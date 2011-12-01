@@ -10,7 +10,7 @@ int      corfailure(struct lsoda_context_t * ctx, double *told, double *rh);
 void     methodswitch(struct lsoda_context_t * ctx, double dsm, double pnorm, double *pdh, double *rh);
 void     cfode(struct lsoda_context_t * ctx, int meth);
 void     cfode_static(struct lsoda_context_t * ctx, int meth);
-void     scaleh(struct lsoda_context_t * ctx, double *rh, double *pdh);
+void     scaleh(struct lsoda_context_t * ctx, double rh, double *pdh);
 
 #ifdef CFODE_STATIC
 	#define cfode cfode_static
