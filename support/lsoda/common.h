@@ -10,8 +10,7 @@
 #define MXNCF 10
 #define RATIO 5.0
 
-extern const int      mord[3];
-extern const double   sm1[13];
+extern double   sm1[13];
 /* newly added static variables */
 
 struct common_t {

@@ -149,7 +149,9 @@ tam@wri.com
 
 static int check_opt(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 	const int mxstp0 = 500, mxhnl0 = 10;
+	const int      mord[3] = {0, 12, 5};
 
+	if (ctx->state == 0) ctx->state = 1;
 	if (ctx->state == 1) {
 		opt->h0 = 0.;
 		opt->mxordn = mord[1];
@@ -278,7 +280,6 @@ static int alloc_mem(struct common_t * common, struct lsoda_opt_t * opt, int neq
 	for(i = 0; i <= lenyh; i++) {
 		_C(yh)[i] = _C(memory) + yh0off + i * (1 + nyh) * sizeof(double);
 	}
-
 	for(i = 0; i <= nyh; i++) {
 		_C(wm)[i] = _C(memory) + wm0off + i * (1 + nyh) * sizeof(double);
 	}
