@@ -227,7 +227,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 			}
 			_C(icount)--;
 			if (_C(icount) < 0) {
-				methodswitch(ctx, dsm, pnorm, &pdh, &rh, mxords, mxordn);
+				methodswitch(ctx, dsm, pnorm, &pdh, &rh);
 				if (_C(meth) != _C(mused)) {
 					rh = fmax(rh, hmin / fabs(_C(h)));
 					scaleh(ctx, &rh, &pdh, hmxi);
