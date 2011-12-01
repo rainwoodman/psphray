@@ -425,11 +425,11 @@ int lsoda_prepare(struct lsoda_context_t * ctx, struct lsoda_opt_t * opt) {
 void lsoda_reset(struct lsoda_context_t * ctx) {
 
 	int offset = offsetof(struct lsoda_common_t, memory) + sizeof(void*);
-	memset(ctx->common + offset, 0, sizeof(struct lsoda_common_t) - offset);
+	memset(((char*) ctx->common) + offset, 0, sizeof(struct lsoda_common_t) - offset);
 }
 
 void lsoda_free(struct lsoda_context_t * ctx) {
-	free(((struct lsoda_common_t *)ctx->common)->memory);
+	free(ctx->common->memory);
 	free(ctx->common);
 }
 
