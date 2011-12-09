@@ -148,8 +148,8 @@ struct step_evolve_t {
 static int mxstep = 1000;
 void * step_evolve_prepare() {
 	struct step_evolve_t * control;
-	static double rtol[7] = {1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7};
-	static double atol[7] = {1e-7, 1e-7, 1e-7, 1e-8, 1e-8, 1e-8, 1.};
+	static double rtol[7] = {1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4};
+	static double atol[7] = {1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1.};
 
 	control = calloc(1, sizeof(struct step_evolve_t));
 	control->ctx.function = function;
@@ -187,10 +187,18 @@ int step_evolve_lsoda(void * control, Step * step) {
 	do {
 		e->ctx.state = 1;
 		lsoda(&e->ctx, x, &t, 1.);
+		if(e->ctx.error) {
+			WARNING("lsodaerror %s\n", e->ctx.error);
+			free(e->ctx.error);
+			e->ctx.error = NULL;
+		}
 		if(e->ctx.state == -1) {
+			FETCH_VARS;
 			e->opt.mxstep = e->opt.mxstep * 2;
 			if(mxstep < e->opt.mxstep) mxstep = e->opt.mxstep;
 			WARNING("continuing with new mxstep = %d", e->opt.mxstep);
+			MESSAGE("%lu %ld %g %g %g %g %g %g %g %g %g %g\n",
+						psys.tick, step->ipar, T, xHI, xHII, xHeI, xHeII, xHeIII, gamma_HI, alpha_HII_A, alpha_HeII_A, alpha_HeIII_A);
 		}
 	} while(e->ctx.state == -1 && t < 1.);
 
@@ -247,7 +255,7 @@ int step_evolve_euler(void * control, Step * step) {
 	internal_time = fmin(internal_time, step->time);
 
 	int nsteps = step->time / internal_time;
-	if(nsteps > 200) nsteps = 200;
+	if(nsteps > 10000) nsteps = 10000;
 	double internal_step = 1.0 / nsteps;
 
 	if(nsteps > 1) step->refined = 1;

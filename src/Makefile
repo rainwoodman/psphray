@@ -1,6 +1,6 @@
 CC = gcc
 LD = gcc
-CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support  -DUSE_LSODA
+CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support -DUSE_LSODA
 OPT= -O3 -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort

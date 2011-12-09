@@ -58,6 +58,7 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype **
 
 static int x_t_compare(const void * p1, const void * p2);
 static int r_t_compare(const void * p1, const void * p2);
+static int intptr_compare(const void * p1, const void * p2);
 
 static void trace();
 static void emit_rays();
@@ -66,7 +67,7 @@ static void deposit();
 static void update_pars();
 
 ARRAY_DEFINE(r, struct r_t);
-ARRAY_DEFINE(x, Xtype);
+ARRAY_DEFINE(active_set, intptr_t);
 static size_t x_src_length;
 
 static double MAX_SRC_RAY_LENGTH = 0.0;
@@ -140,7 +141,7 @@ void run_epoch() {
 		stat.total_time += omp_get_wtime() - t0;
 	}
 
-	ARRAY_FREE(x);
+	ARRAY_FREE(active_set);
 	intptr_t i;
 	for(i = 0 ;i < r_length; i++) {
 		ARRAY_FREE(r[i].x);
@@ -181,7 +182,7 @@ static void emit_rays() {
 				double * weights = malloc(sizeof(double) * x_src_length);
 				intptr_t j;
 				for(j = 0; j < x_src_length; j++) {
-					intptr_t ipar = x[j].ipar;
+					intptr_t ipar = active_set[j];
 					double x = psys_xHI(ipar);
 					if(x == 0) x = 1e-10;
 					weights[j] = psys.yGrec[species][ipar] / x;
@@ -193,14 +194,14 @@ static void emit_rays() {
 					intptr_t ix = gsl_ran_discrete(RNG, ran_rec);
 					struct r_t * p = ARRAY_APPEND_REUSE(r, struct r_t);
 					p->type = species;
-					p->ipar = x[ix].ipar;
+					p->ipar = active_set[ix];
 				}
 
 				gsl_ran_discrete_free(ran_rec);
 			} else {
 				intptr_t j;
 				for(j = 0; j < x_src_length; j++) {
-					intptr_t ipar = x[j].ipar;
+					intptr_t ipar = active_set[j];
 					if(psys.yGrec[species][ipar] > CFG_RECOMBINE_THRESHOLD) {
 						struct r_t * p = ARRAY_APPEND_REUSE(r, struct r_t);
 						p->type = species;
@@ -595,8 +596,8 @@ static void merge_pars() {
 		x_length_est += r[i].x_length;
 	}
 
-	ARRAY_ENSURE(x, Xtype, x_length_est);
-	ARRAY_CLEAR(x);
+	ARRAY_ENSURE(active_set, intptr_t, x_length_est);
+	ARRAY_CLEAR(active_set);
 
 	for(i = 0; i < r_length; i++) {
 		intptr_t j;
@@ -610,31 +611,34 @@ static void merge_pars() {
 		for(j = 0; j < r[i].x_length; j++) {
 			intptr_t ipar = r[i].x[j].ipar;
 			if(bitmask_test(active, ipar)) {
-				* (ARRAY_APPEND(x, Xtype)) = r[i].x[j];
+				* (ARRAY_APPEND(active_set, intptr_t)) = r[i].x[j].ipar;
 				bitmask_clear_unsafe(active, ipar);
 			}
 		}
 		if(i <= psys.epoch->nray) {
-			x_src_length = x_length;
+			x_src_length = active_set_length;
 		}
 	}
+//	qsort(active_set, x_src_length, sizeof(intptr_t), intptr_compare);
+//	qsort(active_set + x_src_length, active_set_length - x_src_length, sizeof(intptr_t), intptr_compare);
 	stat.merge_time += omp_get_wtime() - t0;
 }
 
 static void update_pars() {
-	intptr_t j;
 	size_t d1 = 0, d2 = 0;
 	double increase_recomb = 0;
 	const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1.0):1.0;
 	const double scaling_fac3_inv = 1.0/(scaling_fac * scaling_fac * scaling_fac);
 	const double t0 = omp_get_wtime();
-	void * control = NULL;
-	#pragma omp parallel reduction(+: d1, d2, increase_recomb) private(j, control)
+	#pragma omp parallel reduction(+: d1, d2, increase_recomb)
 	{
-	control = step_evolve_prepare();
-	#pragma omp for schedule(dynamic, 100)
-	for(j = 0; j < x_length; j++) {
-		const intptr_t ipar = x[j].ipar;
+	void * control = step_evolve_prepare();
+	int NTH = omp_get_num_threads();
+	int iTH = omp_get_thread_num();
+	intptr_t j;
+	for(j = 0; j < active_set_length + NTH; j+=NTH) {
+		if(j + iTH >= active_set_length) continue;
+		const intptr_t ipar = active_set[j + iTH];
 		const double xHI = psys_xHI(ipar);
 		const double xHII = psys_xHII(ipar);
 		double rho = psys.rho[ipar] * scaling_fac3_inv;
@@ -751,6 +755,11 @@ static void update_pars() {
 	stat.update_time += omp_get_wtime() - t0;
 }
 
+static int intptr_compare(const void * p1, const void * p2) {
+	const intptr_t d1 = *((const intptr_t * )p1);
+	const intptr_t d2 = *((const intptr_t * )p2);
+    return (d1 > d2) - (d2 > d1);
+}
 static int x_t_compare(const void * p1, const void * p2) {
 	const double d1 = ((const Xtype * )p1)->d;
 	const double d2 = ((const Xtype * )p2)->d;
