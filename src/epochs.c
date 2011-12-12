@@ -14,8 +14,8 @@ int N_EPOCHS = 0;
 #define config_setting_ensure_string(e, m, v)  if(!config_setting_get_member(e, m)) config_setting_set_string(config_setting_ensure_member(c, m, CONFIG_TYPE_STRING), v)
 #define config_setting_ensure_bool(e, m, v)  if(!config_setting_get_member(e, m)) config_setting_set_bool(config_setting_ensure_member(c, m, CONFIG_TYPE_BOOL), v)
 
-static void epochs_input(config_setting_t * list, int i) {
-	config_setting_t * e = config_setting_get_elem(list, i);
+static void epochs_input(config_setting_t * list, int iepoch) {
+	config_setting_t * e = config_setting_get_elem(list, iepoch);
 	config_setting_t * s = config_setting_get_member(e, "snapshot");
 	const char * snapshot = config_setting_get_string_elem(s, 0);
 	const char * format = config_setting_get_string_elem(s, 1);
@@ -38,6 +38,7 @@ static void epochs_input(config_setting_t * list, int i) {
 		nsources = 1;
 	} else {
 		sources = malloc(sizeof(char *) * config_setting_length(ss));
+		int i;
 		for( i = 0; i < config_setting_length(ss); i++) {
 			sources[i] = config_setting_get_string_elem(ss, i);
 		}
@@ -54,16 +55,16 @@ static void epochs_input(config_setting_t * list, int i) {
 
 	reader_destroy(r);
 
-	EPOCHS[i].snapshot = snapshot;
-	EPOCHS[i].format = format;
-	EPOCHS[i].sources = sources;
-	EPOCHS[i].nsources = nsources;
-	EPOCHS[i].redshift = redshift;
-	EPOCHS[i].age = z2t(redshift);
-	EPOCHS[i].ngas = ngas;
-	EPOCHS[i].nray = nray;
-	EPOCHS[i].nrec= nrec;
-	EPOCHS[i].nticks = nticks;
+	EPOCHS[iepoch].snapshot = snapshot;
+	EPOCHS[iepoch].format = format;
+	EPOCHS[iepoch].sources = sources;
+	EPOCHS[iepoch].nsources = nsources;
+	EPOCHS[iepoch].redshift = redshift;
+	EPOCHS[iepoch].age = z2t(redshift);
+	EPOCHS[iepoch].ngas = ngas;
+	EPOCHS[iepoch].nray = nray;
+	EPOCHS[iepoch].nrec= nrec;
+	EPOCHS[iepoch].nticks = nticks;
 }
 
 static void epochs_duration(config_setting_t * list, int i) {
