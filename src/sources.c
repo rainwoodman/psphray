@@ -20,6 +20,7 @@ void psystem_read_source() {
 	if(psys.epoch->source) {
 		const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 		if(psys.srcs) free(psys.srcs);
+		psys.srcs = NULL;
 		psystem_read_source_file2(psys.epoch->source);
 		intptr_t isrc;
 		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
@@ -112,6 +113,7 @@ static void psystem_read_source_file(const char * filename) {
 	char spec[128];
 	char type[128];
 
+	size_t nsrcs_file;
 	while(0 <= getline(&line, &len, f)) {
 		if(line[0] == '#') {
 			NR++;
@@ -119,11 +121,12 @@ static void psystem_read_source_file(const char * filename) {
 		}
 		switch(stage) {
 		case 0:
-			if(1 != sscanf(line, "%ld", &psys.nsrcs)) {
+			if(1 != sscanf(line, "%ld", &nsrcs_file)) {
 				ERROR("%s format error at %d", psys.epoch->source, NR);
 			} else {
-				psys.srcs = calloc(sizeof(Source), psys.nsrcs);
-				isrc = 0;
+				isrc = psys.nsrcs;
+				psys.nsrcs += nsrcs_file;
+				psys.srcs = realloc(psys.srcs, sizeof(Source) * (psys.nsrcs));
 				stage ++;
 			}
 			break;
@@ -141,6 +144,9 @@ static void psystem_read_source_file(const char * filename) {
 			psys.srcs[isrc].dir[1] = dy;
 			psys.srcs[isrc].dir[2] = dz;
 			psys.srcs[isrc].specid = spec_get(spec);
+			psys.srcs[isrc].ticks = NULL;
+			psys.srcs[isrc].Ngamma_dots = NULL;
+			psys.srcs[isrc].lastemit = 0;
 			ARRAY_RESIZE(psys.srcs[isrc].ticks, intptr_t, 1);
 			ARRAY_RESIZE(psys.srcs[isrc].Ngamma_dots, double, 1);
 			psys.srcs[isrc].cursor = 0;
@@ -200,6 +206,8 @@ static void psystem_read_source_file2(const char * filename) {
 	char locationfmtstr[128] = "absolute";
 	int timefmt = 0;
 	int locationfmt = 0;
+	size_t nsrcs_file;
+
 	while(0 <= getline(&line, &len, f)) {
 		if(line[0] == '#') {
 			NR++;
@@ -207,7 +215,7 @@ static void psystem_read_source_file2(const char * filename) {
 		}
 		switch(stage) {
 		case 0:
-			if(1 == sscanf(line, "%ld %80s %80s", &psys.nsrcs, timefmtstr, locationfmtstr)) {
+			if(1 == sscanf(line, "%ld %80s %80s", &nsrcs_file, timefmtstr, locationfmtstr)) {
 				fclose(f);
 				free(line);
 				/* maybe this is a verion 1 file? */
@@ -234,8 +242,9 @@ static void psystem_read_source_file2(const char * filename) {
 				if(!strcmp(locationfmtstr, "relative")) {
 					locationfmt = 1;
 				}
-				psys.srcs = calloc(sizeof(Source), psys.nsrcs);
-				isrc = 0;
+				isrc = psys.nsrcs;
+				psys.nsrcs += nsrcs_file;
+				psys.srcs = realloc(psys.srcs, sizeof(Source) * psys.nsrcs);
 				stage ++;
 			}
 			break;
@@ -244,6 +253,9 @@ static void psystem_read_source_file2(const char * filename) {
 			if(NF == 3 && !strcmp(type, "plane")) {
 				ERROR("%s format error at %d, needs radius for plane source", psys.epoch->source, NR);
 			}
+			psys.srcs[isrc].ticks = NULL;
+			psys.srcs[isrc].Ngamma_dots = NULL;
+			psys.srcs[isrc].lastemit = 0;
 			ARRAY_RESIZE(psys.srcs[isrc].ticks, intptr_t, Nsamples);
 			ARRAY_RESIZE(psys.srcs[isrc].Ngamma_dots, double, Nsamples);
 			psys.srcs[isrc].cursor = 0;
