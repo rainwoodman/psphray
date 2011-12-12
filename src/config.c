@@ -30,6 +30,7 @@ int CFG_DISABLE_LTE = CONFIG_FALSE;
 int CFG_ENABLE_EOS = CONFIG_FALSE;
 double CFG_EOS_CLOUD_TEMPERATURE = 1e3;
 double CFG_RECOMBINE_THRESHOLD = 0.1;
+double CFG_BOOST_SOURCE_FACTOR = 1.0;
 
 double CFG_FAKE_TEMPERATURE = -1;
 
@@ -75,6 +76,7 @@ void cfg_init(char * filename) {
 	config_ensure_int64  (CFG, "psphray.octtree.particlesPerCell", CFG_OCTTREE_PPC);
 	config_ensure_float  (CFG, "psphray.fakeTemperature", CFG_FAKE_TEMPERATURE);
 	config_ensure_float  (CFG, "psphray.recombineThreshold", CFG_RECOMBINE_THRESHOLD);
+	config_ensure_float  (CFG, "psphray.boostSourceFactor", CFG_BOOST_SOURCE_FACTOR);
 
 	config_ensure        (CFG, "psphray.eos", CONFIG_TYPE_GROUP);
 	config_ensure_string (CFG, "psphray.eos.filename", NULL);
@@ -131,6 +133,7 @@ void cfg_init(char * filename) {
 	config_lookup_float(CFG, "psphray.fakeTemperature", &CFG_FAKE_TEMPERATURE);
 	config_lookup_float (CFG, "psphray.eos.cloudTemperature", &CFG_EOS_CLOUD_TEMPERATURE);
 	config_lookup_float  (CFG, "psphray.recombineThreshold", &CFG_RECOMBINE_THRESHOLD);
+	config_lookup_float  (CFG, "psphray.boostSourceFactor", &CFG_BOOST_SOURCE_FACTOR);
 
 	const char * arfilename = NULL;
 	const char * xsfilename = NULL;

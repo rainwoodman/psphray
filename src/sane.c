@@ -56,6 +56,7 @@ int main(int argc, char* argv[]) {
 	MESSAGE("z=0 is %f myrs", units_format(z2t(0), "myr"));
 	MESSAGE("density 1 = %f proton / cm^3", 1 / units_parse(" mproton / cm cm cm"));
 	MESSAGE("--------unit sanity check------");
+	
 #if 0
 	for(i = 0; i < 10000; i++) {
 		double x = -4 * 0.0004 * i;
@@ -80,9 +81,9 @@ int main(int argc, char* argv[]) {
 		v[0],v[1],v[2]);
 
 #endif
-	const int spec = spec_get("power");
-//	printf("%g", spec_N_from_lum(spec, 4.1718287877e+12));
-	spec_dump(spec);
+	const int spec = spec_get("uv");
+	printf("%g\n", spec_N_from_lum(spec, C_SOLAR_LUM) * U_SEC);
+//spec_dump(spec);
 //	for(i = 0; i < 100; i++) {
 //		printf("%lg\n", spec_gen_freq(spec));
 //	}

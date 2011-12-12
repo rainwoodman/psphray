@@ -38,6 +38,7 @@ extern double CFG_FAKE_TEMPERATURE;
 extern int CFG_ENABLE_EOS;
 extern double CFG_EOS_CLOUD_TEMPERATURE;
 extern double CFG_RECOMBINE_THRESHOLD;
+extern double CFG_BOOST_SOURCE_FACTOR;
 
 extern gsl_rng * RNG;
 extern Epoch * EPOCHS;

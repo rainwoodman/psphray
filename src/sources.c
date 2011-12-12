@@ -144,6 +144,7 @@ static void psystem_read_source_file(const char * filename) {
 			ARRAY_RESIZE(psys.srcs[isrc].ticks, intptr_t, 1);
 			ARRAY_RESIZE(psys.srcs[isrc].Ngamma_dots, double, 1);
 			psys.srcs[isrc].cursor = 0;
+			L *= CFG_BOOST_SOURCE_FACTOR; /* boost the photon luminosity according to cfg file */
 			if(!strcmp(type, "plane")) {
 				if(NF != 10) {
 					ERROR("%s format error at %d, needs 10 fields", psys.epoch->source, NR);
@@ -291,6 +292,8 @@ static void psystem_read_source_file2(const char * filename) {
 				z = psys.boxsize * z;
 				break;
 			}
+
+			L *= CFG_BOOST_SOURCE_FACTOR; /* boost the photon luminosity according to cfg file */
 
 			if(psys.srcs[isrc].type == PSYS_SRC_PLANE) {
 				psys.srcs[isrc].Ngamma_dots[isample] = L * M_PI * radius * radius / (U_CM * U_CM * U_SEC);
