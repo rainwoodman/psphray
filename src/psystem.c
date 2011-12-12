@@ -189,7 +189,7 @@ void psystem_switch_epoch(int i) {
 	psys.epoch->redshift,
 	psys.epoch->snapshot,
 	psys.epoch->format,
-	psys.epoch->source,
+	psys.epoch->sources[0],
 	psys.epoch->nticks,
 	psys.epoch->ngas,
 	units_format(psys.epoch->age, "myr"),

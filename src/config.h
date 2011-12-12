@@ -10,7 +10,8 @@ typedef struct {
 	size_t nray;
 	ssize_t nrec;
 
-	const char * source;
+	const char ** sources;
+	size_t nsources;
 	const char * snapshot;
 	const char * format;
 	struct {

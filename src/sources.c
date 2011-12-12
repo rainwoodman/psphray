@@ -17,11 +17,14 @@ static void psystem_read_source_file(const char * filename);
 static void psystem_read_source_file2(const char * filename);
 
 void psystem_read_source() {
-	if(psys.epoch->source) {
+	if(psys.epoch->sources) {
 		const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 		if(psys.srcs) free(psys.srcs);
 		psys.srcs = NULL;
-		psystem_read_source_file2(psys.epoch->source);
+		int i = 0;
+		for(i = 0; i < psys.epoch->nsources; i++) {
+			psystem_read_source_file2(psys.epoch->sources[i]);
+		}
 		intptr_t isrc;
 		for(isrc = 0; isrc < psys.nsrcs; isrc++) {
 			psys.srcs[isrc].ray_length_hint = C_SPEED_LIGHT / scaling_fac * psys.tick_time;
@@ -100,7 +103,7 @@ static void solve_u_v(double d[3], double u[3], double v[3]) {
 static void psystem_read_source_file(const char * filename) {
 	FILE * f = fopen(filename, "r");
 	if(f == NULL) {
-		ERROR("failed to open %s", psys.epoch->source);
+		ERROR("failed to open %s", filename);
 	}
 	MESSAGE("reading a version 1 source file");
 	int NR = 0;
@@ -122,7 +125,7 @@ static void psystem_read_source_file(const char * filename) {
 		switch(stage) {
 		case 0:
 			if(1 != sscanf(line, "%ld", &nsrcs_file)) {
-				ERROR("%s format error at %d", psys.epoch->source, NR);
+				ERROR("%s format error at %d", filename, NR);
 			} else {
 				isrc = psys.nsrcs;
 				psys.nsrcs += nsrcs_file;
@@ -135,7 +138,7 @@ static void psystem_read_source_file(const char * filename) {
 				&x, &y, &z, &dx, &dy, &dz, 
 				&L, spec, type, &radius); 
 			if(NF != 9 && NF != 10) {
-				ERROR("%s format error at %d", psys.epoch->source, NR);
+				ERROR("%s format error at %d", filename, NR);
 			}
 			psys.srcs[isrc].pos[0] = x;
 			psys.srcs[isrc].pos[1] = y;
@@ -153,7 +156,7 @@ static void psystem_read_source_file(const char * filename) {
 			L *= CFG_BOOST_SOURCE_FACTOR; /* boost the photon luminosity according to cfg file */
 			if(!strcmp(type, "plane")) {
 				if(NF != 10) {
-					ERROR("%s format error at %d, needs 10 fields", psys.epoch->source, NR);
+					ERROR("%s format error at %d, needs 10 fields", filename, NR);
 				}
 				psys.srcs[isrc].type = PSYS_SRC_PLANE;
 				psys.srcs[isrc].radius = radius;
@@ -180,7 +183,7 @@ static void psystem_read_source_file(const char * filename) {
 		if(stage == 2) break;
 	}
 	if(isrc != psys.nsrcs) {
-		ERROR("%s expecting %lu, but has %lu sources, %lu", psys.epoch->source, psys.nsrcs, isrc, NR);
+		ERROR("%s expecting %lu, but has %lu sources, %lu", filename, psys.nsrcs, isrc, NR);
 	}
 	free(line);
 	fclose(f);
@@ -188,7 +191,7 @@ static void psystem_read_source_file(const char * filename) {
 static void psystem_read_source_file2(const char * filename) {
 	FILE * f = fopen(filename, "r");
 	if(f == NULL) {
-		ERROR("failed to open %s", psys.epoch->source);
+		ERROR("failed to open %s", filename);
 	}
 	int NR = 0;
 	int NF = 0;
@@ -251,7 +254,7 @@ static void psystem_read_source_file2(const char * filename) {
 		case 1:
 			NF = sscanf(line, "%ld %80s %80s %lf", &Nsamples, spec, type, &radius);
 			if(NF == 3 && !strcmp(type, "plane")) {
-				ERROR("%s format error at %d, needs radius for plane source", psys.epoch->source, NR);
+				ERROR("%s format error at %d, needs radius for plane source", filename, NR);
 			}
 			psys.srcs[isrc].ticks = NULL;
 			psys.srcs[isrc].Ngamma_dots = NULL;
@@ -274,7 +277,7 @@ static void psystem_read_source_file2(const char * filename) {
 			NF = sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf",
 				&time, &x, &y, &z, &dx, &dy, &dz, &L ); 
 			if(NF != 8) {
-				ERROR("%s format error at %d", psys.epoch->source, NR);
+				ERROR("%s format error at %d", filename, NR);
 			}
 			intptr_t tick;
 
@@ -340,7 +343,7 @@ static void psystem_read_source_file2(const char * filename) {
 		if(stage == 3) break;
 	}
 	if(isrc != psys.nsrcs) {
-		ERROR("%s expecting %lu, but has %lu sources, %lu", psys.epoch->source, psys.nsrcs, isrc, NR);
+		ERROR("%s expecting %lu, but has %lu sources, %lu", filename, psys.nsrcs, isrc, NR);
 	}
 	free(line);
 	fclose(f);

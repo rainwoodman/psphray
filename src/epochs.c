@@ -19,19 +19,30 @@ static void epochs_input(config_setting_t * list, int i) {
 	config_setting_t * s = config_setting_get_member(e, "snapshot");
 	const char * snapshot = config_setting_get_string_elem(s, 0);
 	const char * format = config_setting_get_string_elem(s, 1);
-	const char * source = NULL;
+	const char ** sources = NULL;
+	int nsources;
 	double redshift;
 	size_t ngas = 0;
 	int nticks = 0;
 	int nray = 1;
 	int nrec = 100;
 
-	config_setting_lookup_string(e, "source", &source);
 	config_setting_lookup_int(e, "nticks", &nticks);
 	config_setting_lookup_int(e, "nray", &nray);
 	config_setting_lookup_int(e, "nrec", &nrec);
 
-
+	config_setting_t * ss = config_setting_get_member(e, "source");
+	if(config_setting_type(ss) == CONFIG_TYPE_STRING) {
+		sources = malloc(sizeof(char *));
+		sources[0] = config_setting_get_string(ss);
+		nsources = 1;
+	} else {
+		sources = malloc(sizeof(char *) * config_setting_length(ss));
+		for( i = 0; i < config_setting_length(ss); i++) {
+			sources[i] = config_setting_get_string_elem(ss, i);
+		}
+		nsources = config_setting_length(ss);
+	}
 	Reader * r = reader_new(format);
 	char * fname = reader_make_filename(snapshot, 0);
 	reader_open(r, fname);
@@ -45,7 +56,8 @@ static void epochs_input(config_setting_t * list, int i) {
 
 	EPOCHS[i].snapshot = snapshot;
 	EPOCHS[i].format = format;
-	EPOCHS[i].source = source;
+	EPOCHS[i].sources = sources;
+	EPOCHS[i].nsources = nsources;
 	EPOCHS[i].redshift = redshift;
 	EPOCHS[i].age = z2t(redshift);
 	EPOCHS[i].ngas = ngas;
@@ -145,7 +157,7 @@ void epochs_init() {
 		EPOCHS[i].redshift,
 		EPOCHS[i].snapshot,
 		EPOCHS[i].format,
-		EPOCHS[i].source,
+		EPOCHS[i].sources[0],
 		EPOCHS[i].nticks,
 		EPOCHS[i].ngas,
 		units_format(EPOCHS[i].age, "myr"),
