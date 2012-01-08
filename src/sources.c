@@ -21,6 +21,7 @@ void psystem_read_source() {
 		const double scaling_fac = CFG_COMOVING?1/(psys.epoch->redshift + 1):1.0;
 		if(psys.srcs) free(psys.srcs);
 		psys.srcs = NULL;
+		psys.nsrcs = 0;
 		int i = 0;
 		for(i = 0; i < psys.epoch->nsources; i++) {
 			psystem_read_source_file2(psys.epoch->sources[i]);
@@ -153,7 +154,6 @@ static void psystem_read_source_file(const char * filename) {
 			ARRAY_RESIZE(psys.srcs[isrc].ticks, intptr_t, 1);
 			ARRAY_RESIZE(psys.srcs[isrc].Ngamma_dots, double, 1);
 			psys.srcs[isrc].cursor = 0;
-			L *= CFG_BOOST_SOURCE_FACTOR; /* boost the photon luminosity according to cfg file */
 			if(!strcmp(type, "plane")) {
 				if(NF != 10) {
 					ERROR("%s format error at %d, needs 10 fields", filename, NR);
@@ -171,6 +171,7 @@ static void psystem_read_source_file(const char * filename) {
 				psys.srcs[isrc].ticks[0] = 0;
 				psys.srcs[isrc].Ngamma_dots[0] = L * 1e50 / U_SEC;
 			}
+			psys.srcs[isrc].Ngamma_dots[0] *= CFG_BOOST_SOURCE_FACTOR; /* boost the photon luminosity according to cfg file */
 			isrc ++;
 			if(isrc == psys.nsrcs) {
 				stage ++;
@@ -308,8 +309,6 @@ static void psystem_read_source_file2(const char * filename) {
 				break;
 			}
 
-			L *= CFG_BOOST_SOURCE_FACTOR; /* boost the photon luminosity according to cfg file */
-
 			if(psys.srcs[isrc].type == PSYS_SRC_PLANE) {
 				psys.srcs[isrc].Ngamma_dots[isample] = L * M_PI * radius * radius / (U_CM * U_CM * U_SEC);
 				solve_u_v(psys.srcs[isrc].dir, psys.srcs[isrc].a, psys.srcs[isrc].b);
@@ -320,6 +319,8 @@ static void psystem_read_source_file2(const char * filename) {
 				}
 				psys.srcs[isrc].Ngamma_dots[isample] = L * 1e50 / U_SEC;
 			}
+			psys.srcs[isrc].Ngamma_dots[isample] *= CFG_BOOST_SOURCE_FACTOR; /* boost the photon luminosity according to cfg file */
+
 			psys.srcs[isrc].pos[0] = x;
 			psys.srcs[isrc].pos[1] = y;
 			psys.srcs[isrc].pos[2] = z;
