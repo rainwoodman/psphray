@@ -35,6 +35,11 @@ int main(int argc, char* argv[]) {
 			ar_get(AR_HII_RC_B, 4) / (U_CM * U_CM * U_CM / U_SEC),
 			ar_get(AR_HII_RCC_B, 4) / (U_ERG * U_CM * U_CM * U_CM / U_SEC)
 		);
+	MESSAGE("1e3K HI_CI %e HII_RC_B %e HII_RCC_B %e", 
+			ar_get(AR_HI_CI, 3.1) / (U_CM * U_CM * U_CM / U_SEC),
+			ar_get(AR_HII_RC_B, 3.1) / (U_CM * U_CM * U_CM / U_SEC),
+			ar_get(AR_HII_RCC_B, 3.1) / (U_ERG * U_CM * U_CM * U_CM / U_SEC)
+		);
 	MESSAGE("1e4K HeI_CI %e HeII_RC_A %e HeII_RC_B %e", 
 			ar_get(AR_HEI_CI, 4) / (U_CM * U_CM * U_CM / U_SEC),
 			ar_get(AR_HEII_RC_A, 4) / (U_CM * U_CM * U_CM / U_SEC),

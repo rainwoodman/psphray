@@ -12,8 +12,8 @@
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_heapsort.h>
 
-#define IDHASHBITS 24
-#define IDHASHMASK ((((size_t)1) << IDHASHBITS) - 1)
+#define IDHASHBITS 28
+#define IDHASHMASK ((((size_t)1) << (IDHASHBITS)) - 1)
 
 
 #define read_as(r, blk, ptype, dst, fromtype, totype) \
@@ -46,9 +46,7 @@
 
 PSystem psys = {0};
 
-static void idhash_build(uint64_t * id, size_t n) {
-	psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
-	psys.idhash.next = malloc(sizeof(intptr_t) * n);
+static void idhash_rebuild(uint64_t * id, size_t n) {
 	intptr_t i;
 	memset(psys.idhash.head, -1, sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
 	memset(psys.idhash.next, -1, sizeof(intptr_t) * n);
@@ -64,9 +62,9 @@ static int intptr_t_compare(const intptr_t * p1, const intptr_t * p2) {
 	if(*p1 == *p2) return 0;
 }
 
-static void * permute (const size_t * p, void * data, const size_t ele_bytes, const size_t stride, const size_t n)
+static void * permute (const size_t * p, void * data, const size_t ele_bytes, const size_t stride, const size_t n, const size_t n_max)
 {
-	void * out = malloc(stride * n);
+	void * out = malloc(stride * n_max);
 	intptr_t i;
 	#pragma omp parallel for private(i)
 	for(i = 0; i < n; i++) {
@@ -77,6 +75,67 @@ static void * permute (const size_t * p, void * data, const size_t ele_bytes, co
 	return out;
 }
 
+static void psys_swap(intptr_t i, intptr_t j) {
+#define swap(a, b, type) { \
+	const type _swap_tmp = a; \
+	a = b; b = _swap_tmp; \
+} 
+#define swap2(field, i, j, type) swap(psys.field[i], psys.field[j], type)
+	swap(psys.pos[i][0], psys.pos[j][0], float);
+	swap(psys.pos[i][1], psys.pos[j][1], float);
+	swap(psys.pos[i][2], psys.pos[j][2], float);
+	swap2(lambdaH, i, j, double);
+	swap2(lambdaHeI, i, j, double);
+	swap2(lambdaHeII, i, j, double);
+	swap2(yeMET, i, j, float);
+	swap2(mass, i, j, float);
+	swap2(sml, i, j, float);
+	swap2(rho, i, j, float);
+	swap2(ie, i, j, float);
+	swap2(flag, i, j, int8_t);
+	swap2(yGdepHI, i, j, float);
+	swap2(yGdepHeI, i, j, float);
+	swap2(yGdepHeII, i, j, float);
+	swap2(yGrecHII, i, j, float);
+	swap2(yGrecHeII, i, j, float);
+	swap2(yGrecHeIII, i, j, float);
+	swap2(heat, i, j, float);
+	swap2(lasthit, i, j, intptr_t);
+	swap2(hits, i, j, int);
+	swap2(id, i, j, uint64_t);
+}
+
+static void compress() {
+	intptr_t i;
+	intptr_t j = psys.npar - 1;
+	MESSAGE("compress started with %ld particles slots", psys.npar);
+	/* j points to the last VALID particle */
+	size_t total_invalid = 0;
+	for(i = 0; i < psys.npar; i++) {
+		if(psys.flag[i] & PF_INVALID) {
+			total_invalid ++;
+		}
+	}
+	while((psys.flag[j] & PF_INVALID) && j > 0) j--;
+	for(i = 0; i < j; i++) {
+		if(psys.flag[i] & PF_INVALID) {
+			psys_swap(i, j);
+			while((psys.flag[j] & PF_INVALID) && (j > i)) j--;
+		}
+	}
+	for(i = psys.npar - 1; i > j; i--) {
+		printf("INVALID: %g %g %g %g\n", psys.epoch->redshift, psys.pos[i][0], psys.pos[i][1], psys.pos[i][2]);
+		total_invalid --;
+		if(!(psys.flag[i] & PF_INVALID)) {
+			ERROR("valid particle removed");
+		}
+	}
+	if(total_invalid!=0) {
+		ERROR("total_invalid check failed %ld", total_invalid);
+	}
+	psys.npar = j + 1;
+	MESSAGE("compress finished %ld particles remains", psys.npar);
+}
 static void hilbert_reorder() {
 	extern intptr_t peano_hilbert_key(int x, int y, int z, int bits);
 	size_t * perm = malloc(sizeof(size_t) * psys.npar);
@@ -93,25 +152,25 @@ static void hilbert_reorder() {
 	}
 	gsl_heapsort_index(perm, peanokeys, psys.npar, sizeof(intptr_t), (void*)intptr_t_compare);
 
-	psys.pos = permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar);
-	psys.lambdaH = permute(perm, psys.lambdaH, sizeof(double), sizeof(double), psys.npar);
-	psys.lambdaHeI = permute(perm, psys.lambdaHeI, sizeof(double), sizeof(double), psys.npar);
-	psys.lambdaHeII = permute(perm, psys.lambdaHeII, sizeof(double), sizeof(double), psys.npar);
-	psys.yeMET = permute(perm, psys.yeMET, sizeof(float), sizeof(float), psys.npar);
-	psys.mass = permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar);
-	psys.sml = permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar);
-	psys.rho = permute(perm, psys.rho, sizeof(float), sizeof(float), psys.npar);
-	psys.ie = permute(perm, psys.ie, sizeof(float), sizeof(float), psys.npar);
-	psys.flag = permute(perm, psys.flag, sizeof(int8_t), sizeof(int8_t), psys.npar);
+	psys.pos = permute(perm, psys.pos, 3 * sizeof(float), 3 * sizeof(float), psys.npar, psys.npar_max);
+	psys.lambdaH = permute(perm, psys.lambdaH, sizeof(double), sizeof(double), psys.npar, psys.npar_max);
+	psys.lambdaHeI = permute(perm, psys.lambdaHeI, sizeof(double), sizeof(double), psys.npar, psys.npar_max);
+	psys.lambdaHeII = permute(perm, psys.lambdaHeII, sizeof(double), sizeof(double), psys.npar, psys.npar_max);
+	psys.yeMET = permute(perm, psys.yeMET, sizeof(float), sizeof(float), psys.npar, psys.npar_max);
+	psys.mass = permute(perm, psys.mass, sizeof(float), sizeof(float), psys.npar, psys.npar_max);
+	psys.sml = permute(perm, psys.sml, sizeof(float), sizeof(float), psys.npar, psys.npar_max);
+	psys.rho = permute(perm, psys.rho, sizeof(float), sizeof(float), psys.npar, psys.npar_max);
+	psys.ie = permute(perm, psys.ie, sizeof(float), sizeof(float), psys.npar, psys.npar_max);
+	psys.flag = permute(perm, psys.flag, sizeof(int8_t), sizeof(int8_t), psys.npar, psys.npar_max);
 	int i;
 	for(i = 0; i < 3; i++) {
-		psys.yGrec[i] = permute(perm, psys.yGrec[i], sizeof(float), sizeof(float), psys.npar);
-		psys.yGdep[i] = permute(perm, psys.yGdep[i], sizeof(float), sizeof(float), psys.npar);
+		psys.yGrec[i] = permute(perm, psys.yGrec[i], sizeof(float), sizeof(float), psys.npar, psys.npar_max);
+		psys.yGdep[i] = permute(perm, psys.yGdep[i], sizeof(float), sizeof(float), psys.npar, psys.npar_max);
 	}
-	psys.heat = permute(perm, psys.heat, sizeof(float), sizeof(float), psys.npar);
-	psys.lasthit = permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar);
-	psys.hits = permute(perm, psys.hits, sizeof(int), sizeof(int), psys.npar);
-	psys.id = permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar);
+	psys.heat = permute(perm, psys.heat, sizeof(float), sizeof(float), psys.npar, psys.npar_max);
+	psys.lasthit = permute(perm, psys.lasthit, sizeof(intptr_t), sizeof(intptr_t), psys.npar, psys.npar_max);
+	psys.hits = permute(perm, psys.hits, sizeof(int), sizeof(int), psys.npar, psys.npar_max);
+	psys.id = permute(perm, psys.id, sizeof(uint64_t), sizeof(uint64_t), psys.npar, psys.npar_max);
 
 	free(peanokeys);
 	free(perm);
@@ -199,10 +258,20 @@ void psystem_switch_epoch(int i) {
 	if(i == 0) {
 		/* initial read */
 		psystem_read_epoch(c);
+		psys.idhash.head = malloc(sizeof(intptr_t) * (((size_t)1) << IDHASHBITS));
+		psys.idhash.next = malloc(sizeof(intptr_t) * psys.npar_max);
 	} else {
 		/* matching with existing psystem */
 		psystem_match_epoch(c);
+		intptr_t ipar;
+		double duration = EPOCHS[i-1].duration;
+		double last_ticktime = duration / EPOCHS[i-1].nticks;
+		for(ipar = 0; ipar < psys.npar; ipar++) {
+			psys.lasthit[ipar] = (psys.lasthit[ipar] * last_ticktime - duration)
+			/ psys.tick_time;
+		}
 	}
+	compress();
 
 	setup_hotspots();
 
@@ -222,33 +291,38 @@ void psystem_switch_epoch(int i) {
 	reader_destroy(r0);
 
 	psystem_read_source();
+
+	if(CFG_WRITE_INIT) psystem_write_output(0);
+
 }
 
 static void psystem_read_epoch(ReaderConstants * c) {
 	size_t ngas = psys.epoch->ngas;
+	size_t npar_max = ngas * 1.05;
 	psys.npar = ngas;
+	psys.npar_max = npar_max;
 	int fid;
 	size_t nread = 0;
-	psys.pos = calloc(sizeof(float) * 3, ngas);
-	psys.mass = calloc(sizeof(float), ngas);
-	psys.id = calloc(sizeof(uint64_t), ngas);
-	psys.ie = calloc(sizeof(float), ngas);
-	psys.sml = calloc(sizeof(float), ngas);
-	psys.rho = calloc(sizeof(float), ngas);
-	psys.lambdaH = calloc(sizeof(double), ngas);
-	psys.lambdaHeI = calloc(sizeof(double), ngas);
-	psys.lambdaHeII = calloc(sizeof(double), ngas);
-	psys.yeMET = calloc(sizeof(float), ngas);
+	psys.pos = calloc(sizeof(float) * 3, npar_max);
+	psys.mass = calloc(sizeof(float), npar_max);
+	psys.id = calloc(sizeof(uint64_t), npar_max);
+	psys.ie = calloc(sizeof(float), npar_max);
+	psys.sml = calloc(sizeof(float), npar_max);
+	psys.rho = calloc(sizeof(float), npar_max);
+	psys.lambdaH = calloc(sizeof(double), npar_max);
+	psys.lambdaHeI = calloc(sizeof(double), npar_max);
+	psys.lambdaHeII = calloc(sizeof(double), npar_max);
+	psys.yeMET = calloc(sizeof(float), npar_max);
 	int i;
 	for(i = 0; i < 3; i++) {
-		psys.yGrec[i] = calloc(sizeof(float), ngas);
-		psys.yGdep[i] = calloc(sizeof(float), ngas);
+		psys.yGrec[i] = calloc(sizeof(float), npar_max);
+		psys.yGdep[i] = calloc(sizeof(float), npar_max);
 	}
-	psys.heat = calloc(sizeof(float), ngas);
-	psys.lasthit = calloc(sizeof(intptr_t), ngas);
-	psys.hits = calloc(sizeof(int), ngas);
+	psys.heat = calloc(sizeof(float), npar_max);
+	psys.lasthit = calloc(sizeof(intptr_t), npar_max);
+	psys.hits = calloc(sizeof(int), npar_max);
 
-	psys.flag = calloc(sizeof(int8_t), ngas);
+	psys.flag = calloc(sizeof(int8_t), npar_max);
 
 	for(fid = 0; fid < c->Nfiles; fid ++) {
 		Reader * r = reader_new(psys.epoch->format);
@@ -301,10 +375,10 @@ static void psystem_read_epoch(ReaderConstants * c) {
 		nread += reader_npar(r, 0);
 		reader_destroy(r);
 	}
-	idhash_build(psys.id, nread);
 }
 
 static void psystem_match_epoch(ReaderConstants * c) {
+	idhash_rebuild(psys.id, psys.npar);
 	/* match / read */
 	int fid;
 	intptr_t ipar;
@@ -313,7 +387,7 @@ static void psystem_match_epoch(ReaderConstants * c) {
 		psys.flag[ipar] |= PF_INVALID;
 	}
 	double distsum = 0.0;
-	size_t lost = 0;
+	size_t new = 0;
 	for(fid = 0; fid < c->Nfiles; fid ++) {
 		Reader * r = reader_new(psys.epoch->format);
 		char * fname = reader_make_filename(psys.epoch->snapshot, fid);
@@ -353,27 +427,65 @@ static void psystem_match_epoch(ReaderConstants * c) {
 		for(ipar = 0; ipar < reader_npar(r, 0); ipar++) {
 			intptr_t hash = id[ipar] & IDHASHMASK;
 			intptr_t best_jpar = -1;
-			float mindist = 0.0;
+			float mindist = 500.0; /*fix me: this shall be calculated from speed of light or something*/
 			intptr_t jpar;
 			for(jpar = psys.idhash.head[hash];
 				jpar != -1; jpar = psys.idhash.next[jpar]) {
 				float dst = dist(pos[ipar], psys.pos[jpar]);
-				if(best_jpar == -1 || dst < mindist) {
+				if(dst < mindist) {
 					mindist = dst;
 					best_jpar = jpar;
 				}
 			}
-			if(best_jpar != -1) {
-				memcpy(&psys.pos[best_jpar][0], &pos[ipar][0], sizeof(float) * 3);
-				distsum += mindist;
-				psys.mass[best_jpar] = mass[ipar];
-				psys.sml[best_jpar] = sml[ipar];
-				psys.rho[best_jpar] = rho[ipar];
-				psys.ie[best_jpar] = ie[ipar];
-				/*FIXME: somehow make use of the ye of the new snapshot*/
-				psys.flag[best_jpar] &= ~PF_INVALID;
+			int insert_new_par = 0;
+			if(best_jpar == -1) {
+				best_jpar = psys.npar;
+				if(psys.npar != psys.npar_max) {
+					psys.npar++;
+				} else {
+					WARNING("one unmatched particle is lost");
+				}
+				insert_new_par = 1;
+				new++;
 			} else {
-				lost++;
+				distsum += mindist;
+				insert_new_par = 0;
+			}
+			memcpy(&psys.pos[best_jpar][0], &pos[ipar][0], sizeof(float) * 3);
+			psys.mass[best_jpar] = mass[ipar];
+			psys.sml[best_jpar] = sml[ipar];
+			psys.rho[best_jpar] = rho[ipar];
+			psys.ie[best_jpar] = ie[ipar];
+			psys.flag[best_jpar] &= ~PF_INVALID;
+
+			if(insert_new_par) {
+				psys.id[best_jpar] = id[ipar];
+				/* pull in the gadget ionization state because it is a new particle */
+				const double xHII = 1.0 - xHI[ipar];
+				psys_set_lambdaH(best_jpar, xHI[ipar], xHII);
+
+				double yeMET = fdim(psys.yeMET[best_jpar], xHII);
+				if(!CFG_H_ONLY) {
+					double xHeII = yeMET * C_HMF / (1 - C_HMF) * 4;
+					double xHeIII = fdim(xHeII, 1.0);
+					xHeIII = fmin(1.0, xHeII);
+					xHeII = fmin(1.0, xHeII);
+					psys_set_lambdaHe(best_jpar, 1.0 - xHeII - xHeIII, xHeII, xHeIII);
+					yeMET = fdim(yeMET, (xHeII + xHeIII) * (1 - C_HMF) / C_HMF * 0.25);
+				}
+				psys.yeMET[best_jpar] = yeMET;
+				int i;
+				for(i = 0; i < 3; i++) {
+					psys.yGdep[i][best_jpar] = 0.0;
+					psys.yGrec[i][best_jpar] = 0.0;
+				}
+				psys.heat[i] = 0.0;
+				psys.hits[i] = 0;
+				/*FIXME: it should be the end of last epoch because now lasthit is in the tick units of last epoch */
+				/* we don't have a pointer to the last epoch in match_epoch */
+				/* shouldn't matter much */
+				psys.lasthit[best_jpar] = 0;
+				psys.flag[best_jpar] = PF_NORMAL;
 			}
 		}
 		free(fname);
@@ -387,8 +499,7 @@ static void psystem_match_epoch(ReaderConstants * c) {
 		free(id);
 		reader_destroy(r);
 	}
-	MESSAGE("EPOCH matching: %ld skipped;  mean pos shifting = %lg", lost, 
-		distsum/ c->Ntot[0]);
+	MESSAGE("EPOCH matching: %ld newly inserted;  mean pos shifting = %lg", new, distsum/ c->Ntot[0]);
 }
 
 
@@ -539,7 +650,7 @@ static void psystem_stat_internal(void * field, size_t npar, int type, int dim, 
 		_get_value(field, ipar, type, dim, value);
 		for(d = 0; d < dim; d++) {
 			if(isnan(value[d])) {
-				WARNING("nan found ipar=%ld", ipar);
+				ERROR("nan found ipar=%ld", ipar);
 			}
 			if(_mx[d] < value[d]) _mx[d] = value[d];
 			if(_mn[d] > value[d]) _mn[d] = value[d];

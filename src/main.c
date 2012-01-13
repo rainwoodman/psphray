@@ -19,6 +19,8 @@ int main(int argc, char* argv[]) {
 	for(i = 0; i < N_EPOCHS; i++) {
 		psystem_switch_epoch(i);
 
+		if(psys.epoch->duration <= 0.0) continue;
+
 		rt_switch_epoch(i);
 
 		run_epoch();

@@ -40,8 +40,8 @@ Raytrace rt = {0};
 
 void rt_switch_epoch(int i) {
 	if(i == 0) {
-		rt.next = malloc(sizeof(intptr_t) * psys.npar);
-		rt.pool_size = psys.npar / CFG_OCTTREE_PPC;
+		rt.next = malloc(sizeof(intptr_t) * psys.npar_max);
+		rt.pool_size = psys.npar_max / CFG_OCTTREE_PPC;
 		rt.pool = malloc(sizeof(Cell) * rt.pool_size);
 	}
 tryagain:

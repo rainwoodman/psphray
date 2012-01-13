@@ -40,6 +40,7 @@ typedef struct {
 	float *ie;
 	int8_t * flag;
 	size_t npar;
+	size_t npar_max;
 
 	union {
 	struct {

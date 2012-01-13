@@ -97,7 +97,7 @@ void run_epoch() {
 	psystem_stat("ie");
 	psystem_stat("T");
 	while(1) {
-		if(!CFG_TRACE_ONLY && istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
+		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
 			MESSAGE("-----tick: %lu -------", psys.tick);
 			stat_subtotal();
 
