@@ -35,6 +35,8 @@ double C_HEI_ENERGY = 0.0;
 double C_HEII_ENERGY = 0.0;
 double C_SOLAR_LUM = 0.0;
 
+double C_GRAVITY = 0.0;
+double C_HUBBLE = 0.0;
 double U_MPROTON_OVER_C_BOLTZMANN = 0.0;
 double C_BOLTZMANN_OVER_U_MPROTON = 0.0;
 
@@ -81,7 +83,8 @@ double units_init() {
 	U_KELVIN = 1.0;
 	C_BOLTZMANN = 1.3806503e-23 * U_M * U_M * U_KG / U_SEC / U_SEC;
 	C_PLANCK = 6.626068e-34 * U_M * U_M * U_KG / U_SEC;
-
+	C_GRAVITY = 6.674e-11 * U_M * U_M * U_M / U_KG / U_SEC / U_SEC;
+	C_HUBBLE = C_H * 100 * 1e3 * U_M / U_SEC / (1000 * U_KPC);
 	U_J = U_KG * U_M * U_M / (U_SEC * U_SEC);
 	U_EV = 1.602176487e-19 * U_J;
 	U_KEV = U_EV * 1000;

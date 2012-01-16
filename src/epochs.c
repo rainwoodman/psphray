@@ -23,6 +23,7 @@ static void epochs_input(config_setting_t * list, int iepoch) {
 	int nsources;
 	double redshift;
 	size_t ngas = 0;
+	double packet_size = 0.0;
 	int nticks = 0;
 	int nray = 1;
 	int nrec = 100;
@@ -30,6 +31,7 @@ static void epochs_input(config_setting_t * list, int iepoch) {
 	config_setting_lookup_int(e, "nticks", &nticks);
 	config_setting_lookup_int(e, "nray", &nray);
 	config_setting_lookup_int(e, "nrec", &nrec);
+	config_setting_lookup_float(e, "packet_size", &packet_size);
 
 	config_setting_t * ss = config_setting_get_member(e, "source");
 	if(config_setting_type(ss) == CONFIG_TYPE_STRING) {
@@ -52,9 +54,14 @@ static void epochs_input(config_setting_t * list, int iepoch) {
 
 	redshift = c->redshift;
 	ngas = c->Ntot[0];
-
 	reader_destroy(r);
-
+	if(packet_size = 0.0) {
+		/* comoving mean density of baryon matter */
+		double critm = C_HUBBLE * C_HUBBLE * 3 / 8. / 3.14 / C_GRAVITY * C_OMEGA_B;
+		double mgas = critm * c->boxsize * c->boxsize * c->boxsize / ngas;
+		/* require each packet at most ionizes 10% of a particle */
+		packet_size = 0.1 * mgas / U_MPROTON;
+	}
 	EPOCHS[iepoch].snapshot = snapshot;
 	EPOCHS[iepoch].format = format;
 	EPOCHS[iepoch].sources = sources;
@@ -62,6 +69,7 @@ static void epochs_input(config_setting_t * list, int iepoch) {
 	EPOCHS[iepoch].redshift = redshift;
 	EPOCHS[iepoch].age = z2t(redshift);
 	EPOCHS[iepoch].ngas = ngas;
+	EPOCHS[iepoch].packet_size = packet_size;
 	EPOCHS[iepoch].nray = nray;
 	EPOCHS[iepoch].nrec= nrec;
 	EPOCHS[iepoch].nticks = nticks;

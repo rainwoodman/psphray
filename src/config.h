@@ -5,6 +5,7 @@ typedef struct {
 	double redshift;
 	double age;
 	double duration;
+	double packet_size;
 	size_t ngas;
 	size_t nticks;
 	size_t nray;
@@ -88,6 +89,8 @@ extern double C_H;
 extern double C_BOLTZMANN;
 extern double C_PLANCK;
 extern double C_SPEED_LIGHT;
+extern double C_HUBBLE;
+extern double C_GRAVITY;
 extern double U_MPROTON_OVER_C_BOLTZMANN;
 extern double C_BOLTZMANN_OVER_U_MPROTON;
 extern double C_H_PER_MASS;

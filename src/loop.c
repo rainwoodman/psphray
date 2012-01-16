@@ -87,8 +87,6 @@ void run_epoch() {
 	double t0 = omp_get_wtime();
 	intptr_t istep = 0;
 
-	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray + (CFG_ON_THE_SPOT?0:(psys.epoch->nrec * (CFG_H_ONLY?1:3))));
-
 	stat_restart();
 
 	psystem_stat("xHI");
@@ -165,7 +163,19 @@ static void emit_rays() {
 	psystem_weight_srcs(weights);
 
 	gsl_ran_discrete_t * src_ran = gsl_ran_discrete_preproc(psys.nsrcs, weights);
-	size_t old_r_length = r_length;
+
+	double weightsum = 0.0;
+	for(i = 0; i < psys.nsrcs; i++) {
+		weightsum += weights[i];
+	}
+	size_t nray = weightsum / psys.epoch->packet_size;
+	size_t nrec = (CFG_ON_THE_SPOT?0:(psys.epoch->nrec * (CFG_H_ONLY?1:3)));
+	if(nrec < 0) nrec = 1; /* just to make sure the if 10 lines below works properly */
+	if(nray > psys.epoch->nray * 2) {
+		ERROR("needs more rays %ld < %ld, psys.epoch->packet_size = %g", psys.epoch->nray, nray, psys.epoch->packet_size);
+	}
+	ARRAY_RESIZE(r, struct r_t, psys.epoch->nray + nrec);
+
 	r_length = 0;
 	for(i = 0; i < psys.epoch->nray; i++) {
 		const intptr_t isrc = gsl_ran_discrete(RNG, src_ran);
@@ -175,7 +185,7 @@ static void emit_rays() {
 		r_length ++;
 	}
 
-	if(!CFG_ON_THE_SPOT && psys.epoch->nrec && psys.tick > 1) {
+	if(nrec && psys.tick > 1) {
 		int species;
 		for(species = 0; species < (CFG_H_ONLY?1:3); species++) {
 			if(psys.epoch->nrec > 0) {
