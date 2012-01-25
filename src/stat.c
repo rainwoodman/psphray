@@ -23,14 +23,18 @@ static inline FILE * fopen_printf(const char * fmt, char * mode, ...) {
 	return rt;
 }
 
-void stat_restart() {
+void stat_reset() {
+	char * basename;
+	asprintf(&basename, psys.epoch->output.filename, 0);
 	if(CFG_DUMP_HOTSPOTS) {
-		stat.parlogfile = fopen_printf("parlogfile-%03d", "w", psys.epoch - EPOCHS);
-		stat.hitlogfile = fopen_printf("hitlogfile-%03d", "w", psys.epoch - EPOCHS);
+		stat.parlogfile = fopen_printf("%s.par", "w", basename);
+		stat.hitlogfile = fopen_printf("%s.hit", "w", basename);
 	}
+	stat.raylogfile = fopen_printf("%s.ray", "w", basename);
+	free(basename);
 }
 
-void stat_subtotal() {
+void stat_write(int outputnum) {
 	stat.src_ray_count.total += stat.src_ray_count.subtotal;
 	stat.rec_ray_count.total += stat.rec_ray_count.subtotal;
 	stat.src_photon_count.total += stat.src_photon_count.subtotal;
@@ -63,6 +67,18 @@ void stat_subtotal() {
 	MESSAGE("Real Time: emit %g raytrace %g deposit %g update %g total %g",
 		stat.emit_time, stat.raytrace_time, stat.deposit_time, stat.update_time, stat.total_time);
 	stat.tick_subtotal = 0;
+	
+	char * basename;
+	asprintf(&basename, psys.epoch->output.filename, outputnum);
+	if(CFG_DUMP_HOTSPOTS) {
+		fclose(stat.parlogfile);
+		fclose(stat.hitlogfile);
+		stat.parlogfile = fopen_printf("%s.par", "w", basename);
+		stat.hitlogfile = fopen_printf("%s.hit", "w", basename);
+	}
+	fclose(stat.raylogfile);
+	stat.raylogfile = fopen_printf("%s.ray", "w", basename);
+	free(basename);
 }
 
 void stat_stop() {
@@ -70,4 +86,5 @@ void stat_stop() {
 		fclose(stat.parlogfile);
 		fclose(stat.hitlogfile);
 	}
+	fclose(stat.raylogfile);
 }

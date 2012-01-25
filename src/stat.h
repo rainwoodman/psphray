@@ -44,6 +44,7 @@ typedef struct {
 
 	FILE * parlogfile;
 	FILE * hitlogfile;
+	FILE * raylogfile;
 
 	double spinlock_time;
 	double deposit_time;
@@ -55,6 +56,6 @@ typedef struct {
 } stat_t;
 
 extern stat_t stat;
-void stat_restart();
-void stat_subtotal();
+void stat_reset();
+void stat_write(int outputnum);
 void stat_stop();

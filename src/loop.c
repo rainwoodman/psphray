@@ -78,6 +78,12 @@ bitmask_t * active = NULL;
 void init() {
 }
 
+static void print_rays() {
+	int i;
+	for(i = 0; i < r_length; i++) {
+		fprintf(stat.raylogfile, "%ld %d %d %g %g %g %g %g %g %g %g %g\n", psys.tick, r[i].isrc, r[i].type, r[i].freq, r[i].s[0], r[i].s[1], r[i].s[2], r[i].dir[0], r[i].dir[1], r[i].dir[2], r[i].length, r[i].Nph);
+	}
+}
 void run_epoch() {
 
 	active = bitmask_alloc(psys.npar);
@@ -87,7 +93,7 @@ void run_epoch() {
 	double t0 = omp_get_wtime();
 	intptr_t istep = 0;
 
-	stat_restart();
+	stat_reset();
 
 	psystem_stat("xHI");
 	psystem_stat("ye");
@@ -97,7 +103,6 @@ void run_epoch() {
 	while(1) {
 		if(istep < psys.epoch->output.nsteps && psys.tick == psys.epoch->output.steps[istep]) {
 			MESSAGE("-----tick: %lu -------", psys.tick);
-			stat_subtotal();
 
 			psystem_stat("T");
 			psystem_stat("xHI");
@@ -112,6 +117,7 @@ void run_epoch() {
 			psystem_stat("yGrecHeII");
 			psystem_stat("yGrecHeIII");
 
+			stat_write(istep + 1);
 			psystem_write_output(istep + 1);
 
 			istep++;
@@ -132,6 +138,7 @@ void run_epoch() {
 		if(!CFG_TRACE_ONLY)
 		deposit(); 
 
+		print_rays();
 		merge_pars();
 
 		if(!CFG_TRACE_ONLY)
@@ -581,7 +588,8 @@ static void deposit(){
 		}
 
 //		ARRAY_RESIZE(r[i].x, Xtype, j);
-//		r[i].length = r[i].x[j - 1].d;
+		/* the real ray length */
+		r[i].length = r[i].x[j - 1].d;
 		stat.lost_photon_count_sum += TM;
 		}
 	}
