@@ -119,7 +119,7 @@ static void psystem_read_source_file(const char * filename) {
 
 	size_t nsrcs_file;
 	while(0 <= getline(&line, &len, f)) {
-		if(line[0] == '#') {
+		if(line[0] == '#' || line[0] == '\n') {
 			NR++;
 			continue;
 		}
@@ -213,7 +213,7 @@ static void psystem_read_source_file2(const char * filename) {
 	size_t nsrcs_file;
 
 	while(0 <= getline(&line, &len, f)) {
-		if(line[0] == '#') {
+		if(line[0] == '#' || line[0] == '\n') {
 			NR++;
 			continue;
 		}
