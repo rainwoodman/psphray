@@ -62,7 +62,7 @@ tryagain:
 	intptr_t ipar;
 	size_t skipped = 0;
 	for(ipar = 0; ipar < psys.npar; ipar++) {
-		float * pos = psys.pos[ipar];
+		float * pos = PSYS(pos, ipar);
 		while(!inside(pos, icell)) {
 			icell = parent(icell);
 			if(icell == -1) break;
@@ -117,8 +117,8 @@ tryagain:
 			if(rt.pool[icell].first_child == -1) {
 				int first = 1;
 				for(ipar = rt.pool[icell].head_par; ipar!= -1; ipar = rt.next[ipar]) {
-					float * pos = psys.pos[ipar];
-					float sml = psys.sml[ipar];
+					float * pos = PSYS(pos, ipar);
+					float sml = PSYS(sml, ipar);
 					for(d = 0; d < 3; d++) {
 						if(first || pos[d] - sml < bot[d]) bot[d] = pos[d] - sml;
 						if(first || pos[d] + sml > top[d]) top[d] = pos[d] + sml;
@@ -168,9 +168,9 @@ size_t rt_trace(const float s[3], const float dir[3], const float dist, Xtype **
 				for(ipar = rt.pool[icell].head_par;
 					ipar != -1;
 					ipar = rt.next[ipar]) {
-					if(psys.flag[ipar] & PF_INVALID) continue;
-					const float * pos = psys.pos[ipar];
-					const float sml = psys.sml[ipar];
+					if(PSYS(flag, ipar) & PF_INVALID) continue;
+					const float * pos = PSYS(pos, ipar);
+					const float sml = PSYS(sml, ipar);
 					int d ;
 					double dist = 0.0;
 					double proj = 0.0;
@@ -295,7 +295,7 @@ static inline int split(const intptr_t icell) {
 	for(ipar = cell->head_par; ipar != -1; ipar = nextpar) {
 		nextpar = rt.next[ipar];
 		for(i = 0; i < 8; i++) {
-			if(inside(psys.pos[ipar], i + cell->first_child)) {
+			if(inside(PSYS(pos, ipar), i + cell->first_child)) {
 				add(ipar, i + cell->first_child);
 			}
 		}

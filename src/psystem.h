@@ -31,9 +31,9 @@ typedef struct {
 
 typedef struct {
 	float (*pos)[3];
-	double *lambdaH;  /* lambdaH = arctan(xHI / xHII) */
-	double *lambdaHeI;  /* lambdaHeI = arctan(xHeI / (xHeII + xHeIII)) */
-	double *lambdaHeII;  /* lambdaHeII = arctan(xHeII / xHeIII) */
+	double *lambdaH;  /* lambdaH = xHI) */
+	double *lambdaHeI;  /* lambdaHeI = xHeI */
+	double *lambdaHeII;  /* lambdaHeII = xHeII) */
 	float *yeMET;
 	float *mass;
 	float *sml;
@@ -140,52 +140,52 @@ static inline const double lambda_to_ye(const double lambdaH, double lambdaHeI, 
 }
 
 static inline const double psys_xHI(const intptr_t i) {
-	return lambdaH_to_xHI(psys.lambdaH[i]);
+	return lambdaH_to_xHI(PSYS(lambdaH, i));
 }
 static inline const double psys_xHII(const intptr_t i) {
-	return lambdaH_to_xHII(psys.lambdaH[i]);
+	return lambdaH_to_xHII(PSYS(lambdaH, i));
 }
 static inline const double psys_xHeI(const intptr_t i) {
-	return lambdaHe_to_xHeI(psys.lambdaHeI[i], psys.lambdaHeII[i]);
+	return lambdaHe_to_xHeI(PSYS(lambdaHeI, i), PSYS(lambdaHeII, i));
 }
 static inline const double psys_xHeII(const intptr_t i) {
-	return lambdaHe_to_xHeII(psys.lambdaHeI[i], psys.lambdaHeII[i]);
+	return lambdaHe_to_xHeII(PSYS(lambdaHeI, i), PSYS(lambdaHeII, i));
 }
 static inline const double psys_xHeIII(const intptr_t i) {
-	return lambdaHe_to_xHeIII(psys.lambdaHeI[i], psys.lambdaHeII[i]);
+	return lambdaHe_to_xHeIII(PSYS(lambdaHeI, i), PSYS(lambdaHeII, i));
 }
 
 static inline void psys_set_lambdaH(const intptr_t i, const double xHI, const double xHII) {
-	if(xHI >= 1.0 || xHII <= 0.0) psys.lambdaH[i] = 1.0;
-	else if(xHI <= 0.0 || xHII >=1.0) psys.lambdaH[i] = 0.0;
-	else psys.lambdaH[i] = xHI;
+	if(xHI >= 1.0 || xHII <= 0.0) PSYS(lambdaH, i) = 1.0;
+	else if(xHI <= 0.0 || xHII >=1.0) PSYS(lambdaH, i) = 0.0;
+	else PSYS(lambdaH, i) = xHI;
 }
 static inline void psys_set_lambdaHe(const intptr_t i, const double xHeI, const double xHeII, const double xHeIII) {
-	if(xHeI >= 1.0 || (xHeII + xHeIII) <= 0.0) psys.lambdaHeI[i] = 1.0;
-	else if(xHeI <= 0.0 || (xHeII + xHeIII) >=1.0) psys.lambdaHeI[i] = 0.0;
-	else psys.lambdaHeI[i] = xHeI;
+	if(xHeI >= 1.0 || (xHeII + xHeIII) <= 0.0) PSYS(lambdaHeI, i) = 1.0;
+	else if(xHeI <= 0.0 || (xHeII + xHeIII) >=1.0) PSYS(lambdaHeI, i) = 0.0;
+	else PSYS(lambdaHeI, i) = xHeI;
 
-	if(xHeII >= 1.0 || (xHeI + xHeIII) <= 0.0) psys.lambdaHeII[i] = 1.0;
-	else if(xHeII <= 0.0 || (xHeIII + xHeI) >=1.0) psys.lambdaHeII[i] = 0.0;
-	else psys.lambdaHeII[i] = xHeII;
+	if(xHeII >= 1.0 || (xHeI + xHeIII) <= 0.0) PSYS(lambdaHeII, i) = 1.0;
+	else if(xHeII <= 0.0 || (xHeIII + xHeI) >=1.0) PSYS(lambdaHeII, i) = 0.0;
+	else PSYS(lambdaHeII, i) = xHeII;
 }
 
 static inline const double psys_NH(const intptr_t i) {
-	return psys.mass[i] * C_H_PER_MASS;
+	return PSYS(mass, i) * C_H_PER_MASS;
 }
 static inline const double psys_NHe(const intptr_t i) {
-	return psys.mass[i] * C_HE_PER_MASS;
+	return PSYS(mass, i) * C_HE_PER_MASS;
 }
 
 static inline const double psys_ye(const intptr_t i) {
-	return lambda_to_ye(psys.lambdaH[i], psys.lambdaHeI[i], psys.lambdaHeII[i]);
+	return lambda_to_ye(PSYS(lambdaH, i), PSYS(lambdaHeI, i), PSYS(lambdaHeII, i));
 }
 static inline const double psys_T(const intptr_t i) {
-	return ieye2T(psys.ie[i], psys_ye(i));
+	return ieye2T(PSYS(ie, i), psys_ye(i));
 }
 
 static inline double psys_Ngamma_dot(intptr_t i) {
-	return psys.srcs[i].Ngamma_dots[psys.srcs[i].cursor];
+	return PSYS(srcs, i).Ngamma_dots[PSYS(srcs, i).cursor];
 }
 void psystem_weight_srcs(double weights[]);
 

@@ -34,7 +34,7 @@ reader-massiveblack.c \
 reader-psphray.c
 
 OBJS = $(SOURCES:.c=.o) pluecker-sse.o verner.o
-ALL = psphray balance sane test-solve test-peano
+ALL = psphray sane test-solve test-peano
 
 .SUFFIXES: .inc .F90 .s
 

@@ -39,7 +39,7 @@ static void maybe_write_particle(const intptr_t ipar, FILE * fp, const char * fm
 		va_list va;
 		va_start(va, fmt);
 		intptr_t i;
-		if(psys.flag[ipar] & PF_HOTSPOT) {
+		if(PSYS(flag, ipar) & PF_HOTSPOT) {
 				vfprintf(fp, fmt, va);
 		}
 		va_end(va);
@@ -202,7 +202,7 @@ static void emit_rays() {
 					intptr_t ipar = active_set[j];
 					double x = psys_xHI(ipar);
 					if(x == 0) x = 1e-10;
-					weights[j] = psys.yGrec[species][ipar] / x;
+					weights[j] = PSYS(yGrec, species)[ipar] / x;
 				}
 				gsl_ran_discrete_t * ran_rec = gsl_ran_discrete_preproc(x_src_length, weights);
 				free(weights);
@@ -219,7 +219,7 @@ static void emit_rays() {
 				intptr_t j;
 				for(j = 0; j < x_src_length; j++) {
 					intptr_t ipar = active_set[j];
-					if(psys.yGrec[species][ipar] > CFG_RECOMBINE_THRESHOLD) {
+					if(PSYS(yGrec, species)[ipar] > CFG_RECOMBINE_THRESHOLD) {
 						struct r_t * p = ARRAY_APPEND_REUSE(r, struct r_t);
 						p->type = species;
 						p->ipar = ipar;
@@ -274,18 +274,18 @@ static void emit_rays() {
 			{
 			const intptr_t ipar = r[i].ipar;
 			for(d = 0; d < 3; d++) {
-				r[i].s[d] = psys.pos[ipar][d];
+				r[i].s[d] = PSYS(pos, ipar)[d];
 			}
 			const double T = psys_T(ipar);
 			const double logT = log10(T);
 			if(r[i].type == 0) {
-				r[i].Nph = psys.yGrecHII[ipar] * psys_NH(ipar);
+				r[i].Nph = PSYS(yGrecHII, ipar) * psys_NH(ipar);
 				r[i].freq = lte_gen_freq(LTE_FREQ_HI, logT);
 			} else if(r[i].type == 1) {
-				r[i].Nph = psys.yGrecHeII[ipar] * psys_NHe(ipar);
+				r[i].Nph = PSYS(yGrecHeII, ipar) * psys_NHe(ipar);
 				r[i].freq = lte_gen_freq(LTE_FREQ_HEI, logT);
 			} else if(r[i].type == 2) {
-				r[i].Nph = psys.yGrecHeIII[ipar] * psys_NHe(ipar);
+				r[i].Nph = PSYS(yGrecHeIII, ipar) * psys_NHe(ipar);
 				r[i].freq = lte_gen_freq(LTE_FREQ_HEII, logT);
 			}
 			if(r[i].Nph < 0) ERROR("Nph =%g < 0, ipar= %ld", r[i].Nph, ipar);
@@ -340,24 +340,24 @@ static void emit_rays() {
 				}
 				if(r[i].type == 0) {
 					stat.rec_photon_count.subtotalHII += r[i].Nph;
-					psys.yGrecHII[ipar] -= r[i].Nph / psys_NH(ipar);
-					if(psys.yGrecHII[ipar] > 1.0) {
-						ERROR("ygrecHII[%ld] =%g > 0", ipar, psys.yGrecHII[ipar]);
+					PSYS(yGrecHII, ipar) -= r[i].Nph / psys_NH(ipar);
+					if(PSYS(yGrecHII, ipar) > 1.0) {
+						ERROR("ygrecHII[%ld] =%g > 0", ipar, PSYS(yGrecHII, ipar));
 					}
-					if(psys.yGrecHII[ipar] < 0) {
-						psys.yGrecHII[ipar] = 0;
+					if(PSYS(yGrecHII, ipar) < 0) {
+						PSYS(yGrecHII, ipar) = 0;
 					}
 				} else if(r[i].type == 1) {
 					stat.rec_photon_count.subtotalHeII += r[i].Nph;
-					psys.yGrecHeII[ipar] -= r[i].Nph / psys_NHe(ipar);
-					if(psys.yGrecHeII[ipar] < 0) {
-						psys.yGrecHeII[ipar] = 0;
+					PSYS(yGrecHeII, ipar) -= r[i].Nph / psys_NHe(ipar);
+					if(PSYS(yGrecHeII, ipar) < 0) {
+						PSYS(yGrecHeII, ipar) = 0;
 					}
 				} else if(r[i].type == 2) {
 					stat.rec_photon_count.subtotalHeIII += r[i].Nph;
-					psys.yGrecHeIII[ipar] -= r[i].Nph / psys_NHe(ipar);
-					if(psys.yGrecHeIII[ipar] < 0) {
-						psys.yGrecHeIII[ipar] = 0;
+					PSYS(yGrecHeIII, ipar) -= r[i].Nph / psys_NHe(ipar);
+					if(PSYS(yGrecHeIII, ipar) < 0) {
+						PSYS(yGrecHeIII, ipar) = 0;
 					}
 				}
 			}
@@ -424,11 +424,11 @@ static void deposit(){
 
 			const intptr_t ipar = r[i].x[j].ipar;
 			const double b = r[i].x[j].b;
-			const double sml = psys.sml[ipar];
+			const double sml = PSYS(sml, ipar);
 			const double sml_inv = 1.0 / sml;
 			double NH = psys_NH(ipar);
 			double NHe = psys_NHe(ipar);
-			double rho = psys.rho[ipar] * scaling_fac3_inv;
+			double rho = PSYS(rho, ipar) * scaling_fac3_inv;
 			if (CFG_ENABLE_EOS) {
 				const double x = eos_get_cloud_fraction(rho);
 				rho *= (1 - x);
@@ -512,7 +512,7 @@ static void deposit(){
 			if(deltaHeII < 0) {
 				ERROR("deltaHeII < 0");
 			}
-			if(psys.heat[ipar] < 0.0) {
+			if(PSYS(heat, ipar) < 0.0) {
 				ERROR("heat < 0");
 			}
 
@@ -521,54 +521,54 @@ static void deposit(){
 			/* if x <= 0.0 secondary ionization has no effect */
 			if(CFG_SECONDARY_IONIZATION && x > 0.0) {
 #pragma omp atomic
-				psys.yGdepHI[ipar] += deltaHI;
+				PSYS(yGdepHI, ipar) += deltaHI;
 				first_ionization_HI += deltaHI * NH;
 				double log10x = log10(x);
 				double secion = deltaHI * dEHI / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHI, log10x)
 					+ deltaHeI * dEHeI / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHeI, log10x);
 					+ deltaHeII * dEHeII / C_HI_ENERGY * secion_get(SECION_PHI_HI, dEHeII, log10x);
 #pragma omp atomic
-				psys.yGdepHI[ipar] += secion;
+				PSYS(yGdepHI, ipar) += secion;
 				secondary_ionization_HI += secion * NH;
 #pragma omp atomic
-				psys.heat[ipar] += heat_factor_HI * deltaHI * secion_get(SECION_EH, dEHI, log10x);
+				PSYS(heat, ipar) += heat_factor_HI * deltaHI * secion_get(SECION_EH, dEHI, log10x);
 				if(!CFG_H_ONLY && NHe != 0.0) {
 					double secion = 
 						deltaHI * dEHI / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHI, log10x)
 						+ deltaHeI * dEHeI / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHeI, log10x);
 						+ deltaHeII * dEHeII / C_HEI_ENERGY * secion_get(SECION_PHI_HEI, dEHeII, log10x);
 #pragma omp atomic
-					psys.yGdepHeI[ipar] += deltaHeI + secion;
+					PSYS(yGdepHeI, ipar) += deltaHeI + secion;
 					secondary_ionization_HeI += secion * NHe;
 					first_ionization_HeI += deltaHeI * NHe;
 #pragma omp atomic
-					psys.heat[ipar] += heat_factor_HeI * deltaHeI * secion_get(SECION_EH, dEHeI, log10x);
+					PSYS(heat, ipar) += heat_factor_HeI * deltaHeI * secion_get(SECION_EH, dEHeI, log10x);
 						+ heat_factor_HeII * deltaHeII * secion_get(SECION_EH, dEHeII, log10x);
 #pragma omp atomic
-					psys.yGdepHeII[ipar] += deltaHeII;
+					PSYS(yGdepHeII, ipar) += deltaHeII;
 					first_ionization_HeII += deltaHeII * NHe;
 				}
 			} else {
 #pragma omp atomic
-				psys.yGdepHI[ipar] += deltaHI;
+				PSYS(yGdepHI, ipar) += deltaHI;
 #pragma omp atomic
-				psys.heat[ipar] += heat_factor_HI * deltaHI;
+				PSYS(heat, ipar) += heat_factor_HI * deltaHI;
 				if(!CFG_H_ONLY && NHe != 0.0) {
 #pragma omp atomic
-					psys.yGdepHeI[ipar] += deltaHeI;
+					PSYS(yGdepHeI, ipar) += deltaHeI;
 #pragma omp atomic
-					psys.yGdepHeII[ipar] += deltaHeII;
+					PSYS(yGdepHeII, ipar) += deltaHeII;
 #pragma omp atomic
-					psys.heat[ipar] += deltaHeI * heat_factor_HeI;
+					PSYS(heat, ipar) += deltaHeI * heat_factor_HeI;
 #pragma omp atomic
-					psys.heat[ipar] += deltaHeII * heat_factor_HeII;
+					PSYS(heat, ipar) += deltaHeII * heat_factor_HeII;
 				}
 			}
-			if(psys.heat[ipar] < 0.0) {
+			if(PSYS(heat, ipar) < 0.0) {
 				ERROR("heat < 0");
 			}
 #pragma omp atomic
-			psys.hits[ipar]++;
+			PSYS(hits, ipar)++;
 
 
 			maybe_write_particle(ipar, stat.hitlogfile, 
@@ -659,14 +659,14 @@ static void update_pars() {
 		const intptr_t ipar = active_set[j + iTH];
 		const double xHI = psys_xHI(ipar);
 		const double xHII = psys_xHII(ipar);
-		double rho = psys.rho[ipar] * scaling_fac3_inv;
+		double rho = PSYS(rho, ipar) * scaling_fac3_inv;
 		double NH = psys_NH(ipar);
 		double NHe = psys_NHe(ipar);
 		
 		Step step = {0};
 
 		step.ipar = ipar;
-		step.time = (psys.tick - psys.lasthit[ipar]) * psys.tick_time;
+		step.time = (psys.tick - PSYS(lasthit, ipar)) * psys.tick_time;
 
 		if (CFG_ENABLE_EOS) {
 		/* EOS really only make sense with adiabatic simulations, because we can't model
@@ -691,22 +691,22 @@ static void update_pars() {
 				step.T = psys_T(ipar);
 			}
 		}
-		step.yGdepHI = psys.yGdepHI[ipar];
-		step.yGdepHeI = psys.yGdepHeI[ipar];
-		step.yGdepHeII = psys.yGdepHeII[ipar];
-		step.heat = psys.heat[ipar];
+		step.yGdepHI = PSYS(yGdepHI, ipar);
+		step.yGdepHeI = PSYS(yGdepHeI, ipar);
+		step.yGdepHeII = PSYS(yGdepHeII, ipar);
+		step.heat = PSYS(heat, ipar);
 
-		step.yGrecHII = psys.yGrecHII[ipar];
-		step.yGrecHeII = psys.yGrecHeII[ipar];
-		step.yGrecHeIII = psys.yGrecHeIII[ipar];
+		step.yGrecHII = PSYS(yGrecHII, ipar);
+		step.yGrecHeII = PSYS(yGrecHeII, ipar);
+		step.yGrecHeIII = PSYS(yGrecHeIII, ipar);
 
-		step.lambdaH = psys.lambdaH[ipar];
-		step.lambdaHeI = psys.lambdaHeI[ipar];
-		step.lambdaHeII = psys.lambdaHeII[ipar];
+		step.lambdaH = PSYS(lambdaH, ipar);
+		step.lambdaHeI = PSYS(lambdaHeI, ipar);
+		step.lambdaHeII = PSYS(lambdaHeII, ipar);
 
-		step.yeMET = psys.yeMET[ipar];
+		step.yeMET = PSYS(yeMET, ipar);
 		step.nH = C_H_PER_MASS * rho;
-		step.ie = psys.ie[ipar];
+		step.ie = PSYS(ie, ipar);
 
 		maybe_write_particle(ipar, stat.parlogfile, "%lu %lu %g %g %g %g %g %g %g\n",
 				psys.tick, ipar, step.time, step.T, step.lambdaH, step.nH, step.yGdepHI, step.ie, step.heat);
@@ -736,32 +736,32 @@ static void update_pars() {
 			if(step.refined){
 				stat.fast_recombination_count++;
 			}
-			increase_recomb += (step.yGrecHII - psys.yGrecHII[ipar])* NH;
-			increase_recomb += (step.yGrecHeII - psys.yGrecHeII[ipar])* NHe;
-			increase_recomb += (step.yGrecHeIII - psys.yGrecHeIII[ipar])* NHe;
+			increase_recomb += (step.yGrecHII - PSYS(yGrecHII, ipar))* NH;
+			increase_recomb += (step.yGrecHeII - PSYS(yGrecHeII, ipar))* NHe;
+			increase_recomb += (step.yGrecHeIII - PSYS(yGrecHeIII, ipar))* NHe;
 
-			psys.yGdepHI[ipar] *= step.step_remain;
-			psys.yGdepHeI[ipar] *= step.step_remain;
-			psys.yGdepHeII[ipar] *= step.step_remain;
+			PSYS(yGdepHI, ipar) *= step.step_remain;
+			PSYS(yGdepHeI, ipar) *= step.step_remain;
+			PSYS(yGdepHeII, ipar) *= step.step_remain;
 
-			psys.yGrecHII[ipar] = step.yGrecHII;
-			psys.yGrecHeII[ipar] = step.yGrecHeII;
-			psys.yGrecHeIII[ipar] = step.yGrecHeIII;
+			PSYS(yGrecHII, ipar) = step.yGrecHII;
+			PSYS(yGrecHeII, ipar) = step.yGrecHeII;
+			PSYS(yGrecHeIII, ipar) = step.yGrecHeIII;
 
-			psys.lambdaH[ipar] = fmax(0, fmin(1, step.lambdaH));
-			psys.lambdaHeI[ipar] = fmax(0, fmin(1, step.lambdaHeI));
-			psys.lambdaHeII[ipar] = fmax(0, fmin(1 - psys.lambdaHeI[ipar], step.lambdaHeII));
+			PSYS(lambdaH, ipar) = fmax(0, fmin(1, step.lambdaH));
+			PSYS(lambdaHeI, ipar) = fmax(0, fmin(1, step.lambdaHeI));
+			PSYS(lambdaHeII, ipar) = fmax(0, fmin(1 - PSYS(lambdaHeI, ipar), step.lambdaHeII));
 
 			if(!CFG_ADIABATIC)
-				psys.ie[ipar] = step.ie;
+				PSYS(ie, ipar) = step.ie;
 
-			psys.lasthit[ipar] = psys.tick;
+			PSYS(lasthit, ipar) = psys.tick;
 
 			if(CFG_ISOTHERMAL) {
-				psys.ie[ipar] = Tye2ie(step.T, psys_ye(ipar));
+				PSYS(ie, ipar) = Tye2ie(step.T, psys_ye(ipar));
 			}
 
-			psys.heat[ipar] = 0.0;
+			PSYS(heat, ipar) = 0.0;
 		}
 		d2++;
 	}
