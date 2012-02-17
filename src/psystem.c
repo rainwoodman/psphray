@@ -124,7 +124,7 @@ static void compress() {
 		}
 	}
 	for(i = psys.npar - 1; i > j; i--) {
-		printf("INVALID: %g %g %g %g\n", psys.epoch->redshift, psys.pos[i][0], psys.pos[i][1], psys.pos[i][2]);
+//		printf("INVALID: %g %g %g %g\n", psys.epoch->redshift, psys.pos[i][0], psys.pos[i][1], psys.pos[i][2]);
 		total_invalid --;
 		if(!(psys.flag[i] & PF_INVALID)) {
 			ERROR("valid particle removed");

@@ -1,7 +1,7 @@
-CC = gcc
-LD = gcc
+CC = mpigcc
+LD = mpigcc
 CFLAGS = -std=gnu99 -D_GNU_SOURCE -g -ffast-math -I ../support -DUSE_LSODA
-OPT= -O3 -fopenmp
+#OPT= -O3 -fopenmp
 F90FLAGS = -ffast-math -O3 
 FC = ifort
 LDFLAGS = -L ../support/libconfig/ -L ../support/jemalloc -L ../support/lsoda
@@ -34,7 +34,7 @@ reader-massiveblack.c \
 reader-psphray.c
 
 OBJS = $(SOURCES:.c=.o) pluecker-sse.o verner.o
-ALL = psphray sane test-solve test-peano
+ALL = psphray balance sane test-solve test-peano
 
 .SUFFIXES: .inc .F90 .s
 
@@ -58,6 +58,9 @@ sane.o: sane.c
 	$(FC) $(F90FLAGS) -c -o $@ $<
 
 psphray: $(OBJS) main.o
+	$(LD) $(LDFLAGS) -o $@  $^ $(LIBS)
+
+balance: balance.o mortonkey.o psystem.o
 	$(LD) $(LDFLAGS) -o $@  $^ $(LIBS)
 
 sane: $(OBJS) sane.o

@@ -29,4 +29,7 @@ units: {
 specs: {
   d6bh: "../test/d6bh.spec";
   sun: { type="blackbody", T = 1e4, min=(16, "ev"), max=(160, "ev")}
+  uv: {type="powerlaw", min=(13.6, "ev"), max=(250, "ev"), index=-1.76}
+  soft: {type="powerlaw", min=(250, "ev"), max=(1000, "ev"), index=-0.8}
+  hard: {type="powerlaw", min=(1000, "ev"), max=(2000, "ev"), index=-0.8}
 };

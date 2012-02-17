@@ -5,19 +5,19 @@
 #include <math.h>
 #include <printf.h>
 #include <mpi.h>
-#define N 32
-#define BITS 12
-#define THRESH 4
-typedef struct {
-	float pos[3];
-	uint64_t key;
-} Particle;
+#include <array.h>
+#include <messages.h>
+#include "mortonkey.h"
+#include "psystem.h"
 
-typedef struct {
-	Particle * pool;
-	size_t size;
-	size_t used;
-} PSystem;
+#define N 32
+#define BITS 8
+#define THRESH 1
+
+static void pos_hash_key(const void *p, void * k) {
+	morton_key_t key = morton_key(p);
+	memcpy(k, &key, sizeof(morton_key_t));
+}
 
 typedef struct {
 	uint64_t key;
@@ -40,55 +40,47 @@ typedef struct {
 	size_t used;
 } Framework;
 
-const uint64_t morton_key(const float pos[3]) {
-	int mask;
-	uint64_t morton = 0;
-	int ix,iy,iz;
-	const int bits = BITS;
-	ix = pos[0] * (1 << bits);
-	iy = pos[1] * (1 << bits);
-	iz = pos[2] * (1 << bits);
-	for(mask = 1 << (bits - 1); mask > 0; mask >>= 1)
-	{
-		morton <<= 3;
-		morton += ((iz & mask) ? 4 : 0) + ((iy & mask) ? 2 : 0) + ((ix & mask) ? 1 : 0);
-	}
 
-	return morton;
-}
-
-
-PSystem psys;
 Framework fwork;
 MPI_Datatype MPI_PARTICLE;
 
-int printf_binary(FILE * stream, const struct printf_info * info, const void * const *args);
-int printf_binary_arginfo (const struct printf_info *info, size_t n, int *argtypes);
 size_t nearest_smaller_value(void* array, intptr_t output[], size_t nmemb, size_t bsize, int (*cmp)(const void* p1, const void * p2), int dir);
 
 int main(int argc, char* argv[]) {
-
-	register_printf_function('b', printf_binary, printf_binary_arginfo);
+	PRINTF_BINARY('b');
 	MPI_Init(&argc, &argv);
+	morton_key_init(BITS);
 	MPI_Type_contiguous(sizeof(Particle), MPI_BYTE, &MPI_PARTICLE);
 	MPI_Type_commit(&MPI_PARTICLE);
 	mockdata();
-	balance();
-	build_framework();
 
 	int rank, size;
+	intptr_t i;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	printf("rank = %d, psys.used/psys.size= %ld/%ld\n", rank, psys.used, psys.size);
 	char * fname = NULL;
-	asprintf(&fname, "balance-out-%03d", rank);
+	asprintf(&fname, "balance-orig-%03d", rank);
 	FILE * fp = fopen(fname, "w");
-	intptr_t i;
 	for(i = 0; i < psys.used; i++) {
-		fprintf(fp, "%08lo %g %g %g\n", psys.pool[i].key,
-			psys.pool[i].pos[0],
-			psys.pool[i].pos[1],
-			psys.pool[i].pos[2]);
+		fprintf(fp, "%08lo %g %g %g\n", morton_key(PSYS(pos,i)),
+			PSYS(pos,i)[0],
+			PSYS(pos,i)[1],
+			PSYS(pos,i)[2]);
+	}
+	fclose(fp);
+
+	balance();
+	build_framework();
+
+
+	asprintf(&fname, "balance-out-%03d", rank);
+	fp = fopen(fname, "w");
+	for(i = 0; i < psys.used; i++) {
+		fprintf(fp, "%08lo %g %g %g\n", morton_key(PSYS(pos, i)),
+			PSYS(pos, i)[0],
+			PSYS(pos, i)[1],
+			PSYS(pos, i)[2]);
 	}
 	fclose(fp);
 	
@@ -100,7 +92,7 @@ int main(int argc, char* argv[]) {
 		fprintf(fp, "%04ld %08lo %02d %04ld %1d ", i, fwork.pool[i].key, fwork.pool[i].order, fwork.pool[i].parent, fwork.pool[i].child_length);
 		if(fwork.pool[i].child_length ==0) {
 			for(j = 0; j < fwork.pool[i].npar; j++) {
-				fprintf(fp, "%08lo ", psys.pool[j + fwork.pool[i].first_par].key);
+				fprintf(fp, "%08lo ", morton_key(psys.pool[j + fwork.pool[i].first_par].pos));
 			}
 		} else {
 			for(j = 0; j < fwork.pool[i].child_length && j < 8; j++) {
@@ -115,28 +107,25 @@ int main(int argc, char* argv[]) {
 }
 
 
-static int uint64_compare(const void * p1, const void * p2) {
-	return (*(uint64_t*)p1 > *(uint64_t*)p2) - (*(uint64_t*)p1 < *(uint64_t*)p2);
-}
-static int key_compare(const void* p1, const void* p2) {
-	return uint64_compare(&((Particle*)p1)->key, &((Particle*)p2)->key);
-}
 int mockdata() {
-	psys.size = N *1.2;
-	psys.used = N * (0.5 * random() / RAND_MAX + 0.3);
-	psys.pool = malloc(sizeof(Particle) * psys.size);
 	intptr_t i;
 	int rank, size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	srandom(rank * 100033);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	psys.size = N *1.2;
+	psys.used = N * (0.5 * random() / RAND_MAX + 0.3);
+	psys.pool = malloc(sizeof(Particle) * psys.size);
 	for(i = 0; i < N; i++) {
 		int d;
 		for(d = 0; d < 3; d++) {
-			psys.pool[i].pos[d] = fmin((float) random() / RAND_MAX, 1.0);
+			PSYS(pos, i)[d] = fmin((float) random() / RAND_MAX, 1.0);
 		}
-		psys.pool[i].key = morton_key(psys.pool[i].pos);
 	}
-	qsort(psys.pool, psys.used, sizeof(Particle), key_compare);
+	intptr_t *arg = malloc(sizeof(intptr_t) * psys.used);
+	argsort(psys.pool, psys.used, sizeof(Particle), arg, morton_key_t_compare, particle_hash_key, sizeof(morton_key_t));
+	argpermute(psys.pool, NULL, psys.used, sizeof(Particle), arg);
+	free(arg);
 	return 1;
 }
 
@@ -170,24 +159,6 @@ int MPI_Gatherv2(void *sendbuf, int sendcount, MPI_Datatype type,
 	return rt;
 }
 
-#define DIR_LEFT -1 
-#define DIR_RIGHT 1
-intptr_t searchsorted(void * data, void * array, size_t nmemb, size_t bsize, int (*cmp)(const void * p1, const void * p2), int flag) {
-	/**/
-	intptr_t mid = nmemb / 2;
-	int c = 0;
-	c = cmp(data, ((char*)array)) ;
-	if(c < 0 || (flag == DIR_LEFT && c == 0)) return 0;
-	c = cmp(data, ((char*)array + (nmemb - 1) * bsize)) ;
-	if(c > 0 || (flag == DIR_RIGHT && c == 0)) return nmemb;
-	c = cmp(data, ((char*)array + mid * bsize));
-	if(c > 0 || ((flag == DIR_RIGHT) && c == 0))
-		return searchsorted(data, (char*) array + mid * bsize, nmemb - mid, bsize, cmp, flag) + mid;
-	if(c < 0 || (flag == DIR_LEFT && c == 0))
-		return searchsorted(data, (char*) array, mid, bsize, cmp, flag);
-	abort();
-}
-
 int balance() {
 	int rank, size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -200,18 +171,15 @@ int balance() {
 	MPI_Allreduce(&psys.used, &gnpar, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 	
 /* step 1: find the percentiles from iteration */
-	uint64_t pctl_min[size];
-	uint64_t pctl_max[size];
-	intptr_t lmax = psys.pool[0].key;
-	intptr_t lmin = psys.pool[0].key;
-	for(i = 0; i < psys.used; i++) {
-		if(psys.pool[i].key > lmax) lmax = psys.pool[i].key;
-		if(psys.pool[i].key < lmin) lmin = psys.pool[i].key;
-	}
-	intptr_t gmax = 0;
-	intptr_t gmin = 0;
-	MPI_Allreduce(&lmax, &gmax, 1, MPI_UNSIGNED_LONG, MPI_MAX, MPI_COMM_WORLD);
-	MPI_Allreduce(&lmin, &gmin, 1, MPI_UNSIGNED_LONG, MPI_MIN, MPI_COMM_WORLD);
+	morton_key_t pctl_min[size];
+	morton_key_t pctl_max[size];
+	morton_key_t lmax = 0;
+	morton_key_t lmin = 0;
+	maxmin(psys.pool, psys.used, sizeof(Particle), &lmax, &lmin, morton_key_t_compare, particle_hash_key, sizeof(morton_key_t));
+	morton_key_t gmax = 0;
+	morton_key_t gmin = 0;
+	MPI_Allreduce(&lmax, &gmax, 1, MPI_TYPE_MORTON_KEY, MPI_OP_MORTON_KEY_MAX, MPI_COMM_WORLD);
+	MPI_Allreduce(&lmin, &gmin, 1, MPI_TYPE_MORTON_KEY, MPI_OP_MORTON_KEY_MIN, MPI_COMM_WORLD);
 
 	for(j = 0; j < size; j++) {
 		pctl_max[j] = gmax;
@@ -219,25 +187,19 @@ int balance() {
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	intptr_t lcount[size];
-	uint64_t pctl_mid[size];
+	morton_key_t pctl_mid[size];
 
 	while(1) {
 		for(j = 0; j < size; j++) {
 			pctl_mid[j] = (pctl_max[j] + pctl_min[j]) / 2;
 		}
 		for(j = 0; j < size; j++) {
-			Particle p;
-			p.key = pctl_mid[j];
-			if(j > 0) {
+			if(j > 0 && pctl_mid[j] == pctl_mid[j -1]) {
 				/* omit some countings on the first few rounds because all pctls start the same */
-				if(pctl_mid[j] != pctl_mid[j -1]) {
-					lcount[j] = searchsorted(&p, psys.pool, psys.used, sizeof(Particle), key_compare, DIR_LEFT);
-				} else {
-					lcount[j] = lcount[j - 1];
-				}
-			} else {
-				lcount[j] = searchsorted(&p, psys.pool, psys.used, sizeof(Particle), key_compare, DIR_LEFT);
+				lcount[j] = lcount[j - 1];
+				continue;
 			}
+			lcount[j] = searchsorted(pctl_mid + j, psys.pool, psys.used, sizeof(Particle), SEARCH_DIR_LEFT, morton_key_t_compare, particle_hash_key, sizeof(morton_key_t));
 		}
 		
 		intptr_t gcount[size];
@@ -262,15 +224,16 @@ int balance() {
 		if(bad == 0) break;
 	}
 
+	for(i = 0; i < size; i++) {
+		MESSAGE("rank = %d, pctl_mid[%d] = %08lo lcount[%d] = %ld", rank, i, pctl_mid[i], i, lcount[i]);
+	}
 /* Step 2: calculate the displacement and counts for sending and receiving */
 	int senddispls[size];
 	int sendcounts[size];
 
 	senddispls[0] = 0;
 	for (j = 1; j < size; j++) {
-		Particle p;
-		p.key = pctl_mid[j - 1];
-		senddispls[j] = searchsorted(&p, psys.pool, psys.used, sizeof(Particle), key_compare, DIR_LEFT);
+		senddispls[j] = searchsorted(pctl_mid + j - 1, psys.pool, psys.used, sizeof(Particle), SEARCH_DIR_LEFT, morton_key_t_compare, particle_hash_key, sizeof(morton_key_t));
 		sendcounts[j - 1] = senddispls[j] - senddispls[j - 1];
 	}
 	sendcounts[j - 1] = psys.used - senddispls[j - 1];
@@ -296,7 +259,12 @@ int balance() {
 	psys.size = sum_recvcount * 1.2;
 	psys.used = sum_recvcount;
 
-	qsort(psys.pool, psys.used, sizeof(Particle), key_compare);
+	intptr_t *arg = malloc(sizeof(intptr_t) * psys.used);
+	argsort(psys.pool, psys.used, sizeof(Particle), arg, morton_key_t_compare, particle_hash_key, sizeof(morton_key_t));
+	argpermute(psys.pool, NULL, psys.used, sizeof(Particle), arg);
+
+	free(arg);
+
 	size_t total_exchange = 0;
 
 	for(j = 0; j < size; j++) {
@@ -353,7 +321,7 @@ intptr_t create_child(intptr_t first_par, intptr_t parent) {
 	fwork.pool[fwork.used].incomplete = 0;
 	fwork.pool[fwork.used].order = fwork.pool[parent].order - 1;
 	/* the lower bits of a sqkey is cleared off but I don't think it is necessary */
-	fwork.pool[fwork.used].key = (psys.pool[first_par].key >> (fwork.pool[fwork.used].order * 3)) << (fwork.pool[fwork.used].order * 3);
+	fwork.pool[fwork.used].key = (morton_key(psys.pool[first_par].pos) >> (fwork.pool[fwork.used].order * 3)) << (fwork.pool[fwork.used].order * 3);
 
 	fwork.pool[parent].child[fwork.pool[parent].child_length] = fwork.used;
 	fwork.pool[parent].child_length ++;
@@ -374,11 +342,14 @@ void split_child(intptr_t child) {
 	/* i is already in the child */
 	i++;
 	while(i < last) {
-		while(in_square(fwork.pool[j].key, fwork.pool[j].order, psys.pool[i].key)) {
+		while(in_square(fwork.pool[j].key, fwork.pool[j].order, morton_key(PSYS(pos, i)))) {
 			fwork.pool[j].npar ++;
 			i++;
 		}
-		j = create_child(i, child);
+		if(i < last) {
+			j = create_child(i, child);
+			i++;
+		}
 	}
 }
 
@@ -400,7 +371,7 @@ int build_framework() {
 	j = 0;
 	fwork.used = 1;
 	for(i = 0; i < psys.used; i++) {
-		while(!in_square(fwork.pool[j].key, fwork.pool[j].order, psys.pool[i].key)) {
+		while(!in_square(fwork.pool[j].key, fwork.pool[j].order, morton_key(PSYS(pos, i)))) {
 			j = fwork.pool[j].parent;
 			if(j == -1) abort();
 		}
@@ -418,8 +389,7 @@ int build_framework() {
 		}
 	}
 
-	/* Step 2: fillin the incomplete flags */
-	/* The incomplete nodes are only in the end or at the front of the leaf nodes */
+	/* Step 2: refine the head and tail nodes to remove leaf overlappings */
     /* 
      * 1 Compare the last node of task i and the first node of task i+1. 
      * 2 If they are disjoint, good to go.
@@ -433,7 +403,8 @@ int build_framework() {
      *     not want to update all indices  )
      *  */
     /* how to refine */
-	while(ggood < size) {
+	int ggood = 0;
+	while(ggood < size * 2) {
 		intptr_t first_leaf;
 		intptr_t last_leaf;
 		first_leaf = 0;
@@ -444,6 +415,7 @@ int build_framework() {
 		while(fwork.pool[last_leaf].child_length > 0) {
 			last_leaf = fwork.pool[last_leaf].child[fwork.pool[last_leaf].child_length-1];
 		}
+		printf("%d %04ld %04ld\n", rank, first_leaf, last_leaf);
 		uint64_t next_leaf_key;
 		uint64_t prev_leaf_key;
 		int next_leaf_order;
@@ -466,20 +438,29 @@ int build_framework() {
 		if(disjoint_squares(fwork.pool[last_leaf].key, fwork.pool[last_leaf].order,
 						next_leaf_key, next_leaf_order)) {
 			next_good = 1;
+		} else {
+			if(next_leaf_order <= fwork.pool[last_leaf].order) {
+				split_child(last_leaf);
+			} /* the other case is handled at the first, prev of next process */
 		}
 		if(disjoint_squares(fwork.pool[first_leaf].key, fwork.pool[first_leaf].order,
 						prev_leaf_key, prev_leaf_order)
 		) {
 			prev_good = 1;
+		} else {
+			if(!prev_good && prev_leaf_order <= fwork.pool[first_leaf].order) {
+				split_child(first_leaf);
+			}
 		}
-		if(prev_leaf_order < fwork.pool[first_leaf].order) {
-			/* ::=> last_leaf_order < next_leaf_order on previous rank */
-			split_child(first_leaf);
-		}
-		if(next_leaf_order < fwork.pool[last_leaf].order) {
-			/* ::=> last_leaf_order < next_leaf_order on previous rank */
-			split_child(last_leaf);
-		}
+		MPI_Barrier(MPI_COMM_WORLD);
+		int lgood = next_good + prev_good;
+		MPI_Allreduce(&lgood, &ggood, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	}
+	/* after this point some of the nodes will have order of 0. Be aware what is the size of
+     * a order zero node? */
+}
+
+#if 0
 		MPI_Request request = {0};
 		size_t nrecv = 0;
 		if(next_leaf_order == fwork.pool[last_leaf].order) {
@@ -517,50 +498,7 @@ int build_framework() {
 				fwork.pool[j].child_length --;
 			}
 		}
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
-}
-
-int printf_binary(FILE * stream, const struct printf_info * info, const void * const *args) {
-	const int bits = info->width;
-	int buflen = bits + 1;
-	if(info->prec != -1) {
-		buflen == bits / info->prec + 1;
-	}
-	char buf[buflen];
-	int p = 0;
-	unsigned int mask = (1 << (bits - 1));
-	intptr_t l;
-	if(info->is_long) {
-		l = *(long * )(args[0]);
-	} else if(info->is_short) {
-		l = *(short *)(args[0]);
-	} else if(info->is_char) {
-		l = *(char *)(args[0]);
-	} else {
-		l = *(int *)(args[0]);
-	}
-	int j = 0;
-	while(p < bits) {
-		buf[j] = (l & mask)?'1':'0';
-		mask >>= 1;
-		p++;
-		j++;
-		if((info->prec != -1) && ((bits - p) % info->prec == 0)) {
-			buf[j] = ' ';
-			j++;
-		}
-	}
-	buf[j] = 0;
-	fputs(buf, stream);
-	return bits;
-}
-int printf_binary_arginfo (const struct printf_info *info, size_t n, int *argtypes) {
-	if (n > 0)
-		argtypes[0] = PA_POINTER;
-	return 1;
-}
-
+#endif
 size_t nearest_smaller_value(void* array, intptr_t output[], size_t nmemb, size_t bsize, int (*cmp)(const void* p1, const void * p2), int dir) {
 /*
 S = new empty stack data structure

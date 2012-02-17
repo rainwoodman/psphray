@@ -27,6 +27,7 @@ typedef struct {
 #define PF_NORMAL (0)
 #define PF_INVALID (1)
 #define PF_HOTSPOT (8)
+#define PSYS(field,i) (psys.field [i])
 
 typedef struct {
 	float (*pos)[3];
