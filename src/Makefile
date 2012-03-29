@@ -28,10 +28,11 @@ eos.c \
 atomic-rate.c \
 loop.c \
 sph-depth.c \
-discrete.c \
-ompdiscrete.c \
 reader-massiveblack.c \
 reader-psphray.c
+
+#discrete.c \
+#ompdiscrete.c \
 
 OBJS = $(SOURCES:.c=.o) pluecker-sse.o verner.o
 ALL = psphray sane test-solve test-peano
