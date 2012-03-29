@@ -133,10 +133,10 @@ extern int XS_HI;
 extern int XS_HEI;
 extern int XS_HEII;
 
-const double ar_get(const int id, const double logT);
-const double xs_get(const int id, const double freq);
+double ar_get(const int id, const double logT);
+double xs_get(const int id, const double freq);
 
-const int spec_get(const char * name);
+int spec_get(const char * name);
 double spec_gen_freq(const int id);
 double spec_N_from_lum(const int id, double lum);
 double spec_lum_from_N(const int id, double lum);

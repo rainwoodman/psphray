@@ -10,6 +10,10 @@ extern void spec_init();
 extern void epochs_init();
 extern double units_parse(const char * units);
 extern void ar_init(const char * filename);
+extern void xs_init(const char * filename);
+extern void eos_init(const char * filename);
+extern void lte_init();
+extern void secion_init();
 
 config_t CFG[] = {{0}};
 

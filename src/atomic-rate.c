@@ -86,7 +86,7 @@ void ar_init(const char * filename) {
 	AR_LOG_T = 0;
 }
 
-const double ar_get(const int id, const double value) {
+double ar_get(const int id, const double value) {
 	return tabfun_get(&ar, id, value);
 }
 
@@ -123,7 +123,7 @@ void xs_init(const char * filename) {
 	XS_ENG = 0;
 }
 
-const double xs_get(const int id, const double value) {
+double xs_get(const int id, const double value) {
 	if(value < xs_cut[id]) {
 		return 0.0;
 	}

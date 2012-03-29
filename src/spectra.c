@@ -33,7 +33,7 @@ static double powerlaw(double index, double eng, double eng0) {
 	return pow(eng/eng0, index);
 }
 
-const int spec_get(const char * name) {
+int spec_get(const char * name) {
 	int i;
 	for(i = 0; i < N_SPECS; i++) {
 		if(!strcmp(specs[i].name, name)) return i;

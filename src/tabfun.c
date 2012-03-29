@@ -66,7 +66,7 @@ void tabfun_init(TabFun * tabfun, const char * filename) {
 	int NR = 0;
 	char * line = NULL;
 	size_t size = 0;
-	size_t len;
+	int len;
 	int stage = 0;
 	int irow = 0;
 	char * p;
