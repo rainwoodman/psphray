@@ -60,6 +60,7 @@ static int intptr_t_compare(const intptr_t * p1, const intptr_t * p2) {
 	if(*p1 > *p2) return 1;
 	if(*p1 < *p2) return -1;
 	if(*p1 == *p2) return 0;
+    return 0;
 }
 
 static void * permute (const size_t * p, void * data, const size_t ele_bytes, const size_t stride, const size_t n, const size_t n_max)
