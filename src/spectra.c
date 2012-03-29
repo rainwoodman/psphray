@@ -39,6 +39,7 @@ int spec_get(const char * name) {
 		if(!strcmp(specs[i].name, name)) return i;
 	}
 	ERROR("spec %s unknown", name);
+	return 0;
 }
 
 const char * spec_name(const int id) {
@@ -54,6 +55,7 @@ double spec_gen_freq(const int id) {
 		return specs[id].eng[0];
 	default:
 		ERROR("wrong spec type: specs[%d].type = %d", id, specs[id].type);
+		return 0;
 	}
 }
 
