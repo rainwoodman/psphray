@@ -52,6 +52,8 @@ double spec_gen_freq(const int id) {
 		return specs[id].eng[gsl_ran_discrete(RNG, specs[id].randist)];
 	case 1:
 		return specs[id].eng[0];
+	default:
+		ERROR("wrong spec type: specs[%d].type = %d", id, specs[id].type);
 	}
 }
 

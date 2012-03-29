@@ -26,7 +26,7 @@ typedef struct {
 
 extern PSystem psys;
 
-extern int pluecker_(const float const dir[3], const float * dist, const float const s2b[3], const float const s2t[3]);
+extern int pluecker_(const float const dir[3], const float * dist, const float s2b[3], const float s2t[3]);
 static inline int inside(const float pos[3], const intptr_t icell);
 static inline int full(const intptr_t icell);
 static inline intptr_t find(const float pos[3], const intptr_t icell);
