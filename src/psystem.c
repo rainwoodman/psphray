@@ -350,10 +350,10 @@ static void psystem_read_epoch(ReaderConstants * c) {
 			if(!CFG_H_ONLY) {
 				double xHeII = yeMET * C_HMF / (1 - C_HMF) * 4;
 				double xHeIII = fdim(xHeII, 1.0);
-				xHeIII = fmin(1.0, xHeII);
 				xHeII = fmin(1.0, xHeII);
+				xHeIII = fmin(1.0 - xHeII, xHeIII);
 				psys_set_lambdaHe(nread + ipar, 1.0 - xHeII - xHeIII, xHeII, xHeIII);
-				yeMET = fdim(yeMET, (xHeII + xHeIII) * (1 - C_HMF) / C_HMF * 0.25);
+				yeMET = fdim(yeMET, (xHeII + 2 * xHeIII) * (1 - C_HMF) / C_HMF * 0.25);
 			}
 			psys.yeMET[nread + ipar] = yeMET;
 		}
@@ -516,6 +516,85 @@ static float dist(const float p1[3], const float p2[3]) {
 	return sqrt(result);
 }
 
+#if 0
+void psystem_resume_from_output(int outputnum) {
+	char * basename;
+	asprintf(&basename, psys.epoch->output.filename, outputnum);
+	int fid = 0;
+	size_t nfiles = psys.epoch->output.nfiles;
+	for(fid = 0; fid < nfiles; fid++) {
+		char * filename;
+		if(nfiles == 1) {
+			filename = strdup(basename);
+		} else {
+			asprintf(&filename, "%s.%d", basename, fid);
+		}
+		Reader * r = reader_new("psphray");
+		reader_open(r, filename);
+		ReaderConstants * c = reader_constants(r);
+
+		/* read the gas */
+		intptr_t gas_start = psys.npar * fid / nfiles;
+		intptr_t gas_end = psys.npar * (fid + 1)/ nfiles;
+		intptr_t gas_size = gas_end - gas_start;
+		intptr_t bh_start = psys.nsrcs * fid / nfiles;
+		intptr_t bh_end = psys.nsrcs * (fid + 1)/ nfiles;
+		intptr_t bh_size = bh_end - bh_start;
+		intptr_t i;
+		psys.tick = z2t(1. / c->time - 1) - psys.epoch->age / psys.tick_time;
+		reader_read(r, "pos", 0, psys.pos[gas_start]);
+		reader_read(r, "sml", 0, &psys.sml[gas_start]);
+		reader_write(r, "rho", 0, &psys.rho[gas_start]);
+		reader_write(r, "mass", 0, &psys.mass[gas_start]);
+		float * xHI = reader_alloc(r, "xHI", 0);
+		float * ye = reader_alloc(r, "ye", 0);
+		float * xHeI = reader_alloc(r, "xHeI", 0);
+		float * xHeII = reader_alloc(r, "xHeII", 0);
+		float * yGrecHII = reader_alloc(r, "gammaHI", 0);
+		reader_read(r, "xHI", 0, xHI);
+		reader_read(r, "xHeI", 0, xHeI);
+		reader_read(r, "xHeII", 0, xHeII);
+		reader_read(r, "ye", 0, ye);
+		reader_read(r, "gammaHI", 0, yGrecHII);
+		for(i = 0; i < gas_size; i++) {
+			psys_set_lambdaH(gas_start + i, xHI[i], 1.0 - xHI[i]);
+			psys_set_lambdaHe(gas_start + i, xHeI[i], xHeII[i], 1.0 - xHeI[i] - xHeII[i]);
+			PSYS(yeMET, gas_start + i) = fdim(ye[i], (xHeII[i] + 2 * (1.0 - xHeI[i] - xHeII[i])) * (1.-C_HMF)/C_HMF * 0.25 + xHI[i]);
+			psys.yGrecHII[gas_start + i] = yGrecHII[i];
+		}
+		free(xHeI);
+		free(xHeII);
+		free(xHI);
+		free(ye);
+		free(yGrecHII);
+		reader_write(r, "ie", 0, &psys.ie[gas_start]);
+		reader_write(r, "lasthit", 0, &psys.lasthit[gas_start]);
+		reader_write(r, "hits", 0, &psys.hits[gas_start]);
+		reader_write(r, "id", 0, &psys.id[gas_start]);
+		/* write the bh */
+		float (*pos)[3] = reader_alloc(r, "pos", 5);
+		for(i = 0; i < bh_size; i++) {
+			pos[i][0] = psys.srcs[i+bh_start].pos[0];
+			pos[i][1] = psys.srcs[i+bh_start].pos[1];
+			pos[i][2] = psys.srcs[i+bh_start].pos[2];
+		}
+		reader_write(r, "pos", 5, pos);
+		free(pos);
+		double * ngammas = reader_alloc(r, "ngammas", 5);
+		for(i = 0; i < bh_size; i++) {
+			ngammas[i] = psys_Ngamma_dot(i+bh_start);
+		}
+		reader_write(r, "ngammas", 5, ngammas);
+		free(ngammas);
+
+		reader_close(r);
+		reader_destroy(r);
+		free(filename);
+	}
+	free(basename);
+
+}
+#endif 
 void psystem_write_output(int outputnum) {
 	char * basename;
 	asprintf(&basename, psys.epoch->output.filename, outputnum);

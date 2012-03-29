@@ -169,7 +169,6 @@ static inline void psys_set_lambdaHe(const intptr_t i, const double xHeI, const 
 	else if(xHeII <= 0.0 || (xHeIII + xHeI) >=1.0) PSYS(lambdaHeII, i) = 0.0;
 	else PSYS(lambdaHeII, i) = xHeII;
 }
-
 static inline const double psys_NH(const intptr_t i) {
 	return PSYS(mass, i) * C_H_PER_MASS;
 }
