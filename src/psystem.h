@@ -120,8 +120,6 @@ static inline double lambdaH_to_xHI(const double lambdaH) {
 static inline double lambdaH_to_xHII(const double lambdaH) {
 	return 1.0 - lambdaH;
 }
-static inline double lambdaH_from_xHI_xHII(const double xHI, const double xHII) {
-}
 /* conversion from lambdaHeI, lambdaHeII to xHeI and xHeII and xHeIII */
 static inline double lambdaHe_to_xHeI(const double lambdaHeI, const double lambdaHeII) {
 	return lambdaHeI;
