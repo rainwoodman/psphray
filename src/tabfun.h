@@ -10,7 +10,7 @@ typedef struct {
 	double step_inv;
 } TabFun;
 
-const double tabfun_get(const TabFun * tabfun, const int id, const double value);
+double tabfun_get(const TabFun * tabfun, const int id, const double value);
 int tabfun_col_id(const TabFun * tabfun, const char * col);
 void tabfun_init(TabFun * tabfun, const char * filename);
 void tabfun_dump(const TabFun * tabfun, const char * filename);

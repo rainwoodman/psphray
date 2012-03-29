@@ -35,7 +35,7 @@ int tabfun_setup_col(TabFun * tabfun, char * col, double (*func)(double), double
 	return i;
 }
 
-const double tabfun_get(const TabFun * tabfun, const int id, const double value) {
+double tabfun_get(const TabFun * tabfun, const int id, const double value) {
 /*
 	if(isnan(logT) || isinf(logT)) 
 		ERROR("temperature non-positive: logT = %lg", logT);
