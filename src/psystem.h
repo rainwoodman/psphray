@@ -114,44 +114,44 @@ typedef struct x_t {
 extern PSystem psys;
 
 /* conversion from lambdaH to xHI and xHII */
-static inline const double lambdaH_to_xHI(const double lambdaH) {
+static inline double lambdaH_to_xHI(const double lambdaH) {
 	return lambdaH;
 }
-static inline const double lambdaH_to_xHII(const double lambdaH) {
+static inline double lambdaH_to_xHII(const double lambdaH) {
 	return 1.0 - lambdaH;
 }
-static inline const double lambdaH_from_xHI_xHII(const double xHI, const double xHII) {
+static inline double lambdaH_from_xHI_xHII(const double xHI, const double xHII) {
 }
 /* conversion from lambdaHeI, lambdaHeII to xHeI and xHeII and xHeIII */
-static inline const double lambdaHe_to_xHeI(const double lambdaHeI, const double lambdaHeII) {
+static inline double lambdaHe_to_xHeI(const double lambdaHeI, const double lambdaHeII) {
 	return lambdaHeI;
 }
-static inline const double lambdaHe_to_xHeII(const double lambdaHeI, const double lambdaHeII) {
+static inline double lambdaHe_to_xHeII(const double lambdaHeI, const double lambdaHeII) {
 	return lambdaHeII;
 }
 
-static inline const double lambdaHe_to_xHeIII(const double lambdaHeI, const double lambdaHeII) {
+static inline double lambdaHe_to_xHeIII(const double lambdaHeI, const double lambdaHeII) {
 	return 1.0 - lambdaHeII - lambdaHeI;
 }
-static inline const double lambda_to_ye(const double lambdaH, double lambdaHeI, double lambdaHeII) {
+static inline double lambda_to_ye(const double lambdaH, double lambdaHeI, double lambdaHeII) {
 	return lambdaH_to_xHII(lambdaH) 
 		+ C_HEMF / C_HMF *0.25 * (lambdaHe_to_xHeII(lambdaHeI, lambdaHeII) + 2 * lambdaHe_to_xHeIII(lambdaHeI, lambdaHeII));
 
 }
 
-static inline const double psys_xHI(const intptr_t i) {
+static inline double psys_xHI(const intptr_t i) {
 	return lambdaH_to_xHI(PSYS(lambdaH, i));
 }
-static inline const double psys_xHII(const intptr_t i) {
+static inline double psys_xHII(const intptr_t i) {
 	return lambdaH_to_xHII(PSYS(lambdaH, i));
 }
-static inline const double psys_xHeI(const intptr_t i) {
+static inline double psys_xHeI(const intptr_t i) {
 	return lambdaHe_to_xHeI(PSYS(lambdaHeI, i), PSYS(lambdaHeII, i));
 }
-static inline const double psys_xHeII(const intptr_t i) {
+static inline double psys_xHeII(const intptr_t i) {
 	return lambdaHe_to_xHeII(PSYS(lambdaHeI, i), PSYS(lambdaHeII, i));
 }
-static inline const double psys_xHeIII(const intptr_t i) {
+static inline double psys_xHeIII(const intptr_t i) {
 	return lambdaHe_to_xHeIII(PSYS(lambdaHeI, i), PSYS(lambdaHeII, i));
 }
 
