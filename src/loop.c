@@ -136,9 +136,11 @@ void run_epoch() {
 
 		/* deposit photons */
 		if(!CFG_TRACE_ONLY)
-		deposit(); 
+			deposit();
 
-		print_rays();
+		if(CFG_PRINT_RAYS)
+			print_rays();
+
 		merge_pars();
 
 		if(!CFG_TRACE_ONLY)

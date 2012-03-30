@@ -30,7 +30,9 @@ void stat_reset() {
 		stat.parlogfile = fopen_printf("%s.par", "w", basename);
 		stat.hitlogfile = fopen_printf("%s.hit", "w", basename);
 	}
-	stat.raylogfile = fopen_printf("%s.ray", "w", basename);
+	if(CFG_PRINT_RAYS) {
+		stat.raylogfile = fopen_printf("%s.ray", "w", basename);
+	}
 	free(basename);
 }
 
@@ -76,8 +78,10 @@ void stat_write(int outputnum) {
 		stat.parlogfile = fopen_printf("%s.par", "w", basename);
 		stat.hitlogfile = fopen_printf("%s.hit", "w", basename);
 	}
-	fclose(stat.raylogfile);
-	stat.raylogfile = fopen_printf("%s.ray", "w", basename);
+	if(CFG_PRINT_RAYS) {
+		fclose(stat.raylogfile);
+		stat.raylogfile = fopen_printf("%s.ray", "w", basename);
+	}
 	free(basename);
 }
 
@@ -86,5 +90,7 @@ void stat_stop() {
 		fclose(stat.parlogfile);
 		fclose(stat.hitlogfile);
 	}
-	fclose(stat.raylogfile);
+	if(CFG_PRINT_RAYS) {
+		fclose(stat.raylogfile);
+	}
 }

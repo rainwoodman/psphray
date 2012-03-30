@@ -36,6 +36,7 @@ extern int CFG_SECONDARY_IONIZATION;
 extern int CFG_TRACE_ONLY;
 extern int CFG_OCTTREE_PPC;
 extern int CFG_DISABLE_LTE;
+extern int CFG_PRINT_RAYS;
 extern double CFG_FAKE_TEMPERATURE;
 extern int CFG_ENABLE_EOS;
 extern double CFG_EOS_CLOUD_TEMPERATURE;
